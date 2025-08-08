@@ -1,0 +1,293 @@
+"use client"
+
+import { useEffect, useState } from "react"
+import { useRouter } from "next/navigation"
+import { getSupabaseBrowserClient } from "@/lib/supabase"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Button } from "@/components/ui/button"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { CalendarClock, Clock, CheckCircle, XCircle, TrendingUp } from "lucide-react"
+import { getDashboardStats, getTodayReservations, getUpcomingReservations, getNewReservations } from "./dashboard-actions"
+import { ReservationList } from "@/components/manage/reservation-list"
+import { ManageHeader } from "@/components/manage/manage-header"
+import { ManageSidebar } from "@/components/manage/manage-sidebar"
+import { useLanguage } from "@/context/language-context"
+
+export default function ManageDashboard() {
+  const { getTranslation } = useLanguage()
+  const [isLoading, setIsLoading] = useState(true)
+  const [stats, setStats] = useState({
+    total: 0,
+    pending: 0,
+    confirmed: 0,
+    cancelled: 0,
+    percentChange: 0,
+  })
+  const [newReservations, setNewReservations] = useState<any[]>([])
+  const [todayReservations, setTodayReservations] = useState<any[]>([])
+  const [upcomingReservations, setUpcomingReservations] = useState<any[]>([])
+  const [sidebarOpen, setSidebarOpen] = useState(false)
+  const [user, setUser] = useState({ email: "", name: "Admin User" })
+  const router = useRouter()
+  const supabase = getSupabaseBrowserClient()
+
+  useEffect(() => {
+    const checkSession = async () => {
+      const { data } = await supabase.auth.getSession()
+      if (data.session) {
+        setUser({
+          email: data.session.user.email || "",
+          name: data.session.user.user_metadata?.full_name || "Admin User",
+        })
+      }
+      fetchDashboardData()
+    }
+
+    checkSession()
+
+    // Keep cookie/session synced while on dashboard
+    const { data: subscription } = supabase.auth.onAuthStateChange(async (event, session) => {
+      try {
+        await fetch("/auth/callback", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ event, session }),
+        })
+      } catch {}
+      if (event === "SIGNED_OUT") {
+        router.replace("/manage/login")
+      }
+    })
+
+    return () => subscription?.subscription?.unsubscribe?.()
+  }, [router, supabase])
+
+  // Real-time subscription for new reservations
+  useEffect(() => {
+    const supabase = getSupabaseBrowserClient()
+    
+    const channel = supabase
+      .channel('new-reservations')
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'reservations'
+        },
+        async (payload) => {
+          console.log('New reservation detected:', payload)
+          
+          // Fetch the complete reservation with restaurant data
+          const { data: newReservation, error } = await supabase
+            .from('reservations')
+            .select(`
+              *,
+              restaurants (id, name)
+            `)
+            .eq('id', payload.new.id)
+            .single()
+          
+          if (!error && newReservation) {
+            setNewReservations(prev => [newReservation, ...prev])
+            // Also refresh stats to keep them updated
+            const statsResult = await getDashboardStats()
+            if (statsResult.success && statsResult.stats) {
+              setStats(statsResult.stats)
+            }
+          }
+        }
+      )
+      .subscribe()
+
+    return () => {
+      supabase.removeChannel(channel)
+    }
+  }, [])
+
+  const fetchDashboardData = async () => {
+    setIsLoading(true)
+    try {
+      const [statsResult, newResult, todayResult, upcomingResult] = await Promise.all([
+        getDashboardStats(),
+        getNewReservations(),
+        getTodayReservations(),
+        getUpcomingReservations(),
+      ])
+
+      if (statsResult.success && statsResult.stats) {
+        setStats(statsResult.stats)
+      }
+
+      if (newResult.success && newResult.data) {
+        setNewReservations(newResult.data)
+      }
+
+      if (todayResult.success && todayResult.data) {
+        setTodayReservations(todayResult.data)
+      }
+
+      if (upcomingResult.success && upcomingResult.data) {
+        setUpcomingReservations(upcomingResult.data)
+      }
+    } catch (error) {
+      console.error("Error fetching dashboard data:", error)
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  const toggleSidebar = () => {
+    setSidebarOpen(!sidebarOpen)
+  }
+
+  const handleStatusChange = () => {
+    fetchDashboardData()
+  }
+
+  if (isLoading) {
+    return (
+      <div className="flex h-screen items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900 mx-auto"></div>
+          <p className="mt-4 text-gray-700">{getTranslation("manage.common.loadingDashboard")}</p>
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div className="flex h-screen bg-gray-100">
+      <ManageSidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
+
+      <div className="flex-1 flex flex-col overflow-hidden">
+        <ManageHeader user={user} toggleSidebar={toggleSidebar} />
+
+        <main className="flex-1 overflow-y-auto p-4 md:p-6">
+          <div className="max-w-7xl mx-auto">
+            <h1 className="text-2xl font-semibold mb-6">{getTranslation("manage.dashboard.title")}</h1>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+              <Card>
+                <CardContent className="p-6">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm font-medium text-muted-foreground">{getTranslation("manage.dashboard.stats.total")}</p>
+                      <p className="text-3xl font-bold">{stats.total}</p>
+                    </div>
+                    <div className="rounded-full bg-blue-100 p-3 text-blue-600">
+                      <CalendarClock className="h-6 w-6" />
+                    </div>
+                  </div>
+                  <div className="mt-4 flex items-center text-sm">
+                    <TrendingUp
+                      className={`mr-1 h-4 w-4 ${stats.percentChange >= 0 ? "text-green-500" : "text-red-500"}`}
+                    />
+                    <span className={stats.percentChange >= 0 ? "text-green-500" : "text-red-500"}>
+                      {getTranslation("manage.dashboard.stats.percentChange", { percent: String(stats.percentChange) })}
+                    </span>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardContent className="p-6">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm font-medium text-muted-foreground">{getTranslation("manage.dashboard.stats.pending")}</p>
+                      <p className="text-3xl font-bold">{stats.pending}</p>
+                    </div>
+                    <div className="rounded-full bg-yellow-100 p-3 text-yellow-600">
+                      <Clock className="h-6 w-6" />
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardContent className="p-6">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm font-medium text-muted-foreground">{getTranslation("manage.dashboard.stats.confirmed")}</p>
+                      <p className="text-3xl font-bold">{stats.confirmed}</p>
+                    </div>
+                    <div className="rounded-full bg-green-100 p-3 text-green-600">
+                      <CheckCircle className="h-6 w-6" />
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardContent className="p-6">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm font-medium text-muted-foreground">{getTranslation("manage.dashboard.stats.cancelled")}</p>
+                      <p className="text-3xl font-bold">{stats.cancelled}</p>
+                    </div>
+                    <div className="rounded-full bg-red-100 p-3 text-red-600">
+                      <XCircle className="h-6 w-6" />
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+
+            <Tabs defaultValue="new" className="space-y-4">
+              <TabsList>
+                <TabsTrigger value="new">{getTranslation("manage.dashboard.tabs.new")}</TabsTrigger>
+                <TabsTrigger value="today">{getTranslation("manage.dashboard.tabs.today")}</TabsTrigger>
+                <TabsTrigger value="upcoming">{getTranslation("manage.dashboard.tabs.upcoming")}</TabsTrigger>
+              </TabsList>
+              <TabsContent value="new" className="space-y-4">
+                <Card>
+                  <CardHeader>
+                    <CardTitle>{getTranslation("manage.dashboard.new.cardTitle")}</CardTitle>
+                    <CardDescription>
+                      {getTranslation("manage.dashboard.new.cardDescription", { count: String(newReservations.length) })}
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <ReservationList reservations={newReservations} onStatusChange={handleStatusChange} />
+                  </CardContent>
+                </Card>
+              </TabsContent>
+              <TabsContent value="today" className="space-y-4">
+                <Card>
+                  <CardHeader>
+                    <CardTitle>{getTranslation("manage.dashboard.today.cardTitle")}</CardTitle>
+                    <CardDescription>
+                      {getTranslation("manage.dashboard.today.cardDescription", { count: String(todayReservations.length) })}
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <ReservationList reservations={todayReservations} onStatusChange={handleStatusChange} />
+                  </CardContent>
+                </Card>
+              </TabsContent>
+              <TabsContent value="upcoming" className="space-y-4">
+                <Card>
+                  <CardHeader>
+                    <CardTitle>{getTranslation("manage.dashboard.upcoming.cardTitle")}</CardTitle>
+                    <CardDescription>
+                      {getTranslation("manage.dashboard.upcoming.cardDescription", { count: String(upcomingReservations.length) })}
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <ReservationList reservations={upcomingReservations} onStatusChange={handleStatusChange} />
+                  </CardContent>
+                </Card>
+              </TabsContent>
+            </Tabs>
+
+            <div className="mt-6">
+              <Button onClick={fetchDashboardData} variant="outline">
+                {getTranslation("manage.common.refreshData")}
+              </Button>
+            </div>
+          </div>
+        </main>
+      </div>
+    </div>
+  )
+}
