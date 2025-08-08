@@ -270,15 +270,7 @@ export function ManageHeader({ user, toggleSidebar }: ManageHeaderProps) {
 
         <div className="flex items-center gap-4">
           <LanguageSelector />
-          <div className="flex items-center gap-2">
-            <div className="h-8 w-8 rounded-full bg-gray-200 flex items-center justify-center">
-              <User className="h-4 w-4 text-gray-600" />
-            </div>
-            <div className="hidden md:block">
-              <div className="text-sm font-medium">{user.name}</div>
-              <div className="text-xs text-gray-500">{user.email}</div>
-            </div>
-          </div>
+
 
           <div className="relative" ref={dropdownRef}>
             <Button 

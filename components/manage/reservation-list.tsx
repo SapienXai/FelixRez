@@ -19,6 +19,12 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
 import { Textarea } from "@/components/ui/textarea"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Label } from "@/components/ui/label"
@@ -194,37 +200,39 @@ export function ReservationList({ reservations, onStatusChange, itemsPerPage = 5
                 </TableCell>
                 <TableCell>{reservation.party_size}</TableCell>
                 <TableCell>{getStatusBadge(reservation.status || "pending")}</TableCell>
-                <TableCell>
-                  <div className="flex space-x-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => openEditForm(reservation)}
-                    >
-                      <Edit className="w-4 h-4 mr-1" />
-                      Edit
-                    </Button>
-                    {reservation.status === "pending" && (
-                      <>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => openActionDialog(reservation, "confirm")}
-                        >
-                          <CheckCircle className="w-4 h-4 mr-1" />
-                          Confirm
-                        </Button>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => openActionDialog(reservation, "cancel")}
-                        >
-                          <XCircle className="w-4 h-4 mr-1" />
-                          Cancel
-                        </Button>
-                      </>
-                    )}
-                  </div>
+                <TableCell className="text-right">
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="outline" size="sm">
+                        Edit
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuItem
+                        onClick={() => openEditForm(reservation)}
+                        className="text-blue-600"
+                      >
+                        <Edit className="mr-2 h-4 w-4" />
+                        Edit Reservation
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        onClick={() => openActionDialog(reservation, "confirm")}
+                        disabled={reservation.status === "confirmed" || reservation.status === "cancelled"}
+                        className="text-green-600"
+                      >
+                        <CheckCircle className="mr-2 h-4 w-4" />
+                        Confirm Reservation
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        onClick={() => openActionDialog(reservation, "cancel")}
+                        disabled={reservation.status === "cancelled"}
+                        className="text-red-600"
+                      >
+                        <XCircle className="mr-2 h-4 w-4" />
+                        Cancel Reservation
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
                 </TableCell>
               </TableRow>
             ))}
@@ -268,21 +276,21 @@ export function ReservationList({ reservations, onStatusChange, itemsPerPage = 5
             <DialogDescription>
               {actionDialog.reservation && (
                 <div className="space-y-2">
-                  <p>
+                  <div>
                     <strong>Customer:</strong> {actionDialog.reservation.customer_name}
-                  </p>
-                  <p>
+                  </div>
+                  <div>
                     <strong>Restaurant:</strong> {actionDialog.reservation.restaurants?.name}
-                  </p>
-                  <p>
+                  </div>
+                  <div>
                     <strong>Date:</strong> {new Date(actionDialog.reservation.reservation_date).toLocaleDateString()}
-                  </p>
-                  <p>
+                  </div>
+                  <div>
                     <strong>Time:</strong> {actionDialog.reservation.reservation_time}
-                  </p>
-                  <p>
+                  </div>
+                  <div>
                     <strong>Party Size:</strong> {actionDialog.reservation.party_size}
-                  </p>
+                  </div>
                 </div>
               )}
             </DialogDescription>

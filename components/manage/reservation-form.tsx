@@ -241,7 +241,10 @@ export function ReservationForm({
                 min="1"
                 max="20"
                 value={formData.party_size}
-                onChange={(e) => handleInputChange("party_size", parseInt(e.target.value))}
+                onChange={(e) => {
+                  const value = parseInt(e.target.value)
+                  handleInputChange("party_size", isNaN(value) ? 1 : value)
+                }}
                 required
               />
             </div>

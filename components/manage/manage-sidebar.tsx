@@ -4,7 +4,7 @@ import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { ScrollArea } from "@/components/ui/scroll-area"
-import { Sheet, SheetContent } from "@/components/ui/sheet"
+import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet"
 import { LayoutDashboard, CalendarClock, Store, Users, X } from "lucide-react"
 import { useLanguage } from "@/context/language-context"
 
@@ -81,6 +81,7 @@ export function ManageSidebar({ isOpen, onClose }: ManageSidebarProps) {
       {/* Mobile sidebar */}
       <Sheet open={isOpen} onOpenChange={onClose}>
         <SheetContent side="left" className="w-64 p-0 bg-white">
+          <SheetTitle className="sr-only">Navigation Menu</SheetTitle>
           <div className="flex h-16 items-center justify-between border-b px-4">
             <Link href={`/manage?lang=${currentLang}`} className="flex items-center" onClick={onClose}>
               <span className="text-xl font-bold">Felix</span>
