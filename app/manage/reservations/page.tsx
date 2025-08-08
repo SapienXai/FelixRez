@@ -52,10 +52,21 @@ export default function ReservationsPage() {
     checkSession()
   }, [router, supabase])
 
+  // Auto-fetch reservations when filters change
+  useEffect(() => {
+    const timeoutId = setTimeout(() => {
+      fetchReservations()
+    }, 300) // Debounce search by 300ms
+
+    return () => clearTimeout(timeoutId)
+  }, [filters])
+
   const fetchReservations = async () => {
     setIsLoading(true)
+    console.log('Fetching reservations with filters:', filters)
     try {
       const result = await getReservations(filters)
+      console.log('Reservation fetch result:', result)
       if (result.success) {
         setReservations(result.data)
       }
@@ -190,7 +201,7 @@ export default function ReservationsPage() {
                 </Button>
               </CardHeader>
               <CardContent>
-                <ReservationTable reservations={reservations} onRefresh={handleRefresh} />
+                <ReservationTable reservations={reservations} onRefresh={handleRefresh} itemsPerPage={20} />
               </CardContent>
             </Card>
 

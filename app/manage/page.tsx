@@ -8,10 +8,12 @@ import { Button } from "@/components/ui/button"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { CalendarClock, Clock, CheckCircle, XCircle, TrendingUp } from "lucide-react"
 import { getDashboardStats, getTodayReservations, getUpcomingReservations, getNewReservations } from "./dashboard-actions"
+import { getRestaurants } from "./actions"
 import { ReservationList } from "@/components/manage/reservation-list"
 import { ManageHeader } from "@/components/manage/manage-header"
 import { ManageSidebar } from "@/components/manage/manage-sidebar"
 import { useLanguage } from "@/context/language-context"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 
 export default function ManageDashboard() {
   const { getTranslation } = useLanguage()
@@ -26,6 +28,8 @@ export default function ManageDashboard() {
   const [newReservations, setNewReservations] = useState<any[]>([])
   const [todayReservations, setTodayReservations] = useState<any[]>([])
   const [upcomingReservations, setUpcomingReservations] = useState<any[]>([])
+  const [restaurants, setRestaurants] = useState<any[]>([])
+  const [selectedRestaurant, setSelectedRestaurant] = useState<string>("all")
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [user, setUser] = useState({ email: "", name: "Admin User" })
   const router = useRouter()
@@ -40,6 +44,7 @@ export default function ManageDashboard() {
           name: data.session.user.user_metadata?.full_name || "Admin User",
         })
       }
+      await fetchRestaurants()
       fetchDashboardData()
     }
 
@@ -61,6 +66,13 @@ export default function ManageDashboard() {
 
     return () => subscription?.subscription?.unsubscribe?.()
   }, [router, supabase])
+
+  // Fetch dashboard data when restaurant filter changes
+  useEffect(() => {
+    if (restaurants.length > 0) {
+      fetchDashboardData()
+    }
+  }, [selectedRestaurant])
 
   // Real-time subscription for new reservations
   useEffect(() => {
@@ -105,14 +117,26 @@ export default function ManageDashboard() {
     }
   }, [])
 
+  const fetchRestaurants = async () => {
+    try {
+      const result = await getRestaurants()
+      if (result.success && result.data) {
+        setRestaurants(result.data)
+      }
+    } catch (error) {
+      console.error("Error fetching restaurants:", error)
+    }
+  }
+
   const fetchDashboardData = async () => {
     setIsLoading(true)
     try {
+      const restaurantFilter = selectedRestaurant === 'all' || !selectedRestaurant ? undefined : selectedRestaurant
       const [statsResult, newResult, todayResult, upcomingResult] = await Promise.all([
-        getDashboardStats(),
-        getNewReservations(),
-        getTodayReservations(),
-        getUpcomingReservations(),
+        getDashboardStats(restaurantFilter),
+        getNewReservations(restaurantFilter),
+        getTodayReservations(restaurantFilter),
+        getUpcomingReservations(restaurantFilter),
       ])
 
       if (statsResult.success && statsResult.stats) {
@@ -145,6 +169,10 @@ export default function ManageDashboard() {
     fetchDashboardData()
   }
 
+  const handleRestaurantChange = (value: string) => {
+    setSelectedRestaurant(value)
+  }
+
   if (isLoading) {
     return (
       <div className="flex h-screen items-center justify-center">
@@ -165,7 +193,27 @@ export default function ManageDashboard() {
 
         <main className="flex-1 overflow-y-auto p-4 md:p-6">
           <div className="max-w-7xl mx-auto">
-            <h1 className="text-2xl font-semibold mb-6">{getTranslation("manage.dashboard.title")}</h1>
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6">
+              <h1 className="text-2xl font-semibold mb-4 sm:mb-0">{getTranslation("manage.dashboard.title")}</h1>
+              
+              <div className="flex items-center space-x-4">
+                <div className="min-w-[200px]">
+                  <Select value={selectedRestaurant} onValueChange={handleRestaurantChange}>
+                    <SelectTrigger>
+                      <SelectValue placeholder={getTranslation("manage.dashboard.filter.allRestaurants")} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">{getTranslation("manage.dashboard.filter.allRestaurants")}</SelectItem>
+                      {restaurants.map((restaurant) => (
+                        <SelectItem key={restaurant.id} value={restaurant.id}>
+                          {restaurant.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+            </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
               <Card>
@@ -248,7 +296,7 @@ export default function ManageDashboard() {
                     </CardDescription>
                   </CardHeader>
                   <CardContent>
-                    <ReservationList reservations={newReservations} onStatusChange={handleStatusChange} />
+                    <ReservationList reservations={newReservations} onStatusChange={handleStatusChange} itemsPerPage={10} />
                   </CardContent>
                 </Card>
               </TabsContent>
@@ -261,7 +309,7 @@ export default function ManageDashboard() {
                     </CardDescription>
                   </CardHeader>
                   <CardContent>
-                    <ReservationList reservations={todayReservations} onStatusChange={handleStatusChange} />
+                    <ReservationList reservations={todayReservations} onStatusChange={handleStatusChange} itemsPerPage={10} />
                   </CardContent>
                 </Card>
               </TabsContent>
@@ -274,7 +322,7 @@ export default function ManageDashboard() {
                     </CardDescription>
                   </CardHeader>
                   <CardContent>
-                    <ReservationList reservations={upcomingReservations} onStatusChange={handleStatusChange} />
+                    <ReservationList reservations={upcomingReservations} onStatusChange={handleStatusChange} itemsPerPage={10} />
                   </CardContent>
                 </Card>
               </TabsContent>

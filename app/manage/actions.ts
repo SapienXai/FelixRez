@@ -56,25 +56,38 @@ export async function getReservations(filters: {
         .lte("reservation_date", endOfMonth.toISOString().split("T")[0])
     }
 
-    // Handle search query
-    if (filters.searchQuery) {
-      query = query.or(`
-        customer_name.ilike.%${filters.searchQuery}%,
-        customer_phone.ilike.%${filters.searchQuery}%,
-        customer_email.ilike.%${filters.searchQuery}%
-      `)
+    // Execute the initial query to get all filtered data
+    const { data: allData, error: initialError } = await query.order("reservation_date", { ascending: true })
+    
+    if (initialError) {
+      console.error("Error fetching reservations:", initialError)
+      return { success: false, message: initialError.message, data: [] }
     }
 
-    // Execute the query
-    const { data, error } = await query.order("reservation_date", { ascending: true })
-
-    if (error) {
-      console.error("Error fetching reservations:", error)
-      return { success: false, message: error.message, data: [] }
+    // Handle search query with client-side filtering
+    let filteredData = allData
+    if (filters.searchQuery && filters.searchQuery.trim()) {
+      console.log('Search query:', filters.searchQuery)
+      const searchTerm = filters.searchQuery.toLowerCase().trim()
+      console.log('Search term:', searchTerm)
+      
+      filteredData = allData.filter(reservation => {
+        const customerName = reservation.customer_name?.toLowerCase() || ''
+        const customerPhone = reservation.customer_phone?.toLowerCase() || ''
+        const customerEmail = reservation.customer_email?.toLowerCase() || ''
+        const restaurantName = reservation.restaurants?.name?.toLowerCase() || ''
+        
+        return customerName.includes(searchTerm) ||
+               customerPhone.includes(searchTerm) ||
+               customerEmail.includes(searchTerm) ||
+               restaurantName.includes(searchTerm)
+      })
+      
+      console.log('Filtered results:', filteredData.length, 'out of', allData.length)
     }
 
-    console.log("Fetched reservations:", data)
-    return { success: true, data }
+    console.log("Fetched reservations:", filteredData)
+    return { success: true, data: filteredData }
   } catch (error) {
     console.error("Error in getReservations:", error)
     return { success: false, message: "An unexpected error occurred", data: [] }

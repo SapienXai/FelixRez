@@ -2,14 +2,20 @@
 
 import { createServiceRoleClient } from "@/lib/supabase"
 
-export async function getDashboardStats() {
+export async function getDashboardStats(restaurantId?: string) {
   try {
     const supabase = createServiceRoleClient()
 
     // Get total reservations
-    const { count: total, error: totalError } = await supabase
+    let totalQuery = supabase
       .from("reservations")
       .select("*", { count: "exact", head: true })
+    
+    if (restaurantId) {
+      totalQuery = totalQuery.eq("restaurant_id", restaurantId)
+    }
+
+    const { count: total, error: totalError } = await totalQuery
 
     if (totalError) {
       console.error("Error fetching total reservations:", totalError)
@@ -17,10 +23,16 @@ export async function getDashboardStats() {
     }
 
     // Get pending reservations
-    const { count: pending, error: pendingError } = await supabase
+    let pendingQuery = supabase
       .from("reservations")
       .select("*", { count: "exact", head: true })
       .eq("status", "pending")
+    
+    if (restaurantId) {
+      pendingQuery = pendingQuery.eq("restaurant_id", restaurantId)
+    }
+
+    const { count: pending, error: pendingError } = await pendingQuery
 
     if (pendingError) {
       console.error("Error fetching pending reservations:", pendingError)
@@ -28,10 +40,16 @@ export async function getDashboardStats() {
     }
 
     // Get confirmed reservations
-    const { count: confirmed, error: confirmedError } = await supabase
+    let confirmedQuery = supabase
       .from("reservations")
       .select("*", { count: "exact", head: true })
       .eq("status", "confirmed")
+    
+    if (restaurantId) {
+      confirmedQuery = confirmedQuery.eq("restaurant_id", restaurantId)
+    }
+
+    const { count: confirmed, error: confirmedError } = await confirmedQuery
 
     if (confirmedError) {
       console.error("Error fetching confirmed reservations:", confirmedError)
@@ -39,10 +57,16 @@ export async function getDashboardStats() {
     }
 
     // Get cancelled reservations
-    const { count: cancelled, error: cancelledError } = await supabase
+    let cancelledQuery = supabase
       .from("reservations")
       .select("*", { count: "exact", head: true })
       .eq("status", "cancelled")
+    
+    if (restaurantId) {
+      cancelledQuery = cancelledQuery.eq("restaurant_id", restaurantId)
+    }
+
+    const { count: cancelled, error: cancelledError } = await cancelledQuery
 
     if (cancelledError) {
       console.error("Error fetching cancelled reservations:", cancelledError)
@@ -54,11 +78,17 @@ export async function getDashboardStats() {
     const lastMonth = new Date(today)
     lastMonth.setMonth(lastMonth.getMonth() - 1)
 
-    const { count: lastMonthCount, error: lastMonthError } = await supabase
+    let lastMonthQuery = supabase
       .from("reservations")
       .select("*", { count: "exact", head: true })
       .gte("created_at", lastMonth.toISOString())
       .lt("created_at", today.toISOString())
+    
+    if (restaurantId) {
+      lastMonthQuery = lastMonthQuery.eq("restaurant_id", restaurantId)
+    }
+
+    const { count: lastMonthCount, error: lastMonthError } = await lastMonthQuery
 
     if (lastMonthError) {
       console.error("Error fetching last month reservations:", lastMonthError)
@@ -69,11 +99,17 @@ export async function getDashboardStats() {
     const twoMonthsAgo = new Date(lastMonth)
     twoMonthsAgo.setMonth(twoMonthsAgo.getMonth() - 1)
 
-    const { count: twoMonthsAgoCount, error: twoMonthsAgoError } = await supabase
+    let twoMonthsAgoQuery = supabase
       .from("reservations")
       .select("*", { count: "exact", head: true })
       .gte("created_at", twoMonthsAgo.toISOString())
       .lt("created_at", lastMonth.toISOString())
+    
+    if (restaurantId) {
+      twoMonthsAgoQuery = twoMonthsAgoQuery.eq("restaurant_id", restaurantId)
+    }
+
+    const { count: twoMonthsAgoCount, error: twoMonthsAgoError } = await twoMonthsAgoQuery
 
     if (twoMonthsAgoError) {
       console.error("Error fetching two months ago reservations:", twoMonthsAgoError)
@@ -102,7 +138,7 @@ export async function getDashboardStats() {
   }
 }
 
-export async function getTodayReservations() {
+export async function getTodayReservations(restaurantId?: string) {
   try {
     const supabase = createServiceRoleClient()
 
@@ -114,14 +150,19 @@ export async function getTodayReservations() {
 
     console.log('getTodayReservations: Looking for date:', todayStr)
 
-    const { data, error } = await supabase
+    let query = supabase
       .from("reservations")
       .select(`
         *,
         restaurants (id, name)
       `)
       .eq("reservation_date", todayStr)
-      .order("reservation_time", { ascending: true })
+    
+    if (restaurantId) {
+      query = query.eq("restaurant_id", restaurantId)
+    }
+
+    const { data, error } = await query.order("reservation_time", { ascending: true })
 
     if (error) {
       console.error("Error fetching today's reservations:", error)
@@ -135,16 +176,22 @@ export async function getTodayReservations() {
   }
 }
 
-export async function getNewReservations() {
+export async function getNewReservations(restaurantId?: string) {
   try {
     const supabase = createServiceRoleClient()
 
-    const { data, error } = await supabase
+    let query = supabase
       .from("reservations")
       .select(`
         *,
         restaurants (id, name)
       `)
+    
+    if (restaurantId) {
+      query = query.eq("restaurant_id", restaurantId)
+    }
+
+    const { data, error } = await query
       .order("created_at", { ascending: false })
       .limit(20)
 
@@ -160,7 +207,7 @@ export async function getNewReservations() {
   }
 }
 
-export async function getUpcomingReservations() {
+export async function getUpcomingReservations(restaurantId?: string) {
   try {
     const supabase = createServiceRoleClient()
 
@@ -180,7 +227,7 @@ export async function getUpcomingReservations() {
 
     console.log('getUpcomingReservations: Looking from', tomorrowStr, 'to', nextWeekStr)
 
-    const { data, error } = await supabase
+    let query = supabase
       .from("reservations")
       .select(`
         *,
@@ -188,6 +235,12 @@ export async function getUpcomingReservations() {
       `)
       .gte("reservation_date", tomorrowStr)
       .lt("reservation_date", nextWeekStr)
+    
+    if (restaurantId) {
+      query = query.eq("restaurant_id", restaurantId)
+    }
+
+    const { data, error } = await query
       .order("reservation_date", { ascending: true })
       .order("reservation_time", { ascending: true })
 

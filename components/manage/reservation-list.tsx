@@ -27,6 +27,8 @@ import type { Reservation } from "@/types/supabase"
 import { updateReservationStatus } from "@/app/manage/actions"
 import { toast } from "sonner"
 import { ReservationForm } from "@/components/manage/reservation-form"
+import { usePagination } from "@/hooks/use-pagination"
+import { PaginationControls } from "@/components/ui/pagination-controls"
 
 interface ReservationWithRestaurant extends Reservation {
   restaurants?: {
@@ -38,9 +40,10 @@ interface ReservationWithRestaurant extends Reservation {
 interface ReservationListProps {
   reservations: ReservationWithRestaurant[]
   onStatusChange: () => void
+  itemsPerPage?: number
 }
 
-export function ReservationList({ reservations, onStatusChange }: ReservationListProps) {
+export function ReservationList({ reservations, onStatusChange, itemsPerPage = 5 }: ReservationListProps) {
   const [actionDialog, setActionDialog] = useState<{
     isOpen: boolean
     reservation: ReservationWithRestaurant | null
@@ -53,6 +56,19 @@ export function ReservationList({ reservations, onStatusChange }: ReservationLis
   const [notes, setNotes] = useState("")
   const [sendEmail, setSendEmail] = useState(true)
   const [loading, setLoading] = useState(false)
+  const [currentItemsPerPage, setCurrentItemsPerPage] = useState(itemsPerPage)
+
+  const {
+    currentPage,
+    totalPages,
+    paginatedData,
+    goToPage,
+    canGoNext,
+    canGoPrevious,
+    startIndex,
+    endIndex,
+    totalItems,
+  } = usePagination({ data: reservations, itemsPerPage: currentItemsPerPage })
 
   const handleAction = async () => {
     if (!actionDialog.reservation || !actionDialog.action) return
@@ -156,7 +172,7 @@ export function ReservationList({ reservations, onStatusChange }: ReservationLis
             </TableRow>
           </TableHeader>
           <TableBody>
-            {reservations.map((reservation) => (
+            {paginatedData.map((reservation) => (
               <TableRow key={reservation.id}>
                 <TableCell className="font-medium">
                   {reservation.restaurants?.name || "Unknown Restaurant"}
@@ -214,6 +230,23 @@ export function ReservationList({ reservations, onStatusChange }: ReservationLis
             ))}
           </TableBody>
         </Table>
+      </div>
+
+      {/* Pagination Controls */}
+      <div className="mt-4">
+        <PaginationControls
+          currentPage={currentPage}
+          totalPages={totalPages}
+          onPageChange={goToPage}
+          canGoNext={canGoNext}
+          canGoPrevious={canGoPrevious}
+          startIndex={startIndex}
+          endIndex={endIndex}
+          totalItems={totalItems}
+          itemsPerPage={currentItemsPerPage}
+          onItemsPerPageChange={setCurrentItemsPerPage}
+          showItemsPerPage={true}
+        />
       </div>
 
       {/* Action Dialog */}

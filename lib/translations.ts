@@ -134,6 +134,9 @@ export const translations = {
           cancelled: "Cancelled",
           percentChange: "{percent}% from last month",
         },
+        filter: {
+          allRestaurants: "All Restaurants",
+        },
         tabs: { new: "New Reservations", today: "Today's Reservations", upcoming: "Upcoming Reservations" },
         new: {
           cardTitle: "New Reservations",
@@ -167,7 +170,7 @@ export const translations = {
           dateWeek: "Next 7 Days",
           dateMonth: "Next 30 Days",
           search: "Search",
-          searchPlaceholder: "Search by name, email, or phone",
+          searchPlaceholder: "Search by name, email, phone, or restaurant",
           apply: "Apply Filters",
           reset: "Reset",
         },
@@ -378,6 +381,9 @@ export const translations = {
           cancelled: "İptal",
           percentChange: "Geçen aya göre {percent}%",
         },
+        filter: {
+          allRestaurants: "Tüm Restoranlar",
+        },
         tabs: { new: "Yeni Rezervasyonlar", today: "Bugünkü Rezervasyonlar", upcoming: "Yaklaşan Rezervasyonlar" },
         new: {
           cardTitle: "Yeni Rezervasyonlar",
@@ -411,7 +417,7 @@ export const translations = {
           dateWeek: "Sonraki 7 Gün",
           dateMonth: "Sonraki 30 Gün",
           search: "Ara",
-          searchPlaceholder: "İsim, e-posta veya telefon ile arayın",
+          searchPlaceholder: "İsim, e-posta, telefon veya restoran ile arayın",
           apply: "Filtreleri Uygula",
           reset: "Sıfırla",
         },
