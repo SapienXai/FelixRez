@@ -39,6 +39,7 @@ interface ReservationWithRestaurant {
   reservation_time: string
   special_requests?: string | null
   status: string | null
+  table_number?: string | null
   restaurants?: {
     id: string
     name: string
@@ -72,6 +73,7 @@ export function ReservationForm({
     reservation_time: "",
     special_requests: "",
     status: "pending",
+    table_number: "",
   })
 
   // Load restaurants on component mount
@@ -98,6 +100,7 @@ export function ReservationForm({
         reservation_time: reservation.reservation_time,
         special_requests: reservation.special_requests || "",
         status: reservation.status || "pending",
+        table_number: reservation.table_number || "",
       })
     } else if (mode === "create") {
       // Reset form for create mode
@@ -111,6 +114,7 @@ export function ReservationForm({
         reservation_time: "",
         special_requests: "",
         status: "pending",
+        table_number: "",
       })
     }
   }, [mode, reservation, isOpen])
@@ -232,7 +236,7 @@ export function ReservationForm({
             </div>
           </div>
 
-          <div className="grid grid-cols-3 gap-4">
+          <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="party_size">Party Size</Label>
               <Input
@@ -249,6 +253,18 @@ export function ReservationForm({
               />
             </div>
 
+            <div className="space-y-2">
+              <Label htmlFor="table_number">Table Number</Label>
+              <Input
+                id="table_number"
+                value={formData.table_number}
+                onChange={(e) => handleInputChange("table_number", e.target.value)}
+                placeholder="e.g., T1, A5, Window 3"
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="reservation_date">Date</Label>
               <Input

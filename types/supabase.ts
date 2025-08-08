@@ -80,6 +80,7 @@ export interface Database {
           special_requests: string | null
           status: string | null
           notes: string | null
+          table_number: string | null
           created_at: string
           updated_at: string
         }
@@ -95,6 +96,7 @@ export interface Database {
           special_requests?: string | null
           status?: string | null
           notes?: string | null
+          table_number?: string | null
           created_at?: string
           updated_at?: string
         }
@@ -110,6 +112,7 @@ export interface Database {
           special_requests?: string | null
           status?: string | null
           notes?: string | null
+          table_number?: string | null
           created_at?: string
           updated_at?: string
         }

@@ -307,6 +307,7 @@ export async function updateReservation(id: string, reservationData: {
   reservation_time?: string
   special_requests?: string
   status?: string
+  table_number?: string
 }) {
   try {
     const supabase = createServiceRoleClient()

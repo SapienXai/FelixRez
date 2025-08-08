@@ -18,6 +18,7 @@ interface CreateReservationParams {
   customerPhone: string
   customerEmail: string
   specialRequests?: string
+  tableNumber?: string
 }
 
 export async function createReservation(params: CreateReservationParams) {
@@ -36,6 +37,7 @@ export async function createReservation(params: CreateReservationParams) {
         customer_phone: params.customerPhone,
         customer_email: params.customerEmail,
         special_requests: params.specialRequests || null,
+        table_number: params.tableNumber || null,
         status: "pending",
       })
       .select()
@@ -174,6 +176,7 @@ interface UpdateReservationParams {
   reservation_date: string
   reservation_time: string
   special_requests?: string
+  table_number?: string
 }
 
 export async function updateReservation(params: UpdateReservationParams) {
@@ -190,6 +193,7 @@ export async function updateReservation(params: UpdateReservationParams) {
         reservation_date: params.reservation_date,
         reservation_time: params.reservation_time,
         special_requests: params.special_requests || null,
+        table_number: params.table_number || null,
       })
       .eq("id", params.id)
       .select()
