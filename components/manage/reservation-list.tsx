@@ -1,8 +1,9 @@
 "use client"
 
-import { useState } from "react"
+import React, { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import {
   Table,
   TableBody,
@@ -28,7 +29,7 @@ import {
 import { Textarea } from "@/components/ui/textarea"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Label } from "@/components/ui/label"
-import { CheckCircle, XCircle, Clock, Edit } from "lucide-react"
+import { CheckCircle, XCircle, Clock, Edit, List, Grid, User, Phone, Mail, Calendar, MoreHorizontal } from "lucide-react"
 import type { Reservation } from "@/types/supabase"
 import { updateReservationStatus } from "@/app/manage/actions"
 import { toast } from "sonner"
@@ -50,6 +51,7 @@ interface ReservationListProps {
 }
 
 export function ReservationList({ reservations, onStatusChange, itemsPerPage = 5 }: ReservationListProps) {
+  const [viewMode, setViewMode] = useState<"table" | "card">("table")
   const [actionDialog, setActionDialog] = useState<{
     isOpen: boolean
     reservation: ReservationWithRestaurant | null
@@ -126,28 +128,28 @@ export function ReservationList({ reservations, onStatusChange, itemsPerPage = 5
     switch (status) {
       case "confirmed":
         return (
-          <Badge variant="secondary" className="bg-green-100 text-green-800">
+          <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
             <CheckCircle className="w-3 h-3 mr-1" />
             Confirmed
           </Badge>
         )
       case "cancelled":
         return (
-          <Badge variant="secondary" className="bg-red-100 text-red-800">
+          <Badge variant="outline" className="bg-red-50 text-red-700 border-red-200">
             <XCircle className="w-3 h-3 mr-1" />
             Cancelled
           </Badge>
         )
       case "completed":
         return (
-          <Badge variant="secondary" className="bg-blue-100 text-blue-800">
+          <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
             <CheckCircle className="w-3 h-3 mr-1" />
             Completed
           </Badge>
         )
       default:
         return (
-          <Badge variant="secondary" className="bg-yellow-100 text-yellow-800">
+          <Badge variant="outline" className="bg-yellow-50 text-yellow-700 border-yellow-200">
             <Clock className="w-3 h-3 mr-1" />
             Pending
           </Badge>
@@ -155,90 +157,224 @@ export function ReservationList({ reservations, onStatusChange, itemsPerPage = 5
     }
   }
 
-  if (reservations.length === 0) {
-    return (
-      <div className="text-center py-8 text-gray-500">
-        <p>No reservations found</p>
-      </div>
-    )
-  }
+  const renderCardView = () => (
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+      {paginatedData.map((reservation) => (
+        <Card key={reservation.id} className="hover:shadow-md transition-shadow">
+          <CardHeader className="pb-3">
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-lg">{reservation.restaurants?.name || "Unknown Restaurant"}</CardTitle>
+              {getStatusBadge(reservation.status || "pending")}
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <div className="flex items-center space-x-2">
+              <User className="h-4 w-4 text-muted-foreground" />
+              <span className="font-medium">{reservation.customer_name}</span>
+            </div>
+            
+            <div className="flex items-center space-x-2">
+              <Phone className="h-4 w-4 text-muted-foreground" />
+              <span className="text-sm">{reservation.customer_phone}</span>
+            </div>
+            
+            {reservation.customer_email && (
+              <div className="flex items-center space-x-2">
+                <Mail className="h-4 w-4 text-muted-foreground" />
+                <span className="text-sm truncate">{reservation.customer_email}</span>
+              </div>
+            )}
+            
+            <div className="flex items-center space-x-2">
+              <Calendar className="h-4 w-4 text-muted-foreground" />
+              <span className="text-sm">{new Date(reservation.reservation_date).toLocaleDateString()}</span>
+            </div>
+            
+            <div className="flex items-center space-x-2">
+              <Clock className="h-4 w-4 text-muted-foreground" />
+              <span className="text-sm">{reservation.reservation_time}</span>
+            </div>
+            
+            {reservation.special_requests && (
+              <div className="mt-3 p-2 bg-gray-50 rounded-md">
+                <div className="text-xs font-medium text-gray-700 mb-1">Special Requests:</div>
+                <div className="text-xs text-gray-600">{reservation.special_requests}</div>
+              </div>
+            )}
+            
+            <div className="flex items-center justify-between pt-2">
+              <div>
+                <span className="text-sm font-medium">Party Size: {reservation.party_size}</span>
+                {reservation.table_number && (
+                  <div className="text-xs text-muted-foreground mt-1">Table: {reservation.table_number}</div>
+                )}
+              </div>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" size="icon">
+                    <MoreHorizontal className="h-4 w-4" />
+                    <span className="sr-only">Open menu</span>
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem
+                    onClick={() => openEditForm(reservation)}
+                    className="text-blue-600"
+                  >
+                    <Edit className="mr-2 h-4 w-4" />
+                    Edit Reservation
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onClick={() => openActionDialog(reservation, "confirm")}
+                    disabled={reservation.status === "confirmed" || reservation.status === "cancelled"}
+                    className="text-green-600"
+                  >
+                    <CheckCircle className="mr-2 h-4 w-4" />
+                    Confirm Reservation
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onClick={() => openActionDialog(reservation, "cancel")}
+                    disabled={reservation.status === "cancelled"}
+                    className="text-red-600"
+                  >
+                    <XCircle className="mr-2 h-4 w-4" />
+                    Cancel Reservation
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
+          </CardContent>
+        </Card>
+      ))}
+    </div>
+  )
 
   return (
     <>
-      <div className="rounded-md border">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Restaurant</TableHead>
-              <TableHead>Customer</TableHead>
-              <TableHead>Date & Time</TableHead>
-              <TableHead>Party Size</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead>Actions</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {paginatedData.map((reservation) => (
-              <TableRow key={reservation.id}>
-                <TableCell className="font-medium">
-                  {reservation.restaurants?.name || "Unknown Restaurant"}
-                </TableCell>
-                <TableCell>
-                  <div>
-                    <div className="font-medium">{reservation.customer_name}</div>
-                    <div className="text-sm text-gray-500">{reservation.customer_phone}</div>
-                    {reservation.customer_email && (
-                      <div className="text-sm text-gray-500">{reservation.customer_email}</div>
-                    )}
-                  </div>
-                </TableCell>
-                <TableCell>
-                  <div>
-                    <div>{new Date(reservation.reservation_date).toLocaleDateString()}</div>
-                    <div className="text-sm text-gray-500">{reservation.reservation_time}</div>
-                  </div>
-                </TableCell>
-                <TableCell>{reservation.party_size}</TableCell>
-                <TableCell>{getStatusBadge(reservation.status || "pending")}</TableCell>
-                <TableCell className="text-right">
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button variant="outline" size="sm">
-                        Edit
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                      <DropdownMenuItem
-                        onClick={() => openEditForm(reservation)}
-                        className="text-blue-600"
-                      >
-                        <Edit className="mr-2 h-4 w-4" />
-                        Edit Reservation
-                      </DropdownMenuItem>
-                      <DropdownMenuItem
-                        onClick={() => openActionDialog(reservation, "confirm")}
-                        disabled={reservation.status === "confirmed" || reservation.status === "cancelled"}
-                        className="text-green-600"
-                      >
-                        <CheckCircle className="mr-2 h-4 w-4" />
-                        Confirm Reservation
-                      </DropdownMenuItem>
-                      <DropdownMenuItem
-                        onClick={() => openActionDialog(reservation, "cancel")}
-                        disabled={reservation.status === "cancelled"}
-                        className="text-red-600"
-                      >
-                        <XCircle className="mr-2 h-4 w-4" />
-                        Cancel Reservation
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
+      {/* View Toggle */}
+      <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center space-x-2">
+          <Button
+            variant={viewMode === "table" ? "default" : "outline"}
+            size="sm"
+            onClick={() => setViewMode("table")}
+            className="flex items-center space-x-2"
+          >
+            <List className="h-4 w-4" />
+            <span className="hidden sm:inline">Table</span>
+          </Button>
+          <Button
+            variant={viewMode === "card" ? "default" : "outline"}
+            size="sm"
+            onClick={() => setViewMode("card")}
+            className="flex items-center space-x-2"
+          >
+            <Grid className="h-4 w-4" />
+            <span className="hidden sm:inline">Cards</span>
+          </Button>
+        </div>
       </div>
+
+      {/* Table View */}
+      {viewMode === "table" && (
+        <div className="overflow-x-auto rounded-md border">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Restaurant</TableHead>
+                <TableHead className="hidden md:table-cell">Customer</TableHead>
+                <TableHead>Date & Time</TableHead>
+                <TableHead className="hidden sm:table-cell">Party Size</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead className="text-right">Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {paginatedData.map((reservation) => (
+                <React.Fragment key={reservation.id}>
+                  <TableRow>
+                    <TableCell className="font-medium">
+                      <div>{reservation.restaurants?.name || "Unknown Restaurant"}</div>
+                      <div className="text-sm text-muted-foreground mt-1">
+                        {reservation.customer_name}
+                      </div>
+                      {reservation.table_number && (
+                        <div className="text-xs text-muted-foreground">Table: {reservation.table_number}</div>
+                      )}
+                      {reservation.special_requests && (
+                        <div className="text-xs text-muted-foreground mt-1 italic">
+                          Note: {reservation.special_requests}
+                        </div>
+                      )}
+                    </TableCell>
+                    <TableCell className="hidden md:table-cell">
+                      <div className="font-medium">Party: {reservation.party_size}</div>
+                      <div className="text-sm text-muted-foreground">{reservation.customer_phone}</div>
+                      {reservation.customer_email && (
+                        <div className="text-sm text-muted-foreground flex items-center">
+                          <Mail className="mr-1 h-3 w-3" />
+                          {reservation.customer_email}
+                        </div>
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      <div>
+                        <span>{new Date(reservation.reservation_date).toLocaleDateString()}</span>
+                      </div>
+                      <div className="text-sm text-muted-foreground">
+                        <span>{reservation.reservation_time}</span>
+                      </div>
+                      <div className="sm:hidden text-xs text-muted-foreground mt-1">
+                        Party: {reservation.party_size}
+                      </div>
+                    </TableCell>
+                    <TableCell className="hidden sm:table-cell">{reservation.party_size}</TableCell>
+                    <TableCell>{getStatusBadge(reservation.status || "pending")}</TableCell>
+                    <TableCell className="text-right">
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="icon">
+                            <MoreHorizontal className="h-4 w-4" />
+                            <span className="sr-only">Open menu</span>
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem
+                            onClick={() => openEditForm(reservation)}
+                            className="text-blue-600"
+                          >
+                            <Edit className="mr-2 h-4 w-4" />
+                            Edit Reservation
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            onClick={() => openActionDialog(reservation, "confirm")}
+                            disabled={reservation.status === "confirmed" || reservation.status === "cancelled"}
+                            className="text-green-600"
+                          >
+                            <CheckCircle className="mr-2 h-4 w-4" />
+                            Confirm Reservation
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            onClick={() => openActionDialog(reservation, "cancel")}
+                            disabled={reservation.status === "cancelled"}
+                            className="text-red-600"
+                          >
+                            <XCircle className="mr-2 h-4 w-4" />
+                            Cancel Reservation
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </TableCell>
+                  </TableRow>
+                 </React.Fragment>
+               ))}
+            </TableBody>
+          </Table>
+        </div>
+      )}
+
+      {/* Card View */}
+      {viewMode === "card" && renderCardView()}
 
       {/* Pagination Controls */}
       <div className="mt-4">

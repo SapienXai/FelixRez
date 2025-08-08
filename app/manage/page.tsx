@@ -193,13 +193,13 @@ export default function ManageDashboard() {
 
         <main className="flex-1 overflow-y-auto p-4 md:p-6">
           <div className="max-w-7xl mx-auto">
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6">
-              <h1 className="text-2xl font-semibold mb-4 sm:mb-0">{getTranslation("manage.dashboard.title")}</h1>
+            <div className="flex flex-col space-y-4 sm:flex-row sm:items-center sm:justify-between sm:space-y-0 mb-6">
+              <h1 className="text-xl md:text-2xl font-semibold">{getTranslation("manage.dashboard.title")}</h1>
               
               <div className="flex items-center space-x-4">
-                <div className="min-w-[200px]">
+                <div className="w-full sm:min-w-[200px]">
                   <Select value={selectedRestaurant} onValueChange={handleRestaurantChange}>
-                    <SelectTrigger>
+                    <SelectTrigger className="text-sm">
                       <SelectValue placeholder={getTranslation("manage.dashboard.filter.allRestaurants")} />
                     </SelectTrigger>
                     <SelectContent>
@@ -215,21 +215,21 @@ export default function ManageDashboard() {
               </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+            <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4 mb-6">
               <Card>
-                <CardContent className="p-6">
+                <CardContent className="p-4 md:p-6">
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="text-sm font-medium text-muted-foreground">{getTranslation("manage.dashboard.stats.total")}</p>
-                      <p className="text-3xl font-bold">{stats.total}</p>
+                      <p className="text-xs md:text-sm font-medium text-muted-foreground">{getTranslation("manage.dashboard.stats.total")}</p>
+                      <p className="text-2xl md:text-3xl font-bold">{stats.total}</p>
                     </div>
-                    <div className="rounded-full bg-blue-100 p-3 text-blue-600">
-                      <CalendarClock className="h-6 w-6" />
+                    <div className="rounded-full bg-blue-100 p-2 md:p-3 text-blue-600">
+                      <CalendarClock className="h-4 w-4 md:h-6 md:w-6" />
                     </div>
                   </div>
-                  <div className="mt-4 flex items-center text-sm">
+                  <div className="mt-2 md:mt-4 flex items-center text-xs md:text-sm">
                     <TrendingUp
-                      className={`mr-1 h-4 w-4 ${stats.percentChange >= 0 ? "text-green-500" : "text-red-500"}`}
+                      className={`mr-1 h-3 w-3 md:h-4 md:w-4 ${stats.percentChange >= 0 ? "text-green-500" : "text-red-500"}`}
                     />
                     <span className={stats.percentChange >= 0 ? "text-green-500" : "text-red-500"}>
                       {getTranslation("manage.dashboard.stats.percentChange", { percent: String(stats.percentChange) })}
@@ -239,42 +239,42 @@ export default function ManageDashboard() {
               </Card>
 
               <Card>
-                <CardContent className="p-6">
+                <CardContent className="p-4 md:p-6">
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="text-sm font-medium text-muted-foreground">{getTranslation("manage.dashboard.stats.pending")}</p>
-                      <p className="text-3xl font-bold">{stats.pending}</p>
+                      <p className="text-xs md:text-sm font-medium text-muted-foreground">{getTranslation("manage.dashboard.stats.pending")}</p>
+                      <p className="text-2xl md:text-3xl font-bold">{stats.pending}</p>
                     </div>
-                    <div className="rounded-full bg-yellow-100 p-3 text-yellow-600">
-                      <Clock className="h-6 w-6" />
+                    <div className="rounded-full bg-yellow-100 p-2 md:p-3 text-yellow-600">
+                      <Clock className="h-4 w-4 md:h-6 md:w-6" />
                     </div>
                   </div>
                 </CardContent>
               </Card>
 
               <Card>
-                <CardContent className="p-6">
+                <CardContent className="p-4 md:p-6">
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="text-sm font-medium text-muted-foreground">{getTranslation("manage.dashboard.stats.confirmed")}</p>
-                      <p className="text-3xl font-bold">{stats.confirmed}</p>
+                      <p className="text-xs md:text-sm font-medium text-muted-foreground">{getTranslation("manage.dashboard.stats.confirmed")}</p>
+                      <p className="text-2xl md:text-3xl font-bold">{stats.confirmed}</p>
                     </div>
-                    <div className="rounded-full bg-green-100 p-3 text-green-600">
-                      <CheckCircle className="h-6 w-6" />
+                    <div className="rounded-full bg-green-100 p-2 md:p-3 text-green-600">
+                      <CheckCircle className="h-4 w-4 md:h-6 md:w-6" />
                     </div>
                   </div>
                 </CardContent>
               </Card>
 
               <Card>
-                <CardContent className="p-6">
+                <CardContent className="p-4 md:p-6">
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="text-sm font-medium text-muted-foreground">{getTranslation("manage.dashboard.stats.cancelled")}</p>
-                      <p className="text-3xl font-bold">{stats.cancelled}</p>
+                      <p className="text-xs md:text-sm font-medium text-muted-foreground">{getTranslation("manage.dashboard.stats.cancelled")}</p>
+                      <p className="text-2xl md:text-3xl font-bold">{stats.cancelled}</p>
                     </div>
-                    <div className="rounded-full bg-red-100 p-3 text-red-600">
-                      <XCircle className="h-6 w-6" />
+                    <div className="rounded-full bg-red-100 p-2 md:p-3 text-red-600">
+                      <XCircle className="h-4 w-4 md:h-6 md:w-6" />
                     </div>
                   </div>
                 </CardContent>
@@ -282,10 +282,10 @@ export default function ManageDashboard() {
             </div>
 
             <Tabs defaultValue="new" className="space-y-4">
-              <TabsList>
-                <TabsTrigger value="new">{getTranslation("manage.dashboard.tabs.new")}</TabsTrigger>
-                <TabsTrigger value="today">{getTranslation("manage.dashboard.tabs.today")}</TabsTrigger>
-                <TabsTrigger value="upcoming">{getTranslation("manage.dashboard.tabs.upcoming")}</TabsTrigger>
+              <TabsList className="grid w-full grid-cols-3 lg:w-auto lg:grid-cols-none lg:flex">
+                <TabsTrigger value="new" className="text-xs sm:text-sm">{getTranslation("manage.dashboard.tabs.new")}</TabsTrigger>
+                <TabsTrigger value="today" className="text-xs sm:text-sm">{getTranslation("manage.dashboard.tabs.today")}</TabsTrigger>
+                <TabsTrigger value="upcoming" className="text-xs sm:text-sm">{getTranslation("manage.dashboard.tabs.upcoming")}</TabsTrigger>
               </TabsList>
               <TabsContent value="new" className="space-y-4">
                 <Card>
