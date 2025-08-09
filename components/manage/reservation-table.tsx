@@ -149,6 +149,18 @@ export function ReservationTable({ reservations, onRefresh, itemsPerPage = 10 }:
               <span className="text-sm">{reservation.reservation_time}</span>
             </div>
             
+            {reservation.table_number && (
+              <div className="text-sm text-muted-foreground">
+                <span className="font-medium">Table:</span> {reservation.table_number}
+              </div>
+            )}
+            
+            {reservation.special_requests && (
+              <div className="text-sm text-muted-foreground italic">
+                <span className="font-medium">Note:</span> {reservation.special_requests}
+              </div>
+            )}
+            
             <div className="flex items-center justify-between pt-2">
               <span className="text-sm font-medium">Party Size: {reservation.party_size}</span>
               <DropdownMenu>
@@ -246,12 +258,20 @@ export function ReservationTable({ reservations, onRefresh, itemsPerPage = 10 }:
                  <TableRow key={reservation.id}>
                    <TableCell className="font-medium">
                      <div>{reservation.restaurants?.name || "Unknown Restaurant"}</div>
-                     <div className="md:hidden text-sm text-muted-foreground mt-1">
+                     <div className="text-sm text-muted-foreground mt-1">
                        {reservation.customer_name}
                      </div>
+                     {reservation.table_number && (
+                       <div className="text-xs text-muted-foreground">Table: {reservation.table_number}</div>
+                     )}
+                     {reservation.special_requests && (
+                       <div className="text-xs text-muted-foreground mt-1 italic">
+                         Note: {reservation.special_requests}
+                       </div>
+                     )}
                    </TableCell>
                    <TableCell className="hidden md:table-cell">
-                     <div className="font-medium">{reservation.customer_name}</div>
+                     <div className="font-medium">Party: {reservation.party_size}</div>
                      <div className="text-sm text-muted-foreground">{reservation.customer_phone}</div>
                      <div className="text-sm text-muted-foreground flex items-center">
                        <Mail className="mr-1 h-3 w-3" />
