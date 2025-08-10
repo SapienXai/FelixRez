@@ -3,7 +3,6 @@
 import type React from "react"
 
 import { useLanguage } from "@/context/language-context"
-import { useState } from "react"
 import Image from "next/image"
 
 interface ReservationStep1Props {
@@ -24,7 +23,7 @@ export function ReservationStep1({
   setSelectedTime,
 }: ReservationStep1Props) {
   const { getTranslation, currentLang } = useLanguage()
-  const [activePeriod, setActivePeriod] = useState<"afternoon" | "evening" | "all">("evening")
+
 
   // Generate party size options
   const partySizeOptions = () => {
@@ -78,8 +77,10 @@ export function ReservationStep1({
     const eveningTimes: string[] = []
     const afternoonCutoff = 17
 
-    for (let hour = 13; hour < 21; hour++) {
-      for (let minute = 0; minute < 60; minute += 15) {
+    // Only generate times between 17:00 and 20:45
+    for (let hour = 17; hour <= 20; hour++) {
+      const maxMinute = hour === 20 ? 45 : 59; // Stop at 20:45
+      for (let minute = 0; minute <= maxMinute; minute += 15) {
         const timeStr = `${hour.toString().padStart(2, "0")}:${minute.toString().padStart(2, "0")}`
         if (hour < afternoonCutoff) {
           afternoonTimes.push(timeStr)
@@ -196,75 +197,21 @@ export function ReservationStep1({
         </div>
       </div>
 
-      <div className="time-period-filter mt-3 mb-2">
-        <button
-          type="button"
-          className={`btn btn-outline-primary btn-sm time-filter-btn ${activePeriod === "afternoon" ? "active" : ""}`}
-          data-period="afternoon"
-          onClick={() => setActivePeriod("afternoon")}
-        >
-          {getTranslation("reserve.step1.timeFilterAfternoon")}
-        </button>
-        <button
-          type="button"
-          className={`btn btn-outline-primary btn-sm time-filter-btn ${activePeriod === "evening" ? "active" : ""}`}
-          data-period="evening"
-          onClick={() => setActivePeriod("evening")}
-        >
-          {getTranslation("reserve.step1.timeFilterEvening")}
-        </button>
-        <button
-          type="button"
-          className={`btn btn-outline-primary btn-sm time-filter-btn ${activePeriod === "all" ? "active" : ""}`}
-          data-period="all"
-          onClick={() => setActivePeriod("all")}
-        >
-          {getTranslation("reserve.step1.timeFilterAll")}
-        </button>
-      </div>
+
 
       <div className="time-slots-container">
-        <div
-          id="afternoonSlots"
-          className={`time-period-slots ${activePeriod !== "afternoon" && activePeriod !== "all" ? "hidden" : ""}`}
-        >
-          <h4 className={`time-period-header ${afternoonTimes.length === 0 ? "visually-hidden" : ""}`}>
-            {getTranslation("reserve.step1.afternoonPeriod")}
-          </h4>
-          <div className="time-slots-grid" id="timeSlotsGridAfternoon">
-            {afternoonTimes.map((time) => (
-              <button
-                key={`slot-${time}`}
-                type="button"
-                className={`time-slot-btn ${selectedTime === time ? "selected" : ""}`}
-                data-time={time}
-                onClick={() => handleTimeSlotClick(time)}
-              >
-                {time}
-              </button>
-            ))}
-          </div>
-        </div>
-        <div
-          id="eveningSlots"
-          className={`time-period-slots ${activePeriod !== "evening" && activePeriod !== "all" ? "hidden" : ""}`}
-        >
-          <h4 className={`time-period-header ${eveningTimes.length === 0 ? "visually-hidden" : ""}`}>
-            {getTranslation("reserve.step1.eveningPeriod")}
-          </h4>
-          <div className="time-slots-grid" id="timeSlotsGridEvening">
-            {eveningTimes.map((time) => (
-              <button
-                key={`slot-${time}`}
-                type="button"
-                className={`time-slot-btn ${selectedTime === time ? "selected" : ""}`}
-                data-time={time}
-                onClick={() => handleTimeSlotClick(time)}
-              >
-                {time}
-              </button>
-            ))}
-          </div>
+        <div className="time-slots-grid" id="timeSlotsGrid">
+          {eveningTimes.map((time) => (
+            <button
+              key={`slot-${time}`}
+              type="button"
+              className={`time-slot-btn ${selectedTime === time ? "selected" : ""}`}
+              data-time={time}
+              onClick={() => handleTimeSlotClick(time)}
+            >
+              {time}
+            </button>
+          ))}
         </div>
       </div>
 

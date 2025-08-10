@@ -7,6 +7,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { ManageHeader } from '@/components/manage/manage-header';
 import { ManageSidebar } from '@/components/manage/manage-sidebar';
 import { RestaurantForm } from '@/components/restaurant-form';
+import { useConfirmationDialog } from '@/components/ui/confirmation-dialog';
 import { getRestaurants, deleteRestaurant } from '@/app/manage/actions';
 import { useLanguage } from '@/context/language-context';
 import { getSupabaseBrowserClient } from '@/lib/supabase';
@@ -35,6 +36,7 @@ export default function RestaurantsPage() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [user, setUser] = useState({ email: '', name: 'Admin User' });
   const { getTranslation } = useLanguage();
+  const { showConfirmation, ConfirmationDialogComponent } = useConfirmationDialog();
   const supabase = getSupabaseBrowserClient();
 
   const fetchRestaurants = async () => {
@@ -70,16 +72,23 @@ export default function RestaurantsPage() {
     setShowForm(true);
   };
 
-  const handleDelete = async (id: string) => {
-    if (confirm('Are you sure you want to delete this restaurant?')) {
-      const result = await deleteRestaurant(id);
-      if (result.success) {
-        toast.success(result.message);
-        fetchRestaurants();
-      } else {
-        toast.error(result.message);
+  const handleDelete = async (id: string, restaurantName: string) => {
+    showConfirmation({
+      title: 'Delete Restaurant',
+      description: `Are you sure you want to delete "${restaurantName}"? This action cannot be undone and will also delete all associated reservations.`,
+      confirmText: 'Delete',
+      cancelText: 'Cancel',
+      variant: 'destructive',
+      onConfirm: async () => {
+        const result = await deleteRestaurant(id);
+        if (result.success) {
+          toast.success(result.message);
+          fetchRestaurants();
+        } else {
+          toast.error(result.message);
+        }
       }
-    }
+    });
   };
 
   const handleFormSuccess = () => {
@@ -169,7 +178,7 @@ export default function RestaurantsPage() {
                             <Edit className="mr-2 h-4 w-4" />
                             Edit
                           </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => handleDelete(restaurant.id)} className="text-red-600">
+                          <DropdownMenuItem onClick={() => handleDelete(restaurant.id, restaurant.name)} className="text-red-600">
                             <Trash2 className="mr-2 h-4 w-4" />
                             Delete
                           </DropdownMenuItem>
@@ -214,6 +223,7 @@ export default function RestaurantsPage() {
               onClose={handleFormClose}
             />
           )}
+          {ConfirmationDialogComponent}
         </main>
       </div>
     </div>

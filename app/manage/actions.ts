@@ -36,24 +36,32 @@ export async function getReservations(filters: {
     const today = new Date()
     today.setHours(0, 0, 0, 0)
 
+    // Helper function to format date without timezone issues
+    const formatDateToYYYYMMDD = (date: Date) => {
+      const year = date.getFullYear()
+      const month = (date.getMonth() + 1).toString().padStart(2, "0")
+      const day = date.getDate().toString().padStart(2, "0")
+      return `${year}-${month}-${day}`
+    }
+
     if (filters.dateRange === "today") {
-      query = query.eq("reservation_date", today.toISOString().split("T")[0])
+      query = query.eq("reservation_date", formatDateToYYYYMMDD(today))
     } else if (filters.dateRange === "tomorrow") {
       const tomorrow = new Date(today)
       tomorrow.setDate(tomorrow.getDate() + 1)
-      query = query.eq("reservation_date", tomorrow.toISOString().split("T")[0])
+      query = query.eq("reservation_date", formatDateToYYYYMMDD(tomorrow))
     } else if (filters.dateRange === "week") {
       const endOfWeek = new Date(today)
       endOfWeek.setDate(endOfWeek.getDate() + 7)
       query = query
-        .gte("reservation_date", today.toISOString().split("T")[0])
-        .lte("reservation_date", endOfWeek.toISOString().split("T")[0])
+        .gte("reservation_date", formatDateToYYYYMMDD(today))
+        .lte("reservation_date", formatDateToYYYYMMDD(endOfWeek))
     } else if (filters.dateRange === "month") {
       const endOfMonth = new Date(today)
       endOfMonth.setMonth(endOfMonth.getMonth() + 1)
       query = query
-        .gte("reservation_date", today.toISOString().split("T")[0])
-        .lte("reservation_date", endOfMonth.toISOString().split("T")[0])
+        .gte("reservation_date", formatDateToYYYYMMDD(today))
+        .lte("reservation_date", formatDateToYYYYMMDD(endOfMonth))
     }
 
     // Execute the initial query to get all filtered data

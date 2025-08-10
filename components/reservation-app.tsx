@@ -145,8 +145,14 @@ export function ReservationApp({ initialRestaurant, initialLang }: ReservationAp
     setIsLoading(true)
 
     try {
-      // Format date for database (YYYY-MM-DD)
-      const formattedDate = selectedDate.toISOString().split("T")[0]
+      // Format date for database (YYYY-MM-DD) - avoid timezone issues
+      const formatDateToYYYYMMDD = (date: Date) => {
+        const year = date.getFullYear()
+        const month = (date.getMonth() + 1).toString().padStart(2, "0")
+        const day = date.getDate().toString().padStart(2, "0")
+        return `${year}-${month}-${day}`
+      }
+      const formattedDate = formatDateToYYYYMMDD(selectedDate)
 
       const result = await createReservation({
         restaurantId: effectiveRestaurant!.id,

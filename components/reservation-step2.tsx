@@ -145,6 +145,34 @@ export function ReservationStep2({
           onChange={(e) => setSpecialRequests(e.target.value)}
         ></textarea>
       </div>
+
+      <div className="rules-restrictions-section mt-4">
+        <h3 className="section-title text-sm font-semibold mb-3">Rules & Restrictions</h3>
+        <div className="rules-list space-y-2">
+          <div className="rule-item flex items-start gap-2">
+            <span className="text-red-500 mt-1">•</span>
+            <span className="text-sm text-gray-600">If you can't make it to your reservation time, please cancel it to allow others to book.</span>
+          </div>
+          <div className="rule-item flex items-start gap-2">
+            <span className="text-blue-500 mt-1">•</span>
+            <span className="text-sm text-gray-600">You can edit your reservation within the next 3 hours after booking.</span>
+          </div>
+        </div>
+        
+        <div className="terms-notice mt-4 p-3 bg-gray-50 rounded-md border">
+          <p className="text-xs text-gray-600">
+            By continuing, you agree to the{" "}
+            <a href="/terms" target="_blank" className="text-blue-600 hover:underline">
+              Terms and Conditions
+            </a>
+            {" "}and{" "}
+            <a href="/privacy" target="_blank" className="text-blue-600 hover:underline">
+              Privacy Policy
+            </a>
+            {" "}of Felix Smile Company.
+          </p>
+        </div>
+      </div>
     </div>
   )
 }
