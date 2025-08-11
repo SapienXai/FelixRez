@@ -409,7 +409,7 @@ export function ReservationList({ reservations, onStatusChange, itemsPerPage = 5
             <DialogTitle>
               {actionDialog.action === "confirm" ? "Confirm Reservation" : "Cancel Reservation"}
             </DialogTitle>
-            <DialogDescription>
+            <div className="text-sm text-muted-foreground">
               {actionDialog.reservation && (
                 <div className="space-y-2">
                   <div>
@@ -429,7 +429,7 @@ export function ReservationList({ reservations, onStatusChange, itemsPerPage = 5
                   </div>
                 </div>
               )}
-            </DialogDescription>
+            </div>
           </DialogHeader>
 
           <div className="space-y-4">
