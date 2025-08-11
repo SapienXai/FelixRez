@@ -82,7 +82,23 @@ export function ReservationApp({ initialRestaurant, initialLang }: ReservationAp
     }
   }, [initialLang, setLanguage])
 
-  // Defer fetching restaurant to server during submit to avoid client-side RLS/policy issues
+  // Fetch restaurant data early to get reservation settings
+  useEffect(() => {
+    const fetchRestaurantData = async () => {
+      if (!restaurantData && restaurantName) {
+        try {
+          const fetched = await getRestaurantByName(restaurantName)
+          if (fetched) {
+            setRestaurantData(fetched as unknown as Restaurant)
+          }
+        } catch (error) {
+          console.error("Error fetching restaurant data:", error)
+        }
+      }
+    }
+    
+    fetchRestaurantData()
+  }, [restaurantName, restaurantData])
 
   const getHeaderTitle = () => {
     return currentStep === 1 ? restaurantName : getTranslation("reserve.header.yourReservation")
@@ -258,6 +274,7 @@ export function ReservationApp({ initialRestaurant, initialLang }: ReservationAp
               setSelectedDate={setSelectedDate}
               selectedTime={selectedTime}
               setSelectedTime={setSelectedTime}
+              restaurant={restaurantData}
             />
           ) : (
             <ReservationStep2

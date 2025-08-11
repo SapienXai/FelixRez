@@ -58,6 +58,7 @@ export const translations = {
         timeFilterAll: "All Times",
         afternoonPeriod: "Afternoon Times",
         eveningPeriod: "Evening Times",
+        availableTimesLabel: "Available Times",
       },
       step2: {
         contactInfoTitle: "Contact Info",
@@ -304,6 +305,7 @@ export const translations = {
         timeFilterAll: "Tüm Saatler",
         afternoonPeriod: "Öğleden Sonra Saatleri",
         eveningPeriod: "Akşam Saatleri",
+        availableTimesLabel: "Mevcut Saatler",
       },
       step2: {
         contactInfoTitle: "İletişim Bilgileri",

@@ -401,6 +401,16 @@ export async function createRestaurant(data: {
   atmosphere?: string;
   media_type?: string;
   media_url?: string;
+  // Reservation settings
+  reservation_enabled?: boolean;
+  allowed_days_of_week?: number[];
+  opening_time?: string;
+  closing_time?: string;
+  time_slot_duration?: number;
+  advance_booking_days?: number;
+  min_advance_hours?: number;
+  max_party_size?: number;
+  min_party_size?: number;
 }) {
   try {
     const supabase = createServiceRoleClient()
@@ -416,6 +426,16 @@ export async function createRestaurant(data: {
         hours: data.hours,
         atmosphere: data.atmosphere,
         media_type: data.media_type,
+        // Reservation settings
+        reservation_enabled: data.reservation_enabled,
+        allowed_days_of_week: data.allowed_days_of_week,
+        opening_time: data.opening_time,
+        closing_time: data.closing_time,
+        time_slot_duration: data.time_slot_duration,
+        advance_booking_days: data.advance_booking_days,
+        min_advance_hours: data.min_advance_hours,
+        max_party_size: data.max_party_size,
+        min_party_size: data.min_party_size,
       })
       .select()
       .single()
@@ -458,6 +478,16 @@ export async function updateRestaurant(id: string, data: {
   atmosphere?: string;
   media_type?: string;
   media_url?: string;
+  // Reservation settings
+  reservation_enabled?: boolean;
+  allowed_days_of_week?: number[];
+  opening_time?: string;
+  closing_time?: string;
+  time_slot_duration?: number;
+  advance_booking_days?: number;
+  min_advance_hours?: number;
+  max_party_size?: number;
+  min_party_size?: number;
 }) {
   try {
     const supabase = createServiceRoleClient()
@@ -473,6 +503,16 @@ export async function updateRestaurant(id: string, data: {
         hours: data.hours,
         atmosphere: data.atmosphere,
         media_type: data.media_type,
+        // Reservation settings
+        reservation_enabled: data.reservation_enabled,
+        allowed_days_of_week: data.allowed_days_of_week,
+        opening_time: data.opening_time,
+        closing_time: data.closing_time,
+        time_slot_duration: data.time_slot_duration,
+        advance_booking_days: data.advance_booking_days,
+        min_advance_hours: data.min_advance_hours,
+        max_party_size: data.max_party_size,
+        min_party_size: data.min_party_size,
         updated_at: new Date().toISOString(),
       })
       .eq("id", id)

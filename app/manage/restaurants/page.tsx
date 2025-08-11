@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { ManageHeader } from '@/components/manage/manage-header';
 import { ManageSidebar } from '@/components/manage/manage-sidebar';
-import { RestaurantForm } from '@/components/restaurant-form';
+import { RestaurantForm } from '@/components/manage/restaurant-form';
 import { useConfirmationDialog } from '@/components/ui/confirmation-dialog';
 import { getRestaurants, deleteRestaurant } from '@/app/manage/actions';
 import { useLanguage } from '@/context/language-context';
@@ -14,18 +14,17 @@ import { getSupabaseBrowserClient } from '@/lib/supabase';
 import { MoreHorizontal, Edit, Trash2, Plus } from 'lucide-react';
 import { toast } from 'sonner';
 import Image from 'next/image';
+import type { Database } from '@/types/supabase';
 
-interface RestaurantWithMedia {
-  id: string;
-  name: string;
-  description?: string;
-  cuisine?: string;
-  location?: string;
-  phone?: string;
-  hours?: string;
-  atmosphere?: string;
-  media_type?: string;
-  media?: { media_url: string }[];
+type Restaurant = Database['public']['Tables']['restaurants']['Row']
+
+interface RestaurantWithMedia extends Restaurant {
+  media?: {
+    id: string
+    url: string
+    alt_text?: string
+    media_url: string
+  }[]
 }
 
 export default function RestaurantsPage() {
@@ -216,13 +215,13 @@ export default function RestaurantsPage() {
             )}
           </div>
           
-          {showForm && (
-            <RestaurantForm
-              restaurant={editingRestaurant}
-              onSuccess={handleFormSuccess}
-              onClose={handleFormClose}
-            />
-          )}
+          <RestaurantForm
+            isOpen={showForm}
+            mode={editingRestaurant ? "edit" : "create"}
+            restaurant={editingRestaurant || null}
+            onSuccess={handleFormSuccess}
+            onClose={handleFormClose}
+          />
           {ConfirmationDialogComponent}
         </main>
       </div>

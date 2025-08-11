@@ -14,6 +14,17 @@ export interface Database {
           phone: string | null
           location: string | null
           media_type: string | null
+          reservation_enabled: boolean | null
+          allowed_days_of_week: number[] | null
+          opening_time: string | null
+          closing_time: string | null
+          time_slot_duration: number | null
+          advance_booking_days: number | null
+          min_advance_hours: number | null
+          max_party_size: number | null
+          min_party_size: number | null
+          blocked_dates: string[] | null
+          special_hours: Json | null
           created_at: string
           updated_at: string
         }
@@ -27,6 +38,17 @@ export interface Database {
           phone?: string | null
           location?: string | null
           media_type?: string | null
+          reservation_enabled?: boolean | null
+          allowed_days_of_week?: number[] | null
+          opening_time?: string | null
+          closing_time?: string | null
+          time_slot_duration?: number | null
+          advance_booking_days?: number | null
+          min_advance_hours?: number | null
+          max_party_size?: number | null
+          min_party_size?: number | null
+          blocked_dates?: string[] | null
+          special_hours?: Json | null
           created_at?: string
           updated_at?: string
         }
@@ -40,6 +62,17 @@ export interface Database {
           phone?: string | null
           location?: string | null
           media_type?: string | null
+          reservation_enabled?: boolean | null
+          allowed_days_of_week?: number[] | null
+          opening_time?: string | null
+          closing_time?: string | null
+          time_slot_duration?: number | null
+          advance_booking_days?: number | null
+          min_advance_hours?: number | null
+          max_party_size?: number | null
+          min_party_size?: number | null
+          blocked_dates?: string[] | null
+          special_hours?: Json | null
           created_at?: string
           updated_at?: string
         }

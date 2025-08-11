@@ -6,6 +6,8 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
+import { Checkbox } from "@/components/ui/checkbox"
+import { Separator } from "@/components/ui/separator"
 import { Loader2 } from "lucide-react"
 import { createRestaurant, updateRestaurant } from "@/app/manage/actions"
 import { toast } from "@/hooks/use-toast"
@@ -38,7 +40,17 @@ export function RestaurantForm({ isOpen, mode, restaurant, onClose, onSuccess }:
     location: "",
     phone: "",
     hours: "",
-    atmosphere: ""
+    atmosphere: "",
+    // Reservation settings
+    reservation_enabled: true,
+    allowed_days_of_week: [1, 2, 3, 4, 5, 6, 7],
+    opening_time: "09:00",
+    closing_time: "22:00",
+    time_slot_duration: 30,
+    advance_booking_days: 30,
+    min_advance_hours: 2,
+    max_party_size: 12,
+    min_party_size: 1
   })
 
   useEffect(() => {
@@ -50,7 +62,17 @@ export function RestaurantForm({ isOpen, mode, restaurant, onClose, onSuccess }:
         location: restaurant.location || "",
         phone: restaurant.phone || "",
         hours: restaurant.hours || "",
-        atmosphere: restaurant.atmosphere || ""
+        atmosphere: restaurant.atmosphere || "",
+        // Reservation settings
+        reservation_enabled: restaurant.reservation_enabled ?? true,
+        allowed_days_of_week: restaurant.allowed_days_of_week || [1, 2, 3, 4, 5, 6, 7],
+        opening_time: restaurant.opening_time || "09:00",
+        closing_time: restaurant.closing_time || "22:00",
+        time_slot_duration: restaurant.time_slot_duration || 30,
+        advance_booking_days: restaurant.advance_booking_days || 30,
+        min_advance_hours: restaurant.min_advance_hours || 2,
+        max_party_size: restaurant.max_party_size || 12,
+        min_party_size: restaurant.min_party_size || 1
       })
     } else {
       setFormData({
@@ -60,7 +82,17 @@ export function RestaurantForm({ isOpen, mode, restaurant, onClose, onSuccess }:
         location: "",
         phone: "",
         hours: "",
-        atmosphere: ""
+        atmosphere: "",
+        // Reservation settings
+        reservation_enabled: true,
+        allowed_days_of_week: [1, 2, 3, 4, 5, 6, 7],
+        opening_time: "09:00",
+        closing_time: "22:00",
+        time_slot_duration: 30,
+        advance_booking_days: 30,
+        min_advance_hours: 2,
+        max_party_size: 12,
+        min_party_size: 1
       })
     }
   }, [mode, restaurant, isOpen])
@@ -77,7 +109,17 @@ export function RestaurantForm({ isOpen, mode, restaurant, onClose, onSuccess }:
         location: formData.location || undefined,
         phone: formData.phone || undefined,
         hours: formData.hours || undefined,
-        atmosphere: formData.atmosphere || undefined
+        atmosphere: formData.atmosphere || undefined,
+        // Reservation settings
+        reservation_enabled: formData.reservation_enabled,
+        allowed_days_of_week: formData.allowed_days_of_week,
+        opening_time: formData.opening_time,
+        closing_time: formData.closing_time,
+        time_slot_duration: formData.time_slot_duration,
+        advance_booking_days: formData.advance_booking_days,
+        min_advance_hours: formData.min_advance_hours,
+        max_party_size: formData.max_party_size,
+        min_party_size: formData.min_party_size
       }
 
       let result
@@ -112,9 +154,28 @@ export function RestaurantForm({ isOpen, mode, restaurant, onClose, onSuccess }:
     }
   }
 
-  const handleInputChange = (field: string, value: string) => {
+  const handleInputChange = (field: string, value: string | number | boolean | number[]) => {
     setFormData(prev => ({ ...prev, [field]: value }))
   }
+
+  const handleDayToggle = (day: number, checked: boolean) => {
+    setFormData(prev => ({
+      ...prev,
+      allowed_days_of_week: checked
+        ? [...prev.allowed_days_of_week, day].sort()
+        : prev.allowed_days_of_week.filter(d => d !== day)
+    }))
+  }
+
+  const dayNames = [
+    { value: 1, label: "Monday" },
+    { value: 2, label: "Tuesday" },
+    { value: 3, label: "Wednesday" },
+    { value: 4, label: "Thursday" },
+    { value: 5, label: "Friday" },
+    { value: 6, label: "Saturday" },
+    { value: 7, label: "Sunday" }
+  ]
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
@@ -183,11 +244,12 @@ export function RestaurantForm({ isOpen, mode, restaurant, onClose, onSuccess }:
 
             <div className="space-y-2">
               <Label htmlFor="atmosphere">Atmosphere</Label>
-              <Input
+              <Textarea
                 id="atmosphere"
                 value={formData.atmosphere}
                 onChange={(e) => handleInputChange("atmosphere", e.target.value)}
-                placeholder="e.g., Casual, Fine Dining, Family-friendly"
+                placeholder="Describe the restaurant's atmosphere..."
+                rows={3}
               />
             </div>
           </div>
@@ -200,6 +262,126 @@ export function RestaurantForm({ isOpen, mode, restaurant, onClose, onSuccess }:
               onChange={(e) => handleInputChange("hours", e.target.value)}
               placeholder="e.g., Mon-Sun: 12PM - 10PM"
             />
+          </div>
+
+          <Separator className="my-6" />
+          
+          <div className="space-y-4">
+            <h3 className="text-lg font-semibold">Reservation Settings</h3>
+            
+            <div className="flex items-center space-x-2">
+               <Checkbox
+                 id="reservation_enabled"
+                 checked={formData.reservation_enabled}
+                 onCheckedChange={(checked) => handleInputChange("reservation_enabled", Boolean(checked))}
+               />
+               <Label htmlFor="reservation_enabled">Enable reservations for this restaurant</Label>
+             </div>
+
+            {formData.reservation_enabled && (
+              <>
+                <div className="space-y-2">
+                  <Label>Allowed Days of Week</Label>
+                  <div className="grid grid-cols-2 gap-2">
+                    {dayNames.map((day) => (
+                      <div key={day.value} className="flex items-center space-x-2">
+                        <Checkbox
+                           id={`day-${day.value}`}
+                           checked={formData.allowed_days_of_week.includes(day.value)}
+                           onCheckedChange={(checked) => handleDayToggle(day.value, Boolean(checked))}
+                         />
+                        <Label htmlFor={`day-${day.value}`}>{day.label}</Label>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="opening_time">Opening Time</Label>
+                    <Input
+                      id="opening_time"
+                      type="time"
+                      value={formData.opening_time}
+                      onChange={(e) => handleInputChange("opening_time", e.target.value)}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="closing_time">Closing Time</Label>
+                    <Input
+                      id="closing_time"
+                      type="time"
+                      value={formData.closing_time}
+                      onChange={(e) => handleInputChange("closing_time", e.target.value)}
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="time_slot_duration">Time Slot Duration (minutes)</Label>
+                    <Input
+                      id="time_slot_duration"
+                      type="number"
+                      min="15"
+                      max="120"
+                      step="15"
+                      value={formData.time_slot_duration}
+                      onChange={(e) => handleInputChange("time_slot_duration", parseInt(e.target.value))}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="advance_booking_days">Advance Booking Days</Label>
+                    <Input
+                      id="advance_booking_days"
+                      type="number"
+                      min="1"
+                      max="365"
+                      value={formData.advance_booking_days}
+                      onChange={(e) => handleInputChange("advance_booking_days", parseInt(e.target.value))}
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="min_advance_hours">Minimum Advance Hours</Label>
+                    <Input
+                      id="min_advance_hours"
+                      type="number"
+                      min="0"
+                      max="72"
+                      value={formData.min_advance_hours}
+                      onChange={(e) => handleInputChange("min_advance_hours", parseInt(e.target.value))}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="max_party_size">Maximum Party Size</Label>
+                    <Input
+                      id="max_party_size"
+                      type="number"
+                      min="1"
+                      max="50"
+                      value={formData.max_party_size}
+                      onChange={(e) => handleInputChange("max_party_size", parseInt(e.target.value))}
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="min_party_size">Minimum Party Size</Label>
+                  <Input
+                    id="min_party_size"
+                    type="number"
+                    min="1"
+                    max="10"
+                    value={formData.min_party_size}
+                    onChange={(e) => handleInputChange("min_party_size", parseInt(e.target.value))}
+                    className="w-32"
+                  />
+                </div>
+              </>
+            )}
           </div>
 
           <div className="flex justify-end space-x-2 pt-4">
