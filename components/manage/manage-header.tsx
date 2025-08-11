@@ -98,7 +98,7 @@ export function ManageHeader({ user, toggleSidebar }: ManageHeaderProps) {
               .single()
             
             if (error) {
-              console.error('Error fetching reservation with restaurant:', error)
+              console.error('Error fetching reservation with restaurant:', JSON.stringify(error, null, 2))
               // Fallback: try direct restaurant fetch
               const { data: restaurant } = await supabase
                 .from('restaurants')
@@ -108,8 +108,19 @@ export function ManageHeader({ user, toggleSidebar }: ManageHeaderProps) {
               
               restaurantName = restaurant?.name || 'Unknown Restaurant'
             } else {
-               const restaurants = reservationWithRestaurant.restaurants as any
-               restaurantName = restaurants?.name || 'Unknown Restaurant'
+               restaurantName = (reservationWithRestaurant.restaurants as any)?.name
+               
+               // If restaurantName is still not found, try direct fetch
+               if (!restaurantName) {
+                 console.log('Restaurant not found via join, trying direct fetch for restaurant_id:', newReservation.restaurant_id)
+                 const { data: restaurant } = await supabase
+                   .from('restaurants')
+                   .select('name')
+                   .eq('id', newReservation.restaurant_id)
+                   .single()
+                 
+                 restaurantName = restaurant?.name || 'Unknown Restaurant'
+               }
              }
           } catch (fetchError) {
             console.error('Failed to fetch restaurant name:', fetchError)
@@ -169,10 +180,12 @@ export function ManageHeader({ user, toggleSidebar }: ManageHeaderProps) {
                 console.log('Found new reservations via polling:', newReservations)
                 
                 newReservations.forEach((reservation: any) => {
+                  const restaurantName = reservation.restaurants?.name || 'Unknown Restaurant';
+
                   const notification: Notification = {
                     id: reservation.id,
                     customer_name: reservation.customer_name,
-                    restaurant_name: reservation.restaurants?.name || 'Unknown Restaurant',
+                    restaurant_name: restaurantName,
                     party_size: reservation.party_size,
                     reservation_time: reservation.reservation_time,
                     reservation_date: reservation.reservation_date,
@@ -191,7 +204,7 @@ export function ManageHeader({ user, toggleSidebar }: ManageHeaderProps) {
                   const popupNotification: PopupNotification = {
                     id: reservation.id,
                     customer_name: reservation.customer_name,
-                    restaurant_name: reservation.restaurants?.name || 'Unknown Restaurant',
+                    restaurant_name: restaurantName,
                     party_size: reservation.party_size,
                     reservation_time: reservation.reservation_time,
                     reservation_date: reservation.reservation_date,
