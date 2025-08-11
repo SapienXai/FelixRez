@@ -2,7 +2,7 @@
 
 import { createServerClient, createServiceRoleClient } from "@/lib/supabase"
 import { revalidatePath } from "next/cache"
-import { sendEmail, generateReservationConfirmationEmail } from "@/lib/email-service"
+import { sendEmail, generateReservationConfirmationEmail, generateManagementNotificationEmail } from "@/lib/email-service"
 import { defaultRestaurant, defaultMedia } from "@/lib/fallback-data"
 
 /**
@@ -73,12 +73,36 @@ export async function createReservation(params: CreateReservationParams) {
       lang: "en",
     })
 
-    // Try to send email
+    // Try to send customer confirmation email
     const emailResult = await sendEmail({
       to: params.customerEmail,
       subject,
       html,
     })
+
+    // Send management notification email
+    const { subject: mgmtSubject, html: mgmtHtml } = generateManagementNotificationEmail({
+      action: 'created',
+      customerName: params.customerName,
+      restaurantName: restaurant?.name || "Felix Restaurant",
+      reservationDate: formattedDate,
+      reservationTime: params.reservationTime,
+      partySize: params.partySize,
+      customerEmail: params.customerEmail,
+      customerPhone: params.customerPhone,
+      specialRequests: params.specialRequests,
+      reservationId: data?.[0]?.id || 'Unknown',
+    })
+
+    const mgmtEmailResult = await sendEmail({
+      to: 'info@felixsmile.com',
+      subject: mgmtSubject,
+      html: mgmtHtml,
+    })
+
+    if (!mgmtEmailResult.success) {
+      console.error("Failed to send management notification email:", mgmtEmailResult.error)
+    }
 
     let message =
       "Reservation created successfully. The team will confirm your reservation shortly."
@@ -196,11 +220,51 @@ export async function updateReservation(params: UpdateReservationParams) {
         table_number: params.table_number || null,
       })
       .eq("id", params.id)
-      .select()
+      .select(`
+        *,
+        restaurants (name)
+      `)
 
     if (error) {
       console.error("Error updating reservation:", error)
       return { success: false, message: "Failed to update reservation", error }
+    }
+
+    // Get updated reservation data
+    const updatedReservation = data?.[0]
+    if (updatedReservation) {
+      // Format date for email
+      const reservationDate = new Date(params.reservation_date)
+      const formattedDate = reservationDate.toLocaleDateString("en-US", {
+        weekday: "long",
+        year: "numeric",
+        month: "long",
+        day: "numeric",
+      })
+
+      // Send management notification email
+      const { subject: mgmtSubject, html: mgmtHtml } = generateManagementNotificationEmail({
+        action: 'updated',
+        customerName: params.customer_name,
+        restaurantName: updatedReservation.restaurants?.name || "Felix Restaurant",
+        reservationDate: formattedDate,
+        reservationTime: params.reservation_time,
+        partySize: params.party_size,
+        customerEmail: params.customer_email,
+        customerPhone: params.customer_phone,
+        specialRequests: params.special_requests,
+        reservationId: params.id,
+      })
+
+      const mgmtEmailResult = await sendEmail({
+        to: 'info@felixsmile.com',
+        subject: mgmtSubject,
+        html: mgmtHtml,
+      })
+
+      if (!mgmtEmailResult.success) {
+        console.error("Failed to send management notification email:", mgmtEmailResult.error)
+      }
     }
 
     revalidatePath("/manage/reservations")
@@ -209,7 +273,7 @@ export async function updateReservation(params: UpdateReservationParams) {
     return {
       success: true,
       message: "Reservation updated successfully",
-      data: data?.[0],
+      data: updatedReservation,
     }
   } catch (error) {
     console.error("Error in updateReservation:", error)

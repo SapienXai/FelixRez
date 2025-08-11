@@ -199,6 +199,159 @@ export function generateReservationConfirmationEmail({
   return { subject, html }
 }
 
+export function generateManagementNotificationEmail({
+  action,
+  customerName,
+  restaurantName,
+  reservationDate,
+  reservationTime,
+  partySize,
+  customerEmail,
+  customerPhone,
+  specialRequests,
+  reservationId,
+}: {
+  action: 'created' | 'updated'
+  customerName: string
+  restaurantName: string
+  reservationDate: string
+  reservationTime: string
+  partySize: number | string
+  customerEmail: string
+  customerPhone: string
+  specialRequests?: string
+  reservationId: string
+}) {
+  const subject = `New Reservation ${action === 'created' ? 'Created' : 'Updated'}: ${restaurantName}`
+
+  const html = `
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+      <meta charset="UTF-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <title>${subject}</title>
+      <style>
+        body {
+          font-family: Arial, sans-serif;
+          line-height: 1.6;
+          color: #333;
+          max-width: 600px;
+          margin: 0 auto;
+        }
+        .header {
+          background-color: ${action === 'created' ? '#28a745' : '#ffc107'};
+          color: ${action === 'created' ? 'white' : '#212529'};
+          padding: 20px;
+          text-align: center;
+        }
+        .content {
+          padding: 20px;
+        }
+        .reservation-details {
+          background-color: #f5f5f7;
+          padding: 15px;
+          border-radius: 5px;
+          margin: 20px 0;
+        }
+        .detail-row {
+          display: flex;
+          justify-content: space-between;
+          margin-bottom: 10px;
+          border-bottom: 1px solid #ddd;
+          padding-bottom: 10px;
+        }
+        .detail-row:last-child {
+          border-bottom: none;
+          margin-bottom: 0;
+          padding-bottom: 0;
+        }
+        .action-required {
+          background-color: #fff3cd;
+          border: 1px solid #ffeaa7;
+          padding: 15px;
+          border-radius: 5px;
+          margin: 20px 0;
+        }
+        .footer {
+          text-align: center;
+          font-size: 12px;
+          color: #666;
+          margin-top: 30px;
+        }
+      </style>
+    </head>
+    <body>
+      <div class="header">
+        <h1>Reservation ${action === 'created' ? 'Created' : 'Updated'}</h1>
+      </div>
+      <div class="content">
+        <p>A reservation has been <strong>${action}</strong> and requires your attention.</p>
+        
+        <div class="reservation-details">
+          <h3>Reservation Details</h3>
+          <div class="detail-row">
+            <strong>Reservation ID:</strong>
+            <span>${reservationId}</span>
+          </div>
+          <div class="detail-row">
+            <strong>Restaurant:</strong>
+            <span>${restaurantName}</span>
+          </div>
+          <div class="detail-row">
+            <strong>Customer Name:</strong>
+            <span>${customerName}</span>
+          </div>
+          <div class="detail-row">
+            <strong>Email:</strong>
+            <span>${customerEmail}</span>
+          </div>
+          <div class="detail-row">
+            <strong>Phone:</strong>
+            <span>${customerPhone}</span>
+          </div>
+          <div class="detail-row">
+            <strong>Date:</strong>
+            <span>${reservationDate}</span>
+          </div>
+          <div class="detail-row">
+            <strong>Time:</strong>
+            <span>${reservationTime}</span>
+          </div>
+          <div class="detail-row">
+            <strong>Party Size:</strong>
+            <span>${partySize}</span>
+          </div>
+          ${specialRequests ? `
+          <div class="detail-row">
+            <strong>Special Requests:</strong>
+            <span>${specialRequests}</span>
+          </div>
+          ` : ''}
+        </div>
+        
+        ${action === 'created' ? `
+        <div class="action-required">
+          <h4>⚠️ Action Required</h4>
+          <p>This reservation is currently <strong>pending</strong> and needs to be confirmed or declined. Please log in to the management dashboard to review and update the reservation status.</p>
+        </div>
+        ` : ''}
+        
+        <p>Please log in to the management dashboard to review this reservation and take appropriate action.</p>
+        
+        <p>Best regards,<br>Felix Reservation System</p>
+      </div>
+      <div class="footer">
+        <p>&copy; 2025 Felix Restaurants. All rights reserved.</p>
+        <p><a href="https://${DOMAIN}" style="color: #666; text-decoration: underline;">${DOMAIN}</a></p>
+      </div>
+    </body>
+    </html>
+  `
+
+  return { subject, html }
+}
+
 export function generateStatusUpdateEmail({
   customerName,
   restaurantName,
