@@ -130,7 +130,7 @@ export function ReservationApp({ initialRestaurant, initialLang }: ReservationAp
   const handleSubmitReservation = async () => {
     if (!customerName || !customerPhone || !customerEmail) {
       setShowStep2Errors(true)
-      setMessage(getTranslation("reserve.messages.namePhoneEmailRequired"))
+      // setMessage(getTranslation("reserve.messages.namePhoneEmailRequired"))
       setIsSuccess(false)
       return
     }
