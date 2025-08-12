@@ -1,4 +1,5 @@
 import { Suspense } from "react"
+import { MANAGEMENT_EMAIL } from "@/lib/email-service"
 
 export default function PrivacyPage() {
   return (
@@ -125,7 +126,7 @@ export default function PrivacyPage() {
                 <h2 className="text-xl font-semibold text-gray-900 mb-4">10. Contact Us</h2>
                 <p className="text-gray-700">
                   If you have questions about this Privacy Policy or our data practices, please contact us:
-                  <br />Email: info@felixsmile.com
+                  <br />Email: {MANAGEMENT_EMAIL}
                   <br />Phone: +90 549 412 3888
                   <br />Address: Çıldır mah, 207. Sk. No: 66, 48700 Marmaris/Muğla
                 </p>

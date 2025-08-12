@@ -3,6 +3,9 @@ import { Resend } from "resend"
 // Your verified domain
 const DOMAIN = "felixsmile.com"
 
+// Management email for notifications
+export const MANAGEMENT_EMAIL = process.env.MANAGEMENT_EMAIL || "info@felixsmile.com"
+
 // Initialize Resend with your API key from environment variables
 // Add a fallback empty string to prevent runtime errors
 const resend = new Resend(process.env.RESEND_API_KEY || "")

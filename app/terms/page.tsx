@@ -1,4 +1,5 @@
 import { Suspense } from "react"
+import { MANAGEMENT_EMAIL } from "@/lib/email-service"
 
 export default function TermsPage() {
   return (
@@ -78,7 +79,7 @@ export default function TermsPage() {
                 <h2 className="text-xl font-semibold text-gray-900 mb-4">8. Contact Information</h2>
                 <p className="text-gray-700">
                   For questions about these terms, please contact us at:
-                  <br />Email: info@felixsmile.com
+                  <br />Email: {MANAGEMENT_EMAIL}
                   <br />Phone: +90 549 412 3888
                   <br />Address: Çıldır mah, 207. Sk. No: 66, 48700 Marmaris/Muğla
                 </p>

@@ -2,7 +2,7 @@
 
 import { createServerClient, createServiceRoleClient } from "@/lib/supabase"
 import { revalidatePath } from "next/cache"
-import { sendEmail, generateReservationConfirmationEmail, generateManagementNotificationEmail } from "@/lib/email-service"
+import { sendEmail, generateReservationConfirmationEmail, generateManagementNotificationEmail, MANAGEMENT_EMAIL } from "@/lib/email-service"
 import { defaultRestaurant, defaultMedia } from "@/lib/fallback-data"
 
 /**
@@ -97,7 +97,7 @@ export async function createReservation(params: CreateReservationParams) {
     })
 
     const mgmtEmailResult = await sendEmail({
-      to: 'info@felixsmile.com',
+      to: MANAGEMENT_EMAIL,
       subject: mgmtSubject,
       html: mgmtHtml,
     })
@@ -259,7 +259,7 @@ export async function updateReservation(params: UpdateReservationParams) {
       })
 
       const mgmtEmailResult = await sendEmail({
-        to: 'info@felixsmile.com',
+        to: MANAGEMENT_EMAIL,
         subject: mgmtSubject,
         html: mgmtHtml,
       })
