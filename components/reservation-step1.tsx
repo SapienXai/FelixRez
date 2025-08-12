@@ -1,6 +1,7 @@
 "use client"
 
 import type React from "react"
+import { useEffect } from "react"
 
 import { useLanguage } from "@/context/language-context"
 import Image from "next/image"
@@ -243,6 +244,38 @@ export function ReservationStep1({
   }
 
   const { times } = generateTimeSlots()
+
+  // If current selectedDate is not in the available date options (e.g., today has no slots),
+  // automatically move to the first available date and clear the selected time.
+  useEffect(() => {
+    const options = dateOptions()
+    const currentVal = formatDateToYYYYMMDD(selectedDate)
+    const hasCurrent = options.some((o) => o.value === currentVal)
+    if (!hasCurrent && options.length > 0) {
+      const first = options[0]
+      if (first?.date instanceof Date) {
+        const d = new Date(first.date)
+        d.setHours(0, 0, 0, 0)
+        setSelectedDate(d)
+        setSelectedTime("")
+      }
+    }
+    // Re-evaluate when restaurant settings change (which affects options)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [restaurant])
+
+  // When date changes, ensure a valid time is selected; pick the first available time if needed.
+  useEffect(() => {
+    const available = generateTimeSlots().times
+    if (!available || available.length === 0) {
+      setSelectedTime("")
+      return
+    }
+    if (!selectedTime || !available.includes(selectedTime)) {
+      setSelectedTime(available[0])
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedDate, restaurant])
 
   return (
     <div id="step1">
