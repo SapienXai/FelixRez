@@ -74,10 +74,10 @@ export default function ManageDashboard() {
     }
   }, [selectedRestaurant])
 
-  // Real-time subscription for new reservations
+  // Real-time subscription for new reservations (updates all tabs)
   useEffect(() => {
     const supabase = getSupabaseBrowserClient()
-    
+
     const channel = supabase
       .channel('new-reservations')
       .on(
@@ -85,11 +85,11 @@ export default function ManageDashboard() {
         {
           event: 'INSERT',
           schema: 'public',
-          table: 'reservations'
+          table: 'reservations',
         },
         async (payload) => {
           console.log('New reservation detected:', payload)
-          
+
           // Fetch the complete reservation with restaurant data
           const { data: newReservation, error } = await supabase
             .from('reservations')
@@ -99,14 +99,51 @@ export default function ManageDashboard() {
             `)
             .eq('id', payload.new.id)
             .single()
-          
-          if (!error && newReservation) {
-            setNewReservations(prev => [newReservation, ...prev])
-            // Also refresh stats to keep them updated
-            const statsResult = await getDashboardStats()
-            if (statsResult.success && statsResult.stats) {
-              setStats(statsResult.stats)
-            }
+
+          if (error || !newReservation) return
+
+          // Respect current restaurant filter
+          if (selectedRestaurant && selectedRestaurant !== 'all' && newReservation.restaurant_id !== selectedRestaurant) {
+            // Not in current filter; still refresh stats only
+            const statsResult = await getDashboardStats(selectedRestaurant)
+            if (statsResult.success && statsResult.stats) setStats(statsResult.stats)
+            return
+          }
+
+          // Helper to avoid duplicates in lists
+          const notIn = (arr: any[]) => !arr.some((r) => r.id === newReservation.id)
+
+          // Always prepend to New tab (if not already present)
+          setNewReservations((prev) => (notIn(prev) ? [newReservation, ...prev] : prev))
+
+          // Compute date buckets for Today and Upcoming
+          const today = new Date()
+          const fmt = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+          const todayStr = fmt(today)
+          const tomorrow = new Date(today)
+          tomorrow.setDate(tomorrow.getDate() + 1)
+          const nextWeek = new Date(today)
+          nextWeek.setDate(nextWeek.getDate() + 7)
+          const tomorrowStr = fmt(tomorrow)
+          const nextWeekStr = fmt(nextWeek)
+
+          // Update Today tab
+          if (newReservation.reservation_date === todayStr) {
+            setTodayReservations((prev) => (notIn(prev) ? [newReservation, ...prev] : prev))
+          }
+
+          // Update Upcoming tab (tomorrow <= date < nextWeek)
+          if (
+            newReservation.reservation_date >= tomorrowStr &&
+            newReservation.reservation_date < nextWeekStr
+          ) {
+            setUpcomingReservations((prev) => (notIn(prev) ? [newReservation, ...prev] : prev))
+          }
+
+          // Refresh stats to keep counters in sync
+          const statsResult = await getDashboardStats(selectedRestaurant === 'all' ? undefined : selectedRestaurant)
+          if (statsResult.success && statsResult.stats) {
+            setStats(statsResult.stats)
           }
         }
       )
@@ -115,7 +152,7 @@ export default function ManageDashboard() {
     return () => {
       supabase.removeChannel(channel)
     }
-  }, [])
+  }, [selectedRestaurant])
 
   const fetchRestaurants = async () => {
     try {
