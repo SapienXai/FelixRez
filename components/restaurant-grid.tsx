@@ -4,6 +4,7 @@ import { useLanguage } from "@/context/language-context"
 import { RestaurantCard } from "./restaurant-card"
 import { useEffect, useState } from "react"
 import { getRestaurants } from "@/app/manage/actions"
+import { TriangleLoader } from "@/components/ui/triangle-loader"
 
 interface RestaurantWithMedia {
   id: string;
@@ -55,9 +56,9 @@ export function RestaurantGrid() {
 
   if (loading) {
     return (
-      <main className="restaurant-grid">
-        <div className="text-center py-8">
-          <p>Loading restaurants...</p>
+      <main className="restaurant-grid" style={{ minHeight: '50vh' }}>
+        <div className="col-span-full flex items-center justify-center">
+          <TriangleLoader label={getTranslation("manage.common.loadingRestaurants")} />
         </div>
       </main>
     )
