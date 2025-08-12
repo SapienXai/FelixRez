@@ -1,7 +1,7 @@
 "use client"
 
 import { useLanguage } from "@/context/language-context"
-import { useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import { Users, Calendar } from "lucide-react"
 
 interface ReservationStep2Props {
@@ -18,6 +18,7 @@ interface ReservationStep2Props {
   specialRequests: string
   setSpecialRequests: (requests: string) => void
   getDisplayDate: (date: Date, lang: string, includeDayName?: boolean) => string
+  attemptedSubmit?: boolean
 }
 
 export function ReservationStep2({
@@ -34,9 +35,42 @@ export function ReservationStep2({
   specialRequests,
   setSpecialRequests,
   getDisplayDate,
+  attemptedSubmit = false,
 }: ReservationStep2Props) {
   const { getTranslation, currentLang } = useLanguage()
   const [showContactFields, setShowContactFields] = useState(false)
+  const [touched, setTouched] = useState<{ name: boolean; email: boolean; phone: boolean }>({
+    name: false,
+    email: false,
+    phone: false,
+  })
+
+  // Basic validators
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+  const errors = useMemo(() => {
+    const errs: { name?: string; email?: string; phone?: string } = {}
+    if (!customerName || customerName.trim().length === 0) {
+      errs.name = getTranslation("reserve.step2.errors.nameRequired")
+    }
+    if (!customerEmail || customerEmail.trim().length === 0) {
+      errs.email = getTranslation("reserve.step2.errors.emailRequired")
+    } else if (!emailRegex.test(customerEmail)) {
+      errs.email = getTranslation("reserve.step2.errors.emailInvalid")
+    }
+    if (!customerPhone || customerPhone.trim().length === 0) {
+      errs.phone = getTranslation("reserve.step2.errors.phoneRequired")
+    }
+    return errs
+  }, [customerName, customerEmail, customerPhone, getTranslation])
+
+  // Only auto-open the contact section when a submit attempt is made and there are errors
+  useEffect(() => {
+    if (attemptedSubmit && (errors.name || errors.email || errors.phone)) {
+      setShowContactFields(true)
+      // Mark all as touched to show errors inline
+      setTouched({ name: true, email: true, phone: true })
+    }
+  }, [attemptedSubmit, errors.name, errors.email, errors.phone])
 
   const getTimezone = () => {
     if (!(selectedDate instanceof Date) || isNaN(selectedDate.getTime())) {
@@ -98,12 +132,16 @@ export function ReservationStep2({
               </label>
               <input
                 type="text"
-                className="form-control"
+                className={`form-control ${touched.name && errors.name ? 'border-red-500' : ''}`}
                 id="customerName"
                 placeholder={getTranslation("reserve.step2.requiredPlaceholder")}
                 value={customerName}
                 onChange={(e) => setCustomerName(e.target.value)}
+                onBlur={() => setTouched((prev) => ({ ...prev, name: true }))}
               />
+              {(touched.name || attemptedSubmit) && errors.name && (
+                <p className="text-red-600 text-xs mt-1">{errors.name}</p>
+              )}
             </div>
             <div className="mb-2">
               <label htmlFor="customerPhone" className="form-label">
@@ -111,12 +149,16 @@ export function ReservationStep2({
               </label>
               <input
                 type="tel"
-                className="form-control"
+                className={`form-control ${touched.phone && errors.phone ? 'border-red-500' : ''}`}
                 id="customerPhone"
                 placeholder={getTranslation("reserve.step2.requiredPlaceholder")}
                 value={customerPhone}
                 onChange={(e) => setCustomerPhone(e.target.value)}
+                onBlur={() => setTouched((prev) => ({ ...prev, phone: true }))}
               />
+              {(touched.phone || attemptedSubmit) && errors.phone && (
+                <p className="text-red-600 text-xs mt-1">{errors.phone}</p>
+              )}
             </div>
             <div className="mb-2">
               <label htmlFor="customerEmail" className="form-label">
@@ -124,13 +166,17 @@ export function ReservationStep2({
               </label>
               <input
                 type="email"
-                className="form-control"
+                className={`form-control ${touched.email && errors.email ? 'border-red-500' : ''}`}
                 id="customerEmail"
                 placeholder={getTranslation("reserve.step2.requiredPlaceholder")}
                 value={customerEmail}
                 onChange={(e) => setCustomerEmail(e.target.value)}
                 required
+                onBlur={() => setTouched((prev) => ({ ...prev, email: true }))}
               />
+              {(touched.email || attemptedSubmit) && errors.email && (
+                <p className="text-red-600 text-xs mt-1">{errors.email}</p>
+              )}
             </div>
           </div>
         )}

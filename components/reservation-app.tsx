@@ -69,6 +69,7 @@ export function ReservationApp({ initialRestaurant, initialLang }: ReservationAp
   const [isLoading, setIsLoading] = useState(false)
   const [reservationComplete, setReservationComplete] = useState(false)
   const [isClient, setIsClient] = useState(false)
+  const [showStep2Errors, setShowStep2Errors] = useState(false)
   const router = useRouter()
 
   // Check if we're on the client side
@@ -120,6 +121,7 @@ export function ReservationApp({ initialRestaurant, initialLang }: ReservationAp
       }
       setCurrentStep(2)
       setMessage("")
+      setShowStep2Errors(false)
     } else {
       await handleSubmitReservation()
     }
@@ -127,6 +129,7 @@ export function ReservationApp({ initialRestaurant, initialLang }: ReservationAp
 
   const handleSubmitReservation = async () => {
     if (!customerName || !customerPhone || !customerEmail) {
+      setShowStep2Errors(true)
       setMessage(getTranslation("reserve.messages.namePhoneEmailRequired"))
       setIsSuccess(false)
       return
@@ -135,6 +138,7 @@ export function ReservationApp({ initialRestaurant, initialLang }: ReservationAp
     // Basic email validation
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
     if (!emailRegex.test(customerEmail)) {
+      setShowStep2Errors(true)
       setMessage("Please enter a valid email address.")
       setIsSuccess(false)
       return
@@ -329,6 +333,7 @@ export function ReservationApp({ initialRestaurant, initialLang }: ReservationAp
               specialRequests={specialRequests}
               setSpecialRequests={setSpecialRequests}
               getDisplayDate={getDisplayDate}
+              attemptedSubmit={showStep2Errors}
             />
           )}
 
