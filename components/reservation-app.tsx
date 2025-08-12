@@ -10,9 +10,10 @@ import { createReservation, getRestaurantByName } from "@/app/actions/reservatio
 // Server actions are used for data access to avoid client RLS issues
 import type { Restaurant } from "@/types/supabase"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
-import { Loader2 } from 'lucide-react'
+import { Loader2, XCircle } from 'lucide-react'
 import { ReservationConfirmation } from "./reservation-confirmation"
 import { translations } from "@/lib/translations"
+import Link from "next/link"
 interface ReservationAppProps {
   initialRestaurant: string
   initialLang: string
@@ -100,6 +101,8 @@ export function ReservationApp({ initialRestaurant, initialLang }: ReservationAp
     fetchRestaurantData()
   }, [restaurantName, restaurantData])
 
+  // No alternative fetching; show a simple message and a Home button when closed
+
   const getHeaderTitle = () => {
     return currentStep === 1 ? restaurantName : getTranslation("reserve.header.yourReservation")
   }
@@ -179,6 +182,7 @@ export function ReservationApp({ initialRestaurant, initialLang }: ReservationAp
         customerPhone,
         customerEmail,
         specialRequests: specialRequests || undefined,
+        lang: currentLang,
       })
 
       if (result.success) {
@@ -250,6 +254,40 @@ export function ReservationApp({ initialRestaurant, initialLang }: ReservationAp
             date={getDisplayDate(selectedDate, currentLang, true)}
             time={selectedTime}
           />
+        </div>
+      </div>
+    )
+  }
+
+  // If this restaurant is closed for reservations, show friendly message and a Home button
+  const isClosed = restaurantData && restaurantData.reservation_enabled === false
+  if (isClosed) {
+    return (
+      <div className="reservation-app">
+        <AppHeader
+          restaurantName={restaurantName}
+          subtitle={restaurantName}
+          showBackButton={true}
+          currentStep={1}
+        />
+
+        <div className="app-content">
+          <div className="max-w-xl mx-auto">
+            <Alert className="bg-white text-center">
+              <XCircle className="inline-block mr-2 h-5 w-5" />
+              <AlertTitle className="text-lg font-semibold">
+                {getTranslation("reserve.messages.fullyBooked")}
+              </AlertTitle>
+              <AlertDescription className="mt-1 mb-4 text-gray-700">
+                {getTranslation("reserve.messages.chooseAnotherLocation")}
+              </AlertDescription>
+              <div className="d-flex justify-content-center">
+                <Link href="/" className="btn btn-primary">
+                  {getTranslation("reserve.messages.backToHome")}
+                </Link>
+              </div>
+            </Alert>
+          </div>
         </div>
       </div>
     )

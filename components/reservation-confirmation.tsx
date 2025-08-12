@@ -22,34 +22,32 @@ export function ReservationConfirmation({ restaurantName, date, time }: Reservat
         <div className="flex justify-center mb-4">
           <CheckCircle className="h-16 w-16 text-green-500" />
         </div>
-        <CardTitle className="text-2xl">Reservation Received</CardTitle>
-        <CardDescription>Your reservation request has been submitted</CardDescription>
+        <CardTitle className="text-2xl">{getTranslation("reserve.confirmation.title")}</CardTitle>
+        <CardDescription>{getTranslation("reserve.confirmation.subtitle")}</CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="border-b pb-4">
           <p className="text-center text-muted-foreground">
-            The team at {restaurantName} will confirm your reservation shortly.
+            {getTranslation("reserve.confirmation.note", { restaurant: restaurantName })}
           </p>
         </div>
         <div className="space-y-2">
           <div className="flex justify-between">
-            <span className="font-medium">Restaurant:</span>
+            <span className="font-medium">{getTranslation("reserve.confirmation.restaurant")}:</span>
             <span>{restaurantName}</span>
           </div>
           <div className="flex justify-between">
-            <span className="font-medium">Date:</span>
+            <span className="font-medium">{getTranslation("reserve.confirmation.date")}:</span>
             <span>{date}</span>
           </div>
           <div className="flex justify-between">
-            <span className="font-medium">Time:</span>
+            <span className="font-medium">{getTranslation("reserve.confirmation.time")}:</span>
             <span>{time}</span>
           </div>
         </div>
       </CardContent>
       <CardFooter>
-        <Button className="w-full" onClick={() => router.push("/")}>
-          Return to Home
-        </Button>
+        <Button className="w-full" onClick={() => router.push("/")}>{getTranslation("reserve.confirmation.homeButton")}</Button>
       </CardFooter>
     </Card>
   )

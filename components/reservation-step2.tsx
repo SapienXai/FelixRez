@@ -147,29 +147,29 @@ export function ReservationStep2({
       </div>
 
       <div className="rules-restrictions-section mt-4">
-        <h3 className="section-title text-sm font-semibold mb-3">Rules & Restrictions</h3>
+        <h3 className="section-title text-sm font-semibold mb-3">{getTranslation("reserve.step2.rulesTitle")}</h3>
         <div className="rules-list space-y-2">
           <div className="rule-item flex items-start gap-2">
             <span className="text-red-500 mt-1">•</span>
-            <span className="text-sm text-gray-600">If you can't make it to your reservation time, please cancel it to allow others to book.</span>
+            <span className="text-sm text-gray-600">{getTranslation("reserve.step2.ruleCancel")}</span>
           </div>
           <div className="rule-item flex items-start gap-2">
             <span className="text-blue-500 mt-1">•</span>
-            <span className="text-sm text-gray-600">You can edit your reservation within the next 3 hours after booking.</span>
+            <span className="text-sm text-gray-600">{getTranslation("reserve.step2.ruleEditWindow")}</span>
           </div>
         </div>
-        
+
         <div className="terms-notice mt-4 p-3 bg-gray-50 rounded-md border">
           <p className="text-xs text-gray-600">
-            By continuing, you agree to the{" "}
+            {getTranslation("reserve.step2.termsNoticePrefix")} {" "}
             <a href="/terms" target="_blank" className="text-blue-600 hover:underline">
-              Terms and Conditions
-            </a>
-            {" "}and{" "}
+              {getTranslation("reserve.step2.termsLink")}
+            </a>{" "}
+            {getTranslation("reserve.step2.termsNoticeAnd")} {" "}
             <a href="/privacy" target="_blank" className="text-blue-600 hover:underline">
-              Privacy Policy
-            </a>
-            {" "}of Felix Smile Company.
+              {getTranslation("reserve.step2.privacyLink")}
+            </a>{" "}
+            {getTranslation("reserve.step2.termsNoticeSuffix")}
           </p>
         </div>
       </div>

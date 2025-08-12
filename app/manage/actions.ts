@@ -102,7 +102,7 @@ export async function getReservations(filters: {
   }
 }
 
-export async function updateReservationStatus(id: string, status: string, notes?: string, sendNotification = true) {
+export async function updateReservationStatus(id: string, status: string, notes?: string, sendNotification = true, lang: string = 'en') {
   try {
     console.log(`Updating reservation ${id} to status: ${status}, sendNotification: ${sendNotification}`)
 
@@ -148,7 +148,8 @@ export async function updateReservationStatus(id: string, status: string, notes?
 
       // Format date for email
       const reservationDate = new Date(reservation.reservation_date)
-      const formattedDate = reservationDate.toLocaleDateString("en-US", {
+      const locale = lang === 'tr' ? 'tr-TR' : 'en-US'
+      const formattedDate = reservationDate.toLocaleDateString(locale, {
         weekday: "long",
         year: "numeric",
         month: "long",
@@ -163,7 +164,7 @@ export async function updateReservationStatus(id: string, status: string, notes?
         partySize: reservation.party_size,
         status: status === "confirmed" ? "confirmed" : "cancelled",
         notes: notes,
-        lang: "en", // You could determine this from the user's preference
+        lang,
       })
 
       // Only generate calendar invite for confirmed reservations

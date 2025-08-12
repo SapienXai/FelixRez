@@ -42,6 +42,7 @@ export function ReservationTable({ reservations, onRefresh, itemsPerPage = 10 }:
   const [actionType, setActionType] = useState<"confirm" | "cancel" | null>(null)
   const [notes, setNotes] = useState("")
   const [sendEmail, setSendEmail] = useState(true)
+  const [emailLang, setEmailLang] = useState<'en' | 'tr'>('en')
   const [isLoading, setIsLoading] = useState(false)
   const [editingReservation, setEditingReservation] = useState<ReservationWithRestaurant | null>(null)
   const [currentItemsPerPage, setCurrentItemsPerPage] = useState(itemsPerPage)
@@ -66,7 +67,7 @@ export function ReservationTable({ reservations, onRefresh, itemsPerPage = 10 }:
 
     try {
       const status = actionType === "confirm" ? "confirmed" : "cancelled"
-      await updateReservationStatus(selectedReservation.id, status, notes, sendEmail)
+      await updateReservationStatus(selectedReservation.id, status, notes, sendEmail, emailLang)
       onRefresh()
     } catch (error) {
       console.error(`Error ${actionType}ing reservation:`, error)
@@ -76,6 +77,7 @@ export function ReservationTable({ reservations, onRefresh, itemsPerPage = 10 }:
       setActionType(null)
       setNotes("")
       setSendEmail(true)
+      setEmailLang('en')
     }
   }
 
@@ -368,6 +370,7 @@ export function ReservationTable({ reservations, onRefresh, itemsPerPage = 10 }:
           setActionType(null)
           setNotes("")
           setSendEmail(true)
+          setEmailLang('en')
         }}
       >
         <DialogContent>
@@ -420,6 +423,21 @@ export function ReservationTable({ reservations, onRefresh, itemsPerPage = 10 }:
                   Send notification email to customer
                 </Label>
               </div>
+
+              {sendEmail && (
+                <div className="grid grid-cols-2 items-center gap-2">
+                  <Label htmlFor="emailLang">Email Language</Label>
+                  <select
+                    id="emailLang"
+                    className="border rounded px-2 py-1 text-sm"
+                    value={emailLang}
+                    onChange={(e) => setEmailLang((e.target.value as 'en' | 'tr'))}
+                  >
+                    <option value="en">English</option>
+                    <option value="tr">Türkçe</option>
+                  </select>
+                </div>
+              )}
             </div>
           )}
 

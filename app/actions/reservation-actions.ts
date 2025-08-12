@@ -19,6 +19,7 @@ interface CreateReservationParams {
   customerEmail: string
   specialRequests?: string
   tableNumber?: string
+  lang?: string
 }
 
 export async function createReservation(params: CreateReservationParams) {
@@ -56,7 +57,8 @@ export async function createReservation(params: CreateReservationParams) {
 
     // Format date for email
     const reservationDate = new Date(params.reservationDate)
-    const formattedDate = reservationDate.toLocaleDateString("en-US", {
+    const locale = params.lang === 'tr' ? 'tr-TR' : 'en-US'
+    const formattedDate = reservationDate.toLocaleDateString(locale, {
       weekday: "long",
       year: "numeric",
       month: "long",
@@ -70,7 +72,7 @@ export async function createReservation(params: CreateReservationParams) {
       reservationDate: formattedDate,
       reservationTime: params.reservationTime,
       partySize: params.partySize,
-      lang: "en",
+      lang: params.lang === 'tr' ? 'tr' : 'en',
     })
 
     // Try to send customer confirmation email

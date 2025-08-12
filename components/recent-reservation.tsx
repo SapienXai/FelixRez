@@ -26,7 +26,7 @@ interface ReservationData {
 }
 
 export function RecentReservation() {
-  const { getTranslation } = useLanguage()
+  const { getTranslation, currentLang } = useLanguage()
   const [reservation, setReservation] = useState<ReservationData | null>(null)
   const [showEditDialog, setShowEditDialog] = useState(false)
   const [isEditing, setIsEditing] = useState(false)
@@ -78,7 +78,8 @@ export function RecentReservation() {
 
   const formatDate = (dateString: string) => {
     const date = new Date(dateString)
-    return date.toLocaleDateString('en-US', {
+    const locale = currentLang === 'tr' ? 'tr-TR' : 'en-US'
+    return date.toLocaleDateString(locale, {
       weekday: 'long',
       year: 'numeric',
       month: 'long',
@@ -90,10 +91,12 @@ export function RecentReservation() {
     const [hours, minutes] = timeString.split(':')
     const date = new Date()
     date.setHours(parseInt(hours), parseInt(minutes))
-    return date.toLocaleTimeString('en-US', {
+    const locale = currentLang === 'tr' ? 'tr-TR' : 'en-US'
+    const use12h = currentLang !== 'tr'
+    return date.toLocaleTimeString(locale, {
       hour: 'numeric',
       minute: '2-digit',
-      hour12: true
+      hour12: use12h
     })
   }
 
@@ -144,21 +147,21 @@ export function RecentReservation() {
         
         setShowEditDialog(false)
         toast({
-          title: "Success",
-          description: "Your reservation has been updated successfully."
+          title: getTranslation('recentReservation.toast.successTitle'),
+          description: getTranslation('recentReservation.toast.successDesc')
         })
       } else {
         toast({
-          title: "Error",
-          description: result.message || "Failed to update reservation.",
+          title: getTranslation('recentReservation.toast.errorTitle'),
+          description: result.message || getTranslation('recentReservation.toast.errorDesc'),
           variant: "destructive"
         })
       }
     } catch (error) {
       console.error('Error updating reservation:', error)
       toast({
-        title: "Error",
-        description: "An unexpected error occurred.",
+        title: getTranslation('recentReservation.toast.errorTitle'),
+        description: getTranslation('recentReservation.toast.unexpected'),
         variant: "destructive"
       })
     } finally {
@@ -187,7 +190,7 @@ export function RecentReservation() {
           <CardHeader className="pb-3">
             <div className="flex items-center justify-between">
               <CardTitle className="text-lg text-blue-900">
-                Your Recent Reservation
+                {getTranslation('recentReservation.title')}
               </CardTitle>
               <div className="flex gap-2">
                 <Button
@@ -197,7 +200,7 @@ export function RecentReservation() {
                   className="text-blue-700 border-blue-300 hover:bg-blue-100"
                 >
                   <Edit className="h-4 w-4 mr-1" />
-                  Edit
+                  {getTranslation('recentReservation.edit')}
                 </Button>
                 <Button
                   variant="ghost"
@@ -217,7 +220,7 @@ export function RecentReservation() {
                   <Calendar className="h-4 w-4 text-blue-600" />
                 </div>
                 <div>
-                  <p className="text-sm text-gray-600">Date</p>
+                  <p className="text-sm text-gray-600">{getTranslation('recentReservation.date')}</p>
                   <p className="font-medium text-gray-900">{formatDate(reservation.reservation_date)}</p>
                 </div>
               </div>
@@ -226,7 +229,7 @@ export function RecentReservation() {
                   <Clock className="h-4 w-4 text-blue-600" />
                 </div>
                 <div>
-                  <p className="text-sm text-gray-600">Time</p>
+                  <p className="text-sm text-gray-600">{getTranslation('recentReservation.time')}</p>
                   <p className="font-medium text-gray-900">{formatTime(reservation.reservation_time)}</p>
                 </div>
               </div>
@@ -235,8 +238,8 @@ export function RecentReservation() {
                   <Users className="h-4 w-4 text-blue-600" />
                 </div>
                 <div>
-                  <p className="text-sm text-gray-600">Party Size</p>
-                  <p className="font-medium text-gray-900">{reservation.party_size} guests</p>
+                  <p className="text-sm text-gray-600">{getTranslation('recentReservation.party')}</p>
+                  <p className="font-medium text-gray-900">{reservation.party_size} {getTranslation('recentReservation.guestsSuffix')}</p>
                 </div>
               </div>
             </div>
@@ -246,7 +249,7 @@ export function RecentReservation() {
               </p>
               {reservation.special_requests && (
                 <p className="text-sm text-gray-500 mt-1">
-                  Special requests: {reservation.special_requests}
+                  {getTranslation('recentReservation.specialRequestsPrefix')} {reservation.special_requests}
                 </p>
               )}
             </div>
@@ -257,11 +260,11 @@ export function RecentReservation() {
       <Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>
         <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle>Edit Your Reservation</DialogTitle>
+            <DialogTitle>{getTranslation('recentReservation.dialogTitle')}</DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
             <div>
-              <Label htmlFor="customer_name">Name</Label>
+              <Label htmlFor="customer_name">{getTranslation('recentReservation.form.name')}</Label>
               <Input
                 id="customer_name"
                 value={editForm.customer_name}
@@ -269,7 +272,7 @@ export function RecentReservation() {
               />
             </div>
             <div>
-              <Label htmlFor="customer_email">Email</Label>
+              <Label htmlFor="customer_email">{getTranslation('recentReservation.form.email')}</Label>
               <Input
                 id="customer_email"
                 type="email"
@@ -278,7 +281,7 @@ export function RecentReservation() {
               />
             </div>
             <div>
-              <Label htmlFor="customer_phone">Phone</Label>
+              <Label htmlFor="customer_phone">{getTranslation('recentReservation.form.phone')}</Label>
               <Input
                 id="customer_phone"
                 value={editForm.customer_phone}
@@ -286,7 +289,7 @@ export function RecentReservation() {
               />
             </div>
             <div>
-              <Label htmlFor="party_size">Party Size</Label>
+              <Label htmlFor="party_size">{getTranslation('recentReservation.form.partySize')}</Label>
               <Input
                 id="party_size"
                 type="number"
@@ -297,7 +300,7 @@ export function RecentReservation() {
               />
             </div>
             <div>
-              <Label htmlFor="reservation_date">Date</Label>
+              <Label htmlFor="reservation_date">{getTranslation('recentReservation.form.date')}</Label>
               <Input
                 id="reservation_date"
                 type="date"
@@ -306,7 +309,7 @@ export function RecentReservation() {
               />
             </div>
             <div>
-              <Label htmlFor="reservation_time">Time</Label>
+              <Label htmlFor="reservation_time">{getTranslation('recentReservation.form.time')}</Label>
               <Input
                 id="reservation_time"
                 type="time"
@@ -315,7 +318,7 @@ export function RecentReservation() {
               />
             </div>
             <div>
-              <Label htmlFor="special_requests">Special Requests</Label>
+              <Label htmlFor="special_requests">{getTranslation('recentReservation.form.specialRequests')}</Label>
               <Textarea
                 id="special_requests"
                 value={editForm.special_requests}
@@ -329,14 +332,14 @@ export function RecentReservation() {
                 disabled={isEditing}
                 className="flex-1"
               >
-                {isEditing ? "Saving..." : "Save Changes"}
+                {isEditing ? getTranslation('recentReservation.actions.saving') : getTranslation('recentReservation.actions.save')}
               </Button>
               <Button
                 variant="outline"
                 onClick={() => setShowEditDialog(false)}
                 disabled={isEditing}
               >
-                Cancel
+                {getTranslation('recentReservation.actions.cancel')}
               </Button>
             </div>
           </div>

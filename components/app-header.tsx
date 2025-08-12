@@ -56,9 +56,13 @@ export function AppHeader({
         {subtitle && <p className="sub-title">{subtitle}</p>}
       </div>
 
-      <div className="language-switcher">
-        <LanguageSelector />
-      </div>
+      {isIndexPage ? (
+        <div className="language-switcher">
+          <LanguageSelector />
+        </div>
+      ) : (
+        <div />
+      )}
     </div>
   )
 }

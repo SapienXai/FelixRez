@@ -119,7 +119,9 @@ export function ReservationStep1({
     const advanceBookingDays = restaurant?.advance_booking_days || 15
     const minAdvanceHours = restaurant?.min_advance_hours || 0
     const blockedDates = restaurant?.blocked_dates || []
-    const allowedDaysOfWeek = restaurant?.allowed_days_of_week || [0, 1, 2, 3, 4, 5, 6] // Default to all days
+    // Convert from database format (1=Monday, 7=Sunday) to JavaScript format (0=Sunday, 1=Monday)
+    const dbAllowedDays = restaurant?.allowed_days_of_week || [1, 2, 3, 4, 5, 6, 7] // Default to all days
+    const allowedDaysOfWeek = dbAllowedDays.map(day => day === 7 ? 0 : day) // Convert Sunday from 7 to 0
     
     // Calculate minimum datetime based on advance hours requirement
     const now = new Date()
@@ -162,57 +164,45 @@ export function ReservationStep1({
     return options
   }
 
-  // Generate time slots based on restaurant settings
+  // Generate time slots based on restaurant settings (single combined list)
   const generateTimeSlots = () => {
-    const afternoonTimes: string[] = []
-    const eveningTimes: string[] = []
-    const afternoonCutoff = 17
-    
+    const times: string[] = []
+
     const openingTime = restaurant?.opening_time || "17:00"
     const closingTime = restaurant?.closing_time || "20:45"
     const slotDuration = restaurant?.time_slot_duration || 15
     const minAdvanceHours = restaurant?.min_advance_hours || 0
-    
+
     // Parse opening and closing times
-    const [openHour, openMinute] = openingTime.split(':').map(Number)
-    const [closeHour, closeMinute] = closingTime.split(':').map(Number)
-    
+    const [openHour, openMinute] = openingTime.split(":").map(Number)
+    const [closeHour, closeMinute] = closingTime.split(":").map(Number)
+
     // Convert to minutes for easier calculation
     const openMinutes = openHour * 60 + openMinute
     const closeMinutes = closeHour * 60 + closeMinute
-    
-    // Calculate minimum datetime for today if selected date is today
+
+    // Calculate minimum datetime based on advance hours requirement
     const now = new Date()
     const minDateTime = new Date(now.getTime() + minAdvanceHours * 60 * 60 * 1000)
-    const today = new Date()
-    today.setHours(0, 0, 0, 0)
-    const isToday = selectedDate.getTime() === today.getTime()
-    
+
     // Generate time slots
     for (let minutes = openMinutes; minutes <= closeMinutes; minutes += slotDuration) {
       const hour = Math.floor(minutes / 60)
       const minute = minutes % 60
-      
+
       // Skip if we've exceeded closing time
       if (hour > closeHour || (hour === closeHour && minute > closeMinute)) break
-      
-      // If this is today, check if the time slot is after the minimum advance time
-      if (isToday) {
-        const slotDateTime = new Date(selectedDate)
-        slotDateTime.setHours(hour, minute, 0, 0)
-        if (slotDateTime < minDateTime) continue
-      }
-      
+
+      // Check if the time slot is after the minimum advance time (applies to all dates)
+      const slotDateTime = new Date(selectedDate)
+      slotDateTime.setHours(hour, minute, 0, 0)
+      if (slotDateTime < minDateTime) continue
+
       const timeStr = `${hour.toString().padStart(2, "0")}:${minute.toString().padStart(2, "0")}`
-      
-      if (hour < afternoonCutoff) {
-        afternoonTimes.push(timeStr)
-      } else {
-        eveningTimes.push(timeStr)
-      }
+      times.push(timeStr)
     }
 
-    return { afternoonTimes, eveningTimes }
+    return { times }
   }
 
   const getDisplayDate = (dateObj: Date, includeDayName = true) => {
@@ -252,7 +242,7 @@ export function ReservationStep1({
     setSelectedTime(time)
   }
 
-  const { afternoonTimes, eveningTimes } = generateTimeSlots()
+  const { times } = generateTimeSlots()
 
   return (
     <div id="step1">
@@ -301,16 +291,9 @@ export function ReservationStep1({
             value={selectedTime}
             onChange={(e) => setSelectedTime(e.target.value)}
           >
-            <optgroup label={getTranslation("reserve.step1.afternoonPeriod")}>
-              {afternoonTimes.map((time) => (
-                <option key={`afternoon-${time}`} value={time}>
-                  {time}
-                </option>
-              ))}
-            </optgroup>
-            <optgroup label={getTranslation("reserve.step1.eveningPeriod")}>
-              {eveningTimes.map((time) => (
-                <option key={`evening-${time}`} value={time}>
+            <optgroup label={getTranslation("reserve.step1.availableTimesLabel")}>
+              {times.map((time) => (
+                <option key={`time-${time}`} value={time}>
                   {time}
                 </option>
               ))}
@@ -323,43 +306,21 @@ export function ReservationStep1({
 
       <div className="time-slots-container mt-3">
         <div className="mb-3">
-          <h6 className="text-muted mb-2">{getTranslation("reserve.step1.availableTimesLabel")}</h6>
+          <h6 className="text-black mb-2">{getTranslation("reserve.step1.availableTimesLabel")}</h6>
           
-          {afternoonTimes.length > 0 && (
-            <div className="mb-3">
-              <small className="text-muted d-block mb-2">{getTranslation("reserve.step1.afternoonPeriod")}</small>
-              <div className="time-slots-grid">
-                {afternoonTimes.map((time) => (
-                  <button
-                    key={`afternoon-slot-${time}`}
-                    type="button"
-                    className={`time-slot-btn ${selectedTime === time ? "selected" : ""}`}
-                    data-time={time}
-                    onClick={() => handleTimeSlotClick(time)}
-                  >
-                    {time}
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
-          
-          {eveningTimes.length > 0 && (
-            <div>
-              <small className="text-muted d-block mb-2">{getTranslation("reserve.step1.eveningPeriod")}</small>
-              <div className="time-slots-grid">
-                {eveningTimes.map((time) => (
-                  <button
-                    key={`evening-slot-${time}`}
-                    type="button"
-                    className={`time-slot-btn ${selectedTime === time ? "selected" : ""}`}
-                    data-time={time}
-                    onClick={() => handleTimeSlotClick(time)}
-                  >
-                    {time}
-                  </button>
-                ))}
-              </div>
+          {times.length > 0 && (
+            <div className="time-slots-grid">
+              {times.map((time) => (
+                <button
+                  key={`slot-${time}`}
+                  type="button"
+                  className={`time-slot-btn ${selectedTime === time ? "selected" : ""}`}
+                  data-time={time}
+                  onClick={() => handleTimeSlotClick(time)}
+                >
+                  {time}
+                </button>
+              ))}
             </div>
           )}
         </div>

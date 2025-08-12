@@ -63,6 +63,7 @@ export function ReservationList({ reservations, onStatusChange, itemsPerPage = 5
   }>({ isOpen: false, reservation: null })
   const [notes, setNotes] = useState("")
   const [sendEmail, setSendEmail] = useState(true)
+  const [emailLang, setEmailLang] = useState<'en' | 'tr'>('en')
   const [loading, setLoading] = useState(false)
   const [currentItemsPerPage, setCurrentItemsPerPage] = useState(itemsPerPage)
 
@@ -88,7 +89,8 @@ export function ReservationList({ reservations, onStatusChange, itemsPerPage = 5
         actionDialog.reservation.id,
         status,
         notes,
-        sendEmail
+        sendEmail,
+        emailLang
       )
 
       if (result.success) {
@@ -97,6 +99,7 @@ export function ReservationList({ reservations, onStatusChange, itemsPerPage = 5
         setActionDialog({ isOpen: false, reservation: null, action: null })
         setNotes("")
         setSendEmail(true)
+        setEmailLang('en')
       } else {
         toast.error(result.message)
       }
@@ -401,6 +404,7 @@ export function ReservationList({ reservations, onStatusChange, itemsPerPage = 5
             setActionDialog({ isOpen: false, reservation: null, action: null })
             setNotes("")
             setSendEmail(true)
+            setEmailLang('en')
           }
         }}
       >
@@ -452,6 +456,21 @@ export function ReservationList({ reservations, onStatusChange, itemsPerPage = 5
               />
               <Label htmlFor="sendEmail">Send email notification to customer</Label>
             </div>
+
+            {sendEmail && (
+              <div className="grid grid-cols-2 items-center gap-2">
+                <Label htmlFor="emailLang">Email Language</Label>
+                <select
+                  id="emailLang"
+                  className="border rounded px-2 py-1 text-sm"
+                  value={emailLang}
+                  onChange={(e) => setEmailLang(e.target.value as 'en' | 'tr')}
+                >
+                  <option value="en">English</option>
+                  <option value="tr">Türkçe</option>
+                </select>
+              </div>
+            )}
           </div>
 
           <DialogFooter>
