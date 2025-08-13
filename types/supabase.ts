@@ -100,6 +100,71 @@ export interface Database {
           created_at?: string
         }
       }
+      reservation_areas: {
+        Row: {
+          id: string
+          restaurant_id: string
+          name: string
+          description: string | null
+          is_active: boolean
+          display_order: number
+          opening_time: string | null
+          closing_time: string | null
+          time_slot_duration: number | null
+          max_party_size: number | null
+          min_party_size: number | null
+          advance_booking_days: number | null
+          min_advance_hours: number | null
+          allowed_days_of_week: number[] | null
+          blocked_dates: string[] | null
+          special_hours: Json | null
+          max_concurrent_reservations: number | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          restaurant_id: string
+          name: string
+          description?: string | null
+          is_active?: boolean
+          display_order?: number
+          opening_time?: string | null
+          closing_time?: string | null
+          time_slot_duration?: number | null
+          max_party_size?: number | null
+          min_party_size?: number | null
+          advance_booking_days?: number | null
+          min_advance_hours?: number | null
+          allowed_days_of_week?: number[] | null
+          blocked_dates?: string[] | null
+          special_hours?: Json | null
+          max_concurrent_reservations?: number | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          restaurant_id?: string
+          name?: string
+          description?: string | null
+          is_active?: boolean
+          display_order?: number
+          opening_time?: string | null
+          closing_time?: string | null
+          time_slot_duration?: number | null
+          max_party_size?: number | null
+          min_party_size?: number | null
+          advance_booking_days?: number | null
+          min_advance_hours?: number | null
+          allowed_days_of_week?: number[] | null
+          blocked_dates?: string[] | null
+          special_hours?: Json | null
+          max_concurrent_reservations?: number | null
+          created_at?: string
+          updated_at?: string
+        }
+      }
       reservations: {
         Row: {
           id: string
@@ -114,6 +179,7 @@ export interface Database {
           status: string | null
           notes: string | null
           table_number: string | null
+          reservation_area_id: string | null
           created_at: string
           updated_at: string
         }
@@ -130,6 +196,7 @@ export interface Database {
           status?: string | null
           notes?: string | null
           table_number?: string | null
+          reservation_area_id?: string | null
           created_at?: string
           updated_at?: string
         }
@@ -146,6 +213,7 @@ export interface Database {
           status?: string | null
           notes?: string | null
           table_number?: string | null
+          reservation_area_id?: string | null
           created_at?: string
           updated_at?: string
         }
@@ -211,6 +279,7 @@ export interface Database {
 
 export type Restaurant = Database["public"]["Tables"]["restaurants"]["Row"]
 export type RestaurantMedia = Database["public"]["Tables"]["restaurant_media"]["Row"]
+export type ReservationArea = Database["public"]["Tables"]["reservation_areas"]["Row"]
 export type Reservation = Database["public"]["Tables"]["reservations"]["Row"]
 export type AdminProfile = Database["public"]["Tables"]["admin_profiles"]["Row"]
 export type NotificationSettings = Database["public"]["Tables"]["notification_settings"]["Row"]

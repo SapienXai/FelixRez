@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { ManageHeader } from '@/components/manage/manage-header';
 import { ManageSidebar } from '@/components/manage/manage-sidebar';
-import { RestaurantForm } from '@/components/manage/restaurant-form';
+import { RestaurantForm } from '@/components/restaurant-form';
 import { useConfirmationDialog } from '@/components/ui/confirmation-dialog';
 import { getRestaurants, deleteRestaurant } from '@/app/manage/actions';
 import { useLanguage } from '@/context/language-context';
@@ -216,11 +216,10 @@ export default function RestaurantsPage() {
           </div>
           
           <RestaurantForm
-            isOpen={showForm}
-            mode={editingRestaurant ? "edit" : "create"}
-            restaurant={editingRestaurant || null}
+            restaurant={editingRestaurant || undefined}
             onSuccess={handleFormSuccess}
             onClose={handleFormClose}
+            open={showForm}
           />
           {ConfirmationDialogComponent}
         </main>

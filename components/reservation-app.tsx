@@ -6,9 +6,9 @@ import { AppHeader } from "./app-header"
 import { ReservationStep1 } from "./reservation-step1"
 import { ReservationStep2 } from "./reservation-step2"
 import { useRouter } from "next/navigation"
-import { createReservation, getRestaurantByName } from "@/app/actions/reservation-actions"
+import { createReservation, getRestaurantByName, getActiveReservationAreas } from "@/app/actions/reservation-actions"
 // Server actions are used for data access to avoid client RLS issues
-import type { Restaurant } from "@/types/supabase"
+import type { Restaurant, ReservationArea } from "@/types/supabase"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Loader2, XCircle } from 'lucide-react'
 import { ReservationConfirmation } from "./reservation-confirmation"
@@ -60,6 +60,8 @@ export function ReservationApp({ initialRestaurant, initialLang }: ReservationAp
   const [partySize, setPartySize] = useState("2")
   const [selectedDate, setSelectedDate] = useState(new Date())
   const [selectedTime, setSelectedTime] = useState("17:00")
+  const [reservationAreas, setReservationAreas] = useState<ReservationArea[]>([])
+  const [selectedAreaId, setSelectedAreaId] = useState<string | null>(null)
   const [customerName, setCustomerName] = useState("")
   const [customerPhone, setCustomerPhone] = useState("")
   const [customerEmail, setCustomerEmail] = useState("")
@@ -101,6 +103,31 @@ export function ReservationApp({ initialRestaurant, initialLang }: ReservationAp
     
     fetchRestaurantData()
   }, [restaurantName, restaurantData])
+
+  // Fetch active reservation areas when we have a restaurant
+  useEffect(() => {
+    const fetchAreas = async () => {
+      if (restaurantData?.id) {
+        try {
+          const areas = await getActiveReservationAreas(restaurantData.id)
+          setReservationAreas(areas as unknown as ReservationArea[])
+          // Do not auto-select an area; keep it optional
+          // If previously selected area no longer exists, clear selection
+          if (selectedAreaId && !(areas || []).some((a: any) => a.id === selectedAreaId)) {
+            setSelectedAreaId(null)
+          }
+        } catch (e) {
+          console.error("Error fetching reservation areas:", e)
+          setReservationAreas([])
+          setSelectedAreaId(null)
+        }
+      } else {
+        setReservationAreas([])
+        setSelectedAreaId(null)
+      }
+    }
+    fetchAreas()
+  }, [restaurantData?.id])
 
   // No alternative fetching; show a simple message and a Home button when closed
 
@@ -179,6 +206,7 @@ export function ReservationApp({ initialRestaurant, initialLang }: ReservationAp
 
       const result = await createReservation({
         restaurantId: effectiveRestaurant!.id,
+        reservationAreaId: selectedAreaId || null,
         partySize: Number.parseInt(partySize),
         reservationDate: formattedDate,
         reservationTime: selectedTime,
@@ -317,6 +345,9 @@ export function ReservationApp({ initialRestaurant, initialLang }: ReservationAp
               selectedTime={selectedTime}
               setSelectedTime={setSelectedTime}
               restaurant={restaurantData}
+              areas={reservationAreas}
+              selectedAreaId={selectedAreaId}
+              setSelectedAreaId={setSelectedAreaId}
             />
           ) : (
             <ReservationStep2

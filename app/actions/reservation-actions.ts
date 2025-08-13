@@ -11,6 +11,7 @@ import { defaultRestaurant, defaultMedia } from "@/lib/fallback-data"
  */
 interface CreateReservationParams {
   restaurantId: string
+  reservationAreaId?: string | null
   partySize: number
   reservationDate: string
   reservationTime: string
@@ -31,6 +32,7 @@ export async function createReservation(params: CreateReservationParams) {
       .from("reservations")
       .insert({
         restaurant_id: params.restaurantId,
+        reservation_area_id: params.reservationAreaId || null,
         party_size: params.partySize,
         reservation_date: params.reservationDate,
         reservation_time: params.reservationTime,
@@ -159,6 +161,30 @@ export async function getRestaurantByName(name: string) {
   } catch (err: any) {
     console.warn("getRestaurantByName failed:", String(err))
     return null
+  }
+}
+
+// Fetch active reservation areas for a restaurant
+export async function getActiveReservationAreas(restaurantId: string) {
+  try {
+    const supabase = createServiceRoleClient()
+
+    const { data, error } = await supabase
+      .from("reservation_areas")
+      .select("*")
+      .eq("restaurant_id", restaurantId)
+      .eq("is_active", true)
+      .order("display_order", { ascending: true })
+
+    if (error) {
+      console.warn("getActiveReservationAreas error:", error.message)
+      return []
+    }
+
+    return data || []
+  } catch (err: any) {
+    console.warn("getActiveReservationAreas failed:", String(err))
+    return []
   }
 }
 

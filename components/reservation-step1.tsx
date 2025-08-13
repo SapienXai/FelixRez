@@ -22,6 +22,28 @@ interface Restaurant {
   special_hours: any | null
 }
 
+interface ReservationArea {
+  id: string
+  restaurant_id: string
+  name: string
+  description: string | null
+  is_active: boolean
+  display_order: number
+  opening_time: string | null
+  closing_time: string | null
+  time_slot_duration: number | null
+  max_party_size: number | null
+  min_party_size: number | null
+  advance_booking_days: number | null
+  min_advance_hours: number | null
+  allowed_days_of_week: number[] | null
+  blocked_dates: string[] | null
+  special_hours: any | null
+  max_concurrent_reservations: number | null
+  created_at: string
+  updated_at: string
+}
+
 interface ReservationStep1Props {
   partySize: string
   setPartySize: (size: string) => void
@@ -30,6 +52,9 @@ interface ReservationStep1Props {
   selectedTime: string
   setSelectedTime: (time: string) => void
   restaurant: Restaurant | null
+  areas: ReservationArea[]
+  selectedAreaId: string | null
+  setSelectedAreaId: (id: string | null) => void
 }
 
 export function ReservationStep1({
@@ -40,15 +65,33 @@ export function ReservationStep1({
   selectedTime,
   setSelectedTime,
   restaurant,
+  areas,
+  selectedAreaId,
+  setSelectedAreaId,
 }: ReservationStep1Props) {
   const { getTranslation, currentLang } = useLanguage()
 
 
-  // Generate party size options based on restaurant settings
+  const selectedArea: ReservationArea | undefined = areas?.find(a => a.id === selectedAreaId || "")
+
+  // Helpers to compute effective setting using area override else restaurant fallback
+  const eff = {
+    opening_time: selectedArea?.opening_time || restaurant?.opening_time || "17:00",
+    closing_time: selectedArea?.closing_time || restaurant?.closing_time || "20:45",
+    time_slot_duration: selectedArea?.time_slot_duration ?? (restaurant?.time_slot_duration ?? 15),
+    advance_booking_days: selectedArea?.advance_booking_days ?? (restaurant?.advance_booking_days ?? 15),
+    min_advance_hours: selectedArea?.min_advance_hours ?? (restaurant?.min_advance_hours ?? 0),
+    max_party_size: selectedArea?.max_party_size ?? (restaurant?.max_party_size ?? 8),
+    min_party_size: selectedArea?.min_party_size ?? (restaurant?.min_party_size ?? 1),
+    allowed_days_of_week: selectedArea?.allowed_days_of_week || restaurant?.allowed_days_of_week || [1,2,3,4,5,6,7],
+    blocked_dates: selectedArea?.blocked_dates || restaurant?.blocked_dates || [],
+  }
+
+  // Generate party size options based on effective settings
   const partySizeOptions = () => {
     const options = []
-    const minSize = restaurant?.min_party_size || 1
-    const maxSize = restaurant?.max_party_size || 8
+    const minSize = eff.min_party_size
+    const maxSize = eff.max_party_size
     
     for (let i = minSize; i <= maxSize; i++) {
       const translationKey = i === 1 ? "reserve.step1.partySizeOptions.one" : "reserve.step1.partySizeOptions.other"
@@ -71,9 +114,9 @@ export function ReservationStep1({
 
   // Helper function to check if a date has valid time slots after minimum advance time
   const checkIfDateHasValidTimeSlots = (date: Date, minDateTime: Date) => {
-    const openingTime = restaurant?.opening_time || "17:00"
-    const closingTime = restaurant?.closing_time || "20:45"
-    const slotDuration = restaurant?.time_slot_duration || 15
+    const openingTime = eff.opening_time
+    const closingTime = eff.closing_time
+    const slotDuration = eff.time_slot_duration
     
     // Parse opening and closing times
     const [openHour, openMinute] = openingTime.split(':').map(Number)
@@ -117,11 +160,11 @@ export function ReservationStep1({
     const today = new Date()
     today.setHours(0, 0, 0, 0)
     
-    const advanceBookingDays = restaurant?.advance_booking_days || 15
-    const minAdvanceHours = restaurant?.min_advance_hours || 0
-    const blockedDates = restaurant?.blocked_dates || []
+    const advanceBookingDays = eff.advance_booking_days
+    const minAdvanceHours = eff.min_advance_hours
+    const blockedDates = eff.blocked_dates
     // Convert from database format (1=Monday, 7=Sunday) to JavaScript format (0=Sunday, 1=Monday)
-    const dbAllowedDays = restaurant?.allowed_days_of_week || [1, 2, 3, 4, 5, 6, 7] // Default to all days
+    const dbAllowedDays = eff.allowed_days_of_week // Default to all days done in eff
     const allowedDaysOfWeek = dbAllowedDays.map(day => day === 7 ? 0 : day) // Convert Sunday from 7 to 0
     
     // Calculate minimum datetime based on advance hours requirement
@@ -169,10 +212,10 @@ export function ReservationStep1({
   const generateTimeSlots = () => {
     const times: string[] = []
 
-    const openingTime = restaurant?.opening_time || "17:00"
-    const closingTime = restaurant?.closing_time || "20:45"
-    const slotDuration = restaurant?.time_slot_duration || 15
-    const minAdvanceHours = restaurant?.min_advance_hours || 0
+    const openingTime = eff.opening_time
+    const closingTime = eff.closing_time
+    const slotDuration = eff.time_slot_duration
+    const minAdvanceHours = eff.min_advance_hours
 
     // Parse opening and closing times
     const [openHour, openMinute] = openingTime.split(":").map(Number)
@@ -262,7 +305,7 @@ export function ReservationStep1({
     }
     // Re-evaluate when restaurant settings change (which affects options)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [restaurant])
+  }, [restaurant, selectedAreaId, areas])
 
   // When date changes, ensure a valid time is selected; pick the first available time if needed.
   useEffect(() => {
@@ -275,11 +318,37 @@ export function ReservationStep1({
       setSelectedTime(available[0])
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedDate, restaurant])
+  }, [selectedDate, restaurant, selectedAreaId, areas])
+
+  // If areas list changes and the selected area disappears, clear selection (keep optional)
+  useEffect(() => {
+    if (selectedAreaId && !(areas || []).some(a => a.id === selectedAreaId)) {
+      setSelectedAreaId(null)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [areas])
 
   return (
     <div id="step1">
       <div className="row g-3 step-1-selectors">
+        {areas && areas.length > 0 && (
+          <div className="col">
+            <label htmlFor="reservationArea" className="form-label">
+              {getTranslation("reserve.step1.areaLabel") || "Area"}
+            </label>
+            <select
+              className="form-select"
+              id="reservationArea"
+              value={selectedAreaId || ""}
+              onChange={(e) => setSelectedAreaId(e.target.value || null)}
+            >
+              <option value="">{getTranslation("reserve.step1.anyArea") || "Any area"}</option>
+              {areas.map((a) => (
+                <option key={a.id} value={a.id}>{a.name}</option>
+              ))}
+            </select>
+          </div>
+        )}
         <div className="col">
           <label htmlFor="partySize" className="form-label">
             {getTranslation("reserve.step1.partyLabel")}
