@@ -29,6 +29,10 @@ interface ReservationWithRestaurant extends Reservation {
     id: string
     name: string
   }
+  reservation_areas?: {
+    id: string
+    name: string
+  }
 }
 
 interface ReservationTableProps {
@@ -126,6 +130,11 @@ export function ReservationTable({ reservations, onRefresh, itemsPerPage = 10 }:
             </div>
           </CardHeader>
           <CardContent className="space-y-3">
+            {reservation.reservation_areas?.name && (
+              <div>
+                <Badge variant="outline">Area: {reservation.reservation_areas.name}</Badge>
+              </div>
+            )}
             <div className="flex items-center space-x-2">
               <User className="h-4 w-4 text-muted-foreground" />
               <span className="font-medium">{reservation.customer_name}</span>
@@ -250,6 +259,7 @@ export function ReservationTable({ reservations, onRefresh, itemsPerPage = 10 }:
                  <TableHead>Restaurant</TableHead>
                  <TableHead className="hidden md:table-cell">Customer</TableHead>
                  <TableHead>Date & Time</TableHead>
+                 <TableHead className="hidden md:table-cell">Area</TableHead>
                  <TableHead className="hidden sm:table-cell">Party Size</TableHead>
                  <TableHead>Status</TableHead>
                  <TableHead className="text-right">Actions</TableHead>
@@ -263,6 +273,11 @@ export function ReservationTable({ reservations, onRefresh, itemsPerPage = 10 }:
                      <div className="text-sm text-muted-foreground mt-1">
                        {reservation.customer_name}
                      </div>
+                     {reservation.reservation_areas?.name && (
+                       <div className="mt-1 md:hidden">
+                         <Badge variant="secondary">{reservation.reservation_areas.name}</Badge>
+                       </div>
+                     )}
                      {reservation.table_number && (
                        <div className="text-xs text-muted-foreground">Table: {reservation.table_number}</div>
                      )}
@@ -293,6 +308,11 @@ export function ReservationTable({ reservations, onRefresh, itemsPerPage = 10 }:
                        Party: {reservation.party_size}
                      </div>
                    </TableCell>
+                  <TableCell className="hidden md:table-cell">{reservation.reservation_areas?.name ? (
+                    <Badge variant="outline">{reservation.reservation_areas.name}</Badge>
+                  ) : (
+                    <span className="text-muted-foreground">-</span>
+                  )}</TableCell>
                    <TableCell className="hidden sm:table-cell">{reservation.party_size}</TableCell>
                    <TableCell>{getStatusBadge(reservation.status || "pending")}</TableCell>
                    <TableCell className="text-right">

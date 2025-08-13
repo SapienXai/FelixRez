@@ -24,6 +24,7 @@ interface Notification {
   id: string
   customer_name: string
   restaurant_name: string
+  reservation_area_name?: string | null
   party_size: number
   reservation_time: string
   reservation_date: string
@@ -35,6 +36,7 @@ interface PopupNotification {
   id: string
   customer_name: string
   restaurant_name: string
+  reservation_area_name?: string | null
   party_size: number
   reservation_time: string
   reservation_date: string
@@ -92,7 +94,8 @@ export function ManageHeader({ user, toggleSidebar }: ManageHeaderProps) {
                 reservation_time,
                 reservation_date,
                 created_at,
-                restaurants(name)
+                restaurants(name),
+                reservation_areas(name)
               `)
               .eq('id', newReservation.id)
               .single()
@@ -131,6 +134,7 @@ export function ManageHeader({ user, toggleSidebar }: ManageHeaderProps) {
             id: newReservation.id,
             customer_name: newReservation.customer_name,
             restaurant_name: restaurantName,
+            reservation_area_name: (reservationWithRestaurant as any)?.reservation_areas?.name || null,
             party_size: newReservation.party_size,
             reservation_time: newReservation.reservation_time,
             reservation_date: newReservation.reservation_date,
@@ -147,6 +151,7 @@ export function ManageHeader({ user, toggleSidebar }: ManageHeaderProps) {
             id: newReservation.id,
             customer_name: newReservation.customer_name,
             restaurant_name: restaurantName,
+            reservation_area_name: (reservationWithRestaurant as any)?.reservation_areas?.name || null,
             party_size: newReservation.party_size,
             reservation_time: newReservation.reservation_time,
             reservation_date: newReservation.reservation_date,
@@ -171,7 +176,8 @@ export function ManageHeader({ user, toggleSidebar }: ManageHeaderProps) {
                 .from('reservations')
                 .select(`
                   *,
-                  restaurants(name)
+                  restaurants(name),
+                  reservation_areas(name)
                 `)
                 .gte('created_at', lastCheckedTime)
                 .order('created_at', { ascending: false })
@@ -186,6 +192,7 @@ export function ManageHeader({ user, toggleSidebar }: ManageHeaderProps) {
                     id: reservation.id,
                     customer_name: reservation.customer_name,
                     restaurant_name: restaurantName,
+                    reservation_area_name: (reservation as any)?.reservation_areas?.name || null,
                     party_size: reservation.party_size,
                     reservation_time: reservation.reservation_time,
                     reservation_date: reservation.reservation_date,
@@ -205,6 +212,7 @@ export function ManageHeader({ user, toggleSidebar }: ManageHeaderProps) {
                     id: reservation.id,
                     customer_name: reservation.customer_name,
                     restaurant_name: restaurantName,
+                    reservation_area_name: (reservation as any)?.reservation_areas?.name || null,
                     party_size: reservation.party_size,
                     reservation_time: reservation.reservation_time,
                     reservation_date: reservation.reservation_date,
@@ -381,7 +389,8 @@ export function ManageHeader({ user, toggleSidebar }: ManageHeaderProps) {
                                   {notification.customer_name}
                                 </p>
                                 <p className="text-xs text-muted-foreground">
-                                  {notification.restaurant_name} • {getTranslation('manage.notifications.party')} {notification.party_size} • {notification.reservation_time}
+                                  {notification.restaurant_name}
+                                  {notification.reservation_area_name ? ` • ${notification.reservation_area_name}` : ''} • {getTranslation('manage.notifications.party')} {notification.party_size} • {notification.reservation_time}
                                 </p>
                                 <p className="text-xs text-muted-foreground">
                                   {new Date(notification.reservation_date).toLocaleDateString()}
@@ -424,7 +433,7 @@ export function ManageHeader({ user, toggleSidebar }: ManageHeaderProps) {
               {selectedNotification && (
                 <div className="space-y-2">
                   <p><strong>{getTranslation('manage.notifications.customer')}:</strong> {selectedNotification.customer_name}</p>
-                  <p><strong>{getTranslation('manage.notifications.restaurant')}:</strong> {selectedNotification.restaurant_name}</p>
+                  <p><strong>{getTranslation('manage.notifications.restaurant')}:</strong> {selectedNotification.restaurant_name}{selectedNotification.reservation_area_name ? ` • ${selectedNotification.reservation_area_name}` : ''}</p>
                   <p><strong>{getTranslation('manage.notifications.party')}:</strong> {selectedNotification.party_size}</p>
                   <p><strong>{getTranslation('manage.notifications.time')}:</strong> {selectedNotification.reservation_time}</p>
                    <p><strong>{getTranslation('manage.notifications.date')}:</strong> {new Date(selectedNotification.reservation_date).toLocaleDateString()}</p>
@@ -475,7 +484,7 @@ export function ManageHeader({ user, toggleSidebar }: ManageHeaderProps) {
                   <span className="text-sm font-medium text-gray-600">
                     {getTranslation('manage.notifications.restaurant')}:
                   </span>
-                  <span className="text-sm">{popup.restaurant_name}</span>
+                  <span className="text-sm">{popup.restaurant_name}{popup.reservation_area_name ? ` • ${popup.reservation_area_name}` : ''}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-sm font-medium text-gray-600">

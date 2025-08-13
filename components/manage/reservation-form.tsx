@@ -21,6 +21,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { createReservation, updateReservation, getRestaurants } from "@/app/manage/actions"
+import { getReservationAreas } from "@/app/manage/reservation-areas-actions"
 import { toast } from "sonner"
 
 interface Restaurant {
@@ -31,6 +32,7 @@ interface Restaurant {
 interface ReservationWithRestaurant {
   id: string
   restaurant_id: string
+  reservation_area_id?: string | null
   customer_name: string
   customer_email: string | null
   customer_phone: string
@@ -63,8 +65,10 @@ export function ReservationForm({
 }: ReservationFormProps) {
   const [loading, setLoading] = useState(false)
   const [restaurants, setRestaurants] = useState<Restaurant[]>([])
+  const [areas, setAreas] = useState<{ id: string; name: string; is_active: boolean }[]>([])
   const [formData, setFormData] = useState({
     restaurant_id: "",
+    reservation_area_id: "",
     customer_name: "",
     customer_email: "",
     customer_phone: "",
@@ -87,11 +91,34 @@ export function ReservationForm({
     loadRestaurants()
   }, [])
 
+  // Load areas when restaurant changes
+  useEffect(() => {
+    const loadAreas = async () => {
+      if (!formData.restaurant_id) {
+        setAreas([])
+        setFormData(prev => ({ ...prev, reservation_area_id: "" }))
+        return
+      }
+      const res = await getReservationAreas(formData.restaurant_id)
+      if (res.success) {
+        const active = (res.data || []).filter((a: any) => a.is_active).map((a: any) => ({ id: a.id, name: a.name, is_active: a.is_active }))
+        setAreas(active)
+        setFormData(prev => ({ ...prev, reservation_area_id: active.some(a => a.id === prev.reservation_area_id) ? prev.reservation_area_id : "" }))
+      } else {
+        setAreas([])
+        setFormData(prev => ({ ...prev, reservation_area_id: "" }))
+      }
+    }
+    loadAreas()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [formData.restaurant_id])
+
   // Populate form when editing
   useEffect(() => {
     if (mode === "edit" && reservation) {
       setFormData({
         restaurant_id: reservation.restaurant_id,
+        reservation_area_id: reservation.reservation_area_id || "",
         customer_name: reservation.customer_name,
         customer_email: reservation.customer_email || "",
         customer_phone: reservation.customer_phone,
@@ -106,6 +133,7 @@ export function ReservationForm({
       // Reset form for create mode
       setFormData({
         restaurant_id: "",
+        reservation_area_id: "",
         customer_name: "",
         customer_email: "",
         customer_phone: "",
@@ -178,6 +206,27 @@ export function ReservationForm({
                   {restaurants.map((restaurant) => (
                     <SelectItem key={restaurant.id} value={restaurant.id}>
                       {restaurant.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="area">Area (optional)</Label>
+              <Select
+                value={formData.reservation_area_id || ""}
+                onValueChange={(value) => handleInputChange("reservation_area_id", value === 'none' ? "" : value)}
+                disabled={!formData.restaurant_id || areas.length === 0}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder={areas.length ? "Restaurant" : "No areas"} />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">Restaurant</SelectItem>
+                  {areas.map((area) => (
+                    <SelectItem key={area.id} value={area.id}>
+                      {area.name}
                     </SelectItem>
                   ))}
                 </SelectContent>

@@ -154,7 +154,8 @@ export async function getTodayReservations(restaurantId?: string) {
       .from("reservations")
       .select(`
         *,
-        restaurants (id, name)
+        restaurants (id, name),
+        reservation_areas (id, name)
       `)
       .eq("reservation_date", todayStr)
     
@@ -184,7 +185,8 @@ export async function getNewReservations(restaurantId?: string) {
       .from("reservations")
       .select(`
         *,
-        restaurants (id, name)
+        restaurants (id, name),
+        reservation_areas (id, name)
       `)
     
     if (restaurantId) {
@@ -231,7 +233,8 @@ export async function getUpcomingReservations(restaurantId?: string) {
       .from("reservations")
       .select(`
         *,
-        restaurants (id, name)
+        restaurants (id, name),
+        reservation_areas (id, name)
       `)
       .gte("reservation_date", tomorrowStr)
       .lt("reservation_date", nextWeekStr)

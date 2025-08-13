@@ -20,7 +20,8 @@ export async function getReservations(filters: {
     // Start with a basic query
     let query = supabase.from("reservations").select(`
         *,
-        restaurants (id, name)
+        restaurants (id, name),
+        reservation_areas (id, name)
       `)
 
     // Apply filters if provided
@@ -84,11 +85,13 @@ export async function getReservations(filters: {
         const customerPhone = reservation.customer_phone?.toLowerCase() || ''
         const customerEmail = reservation.customer_email?.toLowerCase() || ''
         const restaurantName = reservation.restaurants?.name?.toLowerCase() || ''
+        const areaName = (reservation as any).reservation_areas?.name?.toLowerCase() || ''
         
         return customerName.includes(searchTerm) ||
                customerPhone.includes(searchTerm) ||
                customerEmail.includes(searchTerm) ||
-               restaurantName.includes(searchTerm)
+               restaurantName.includes(searchTerm) ||
+               areaName.includes(searchTerm)
       })
       
       console.log('Filtered results:', filteredData.length, 'out of', allData.length)
@@ -268,6 +271,7 @@ export async function getAllReservations() {
 
 export async function createReservation(reservationData: {
   restaurant_id: string
+  reservation_area_id?: string | null
   customer_name: string
   customer_email: string
   customer_phone: string
@@ -284,11 +288,13 @@ export async function createReservation(reservationData: {
       .from("reservations")
       .insert({
         ...reservationData,
+        reservation_area_id: reservationData.reservation_area_id ? reservationData.reservation_area_id : null,
         status: reservationData.status || "pending"
       })
       .select(`
         *,
-        restaurants (id, name)
+        restaurants (id, name),
+        reservation_areas (id, name)
       `)
       .single()
 
@@ -308,6 +314,7 @@ export async function createReservation(reservationData: {
 
 export async function updateReservation(id: string, reservationData: {
   restaurant_id?: string
+  reservation_area_id?: string | null
   customer_name?: string
   customer_email?: string
   customer_phone?: string
@@ -323,11 +330,17 @@ export async function updateReservation(id: string, reservationData: {
 
     const { data, error } = await supabase
       .from("reservations")
-      .update(reservationData)
+      .update({
+        ...reservationData,
+        reservation_area_id: reservationData.reservation_area_id === "" || reservationData.reservation_area_id === undefined
+          ? null
+          : reservationData.reservation_area_id,
+      })
       .eq("id", id)
       .select(`
         *,
-        restaurants (id, name)
+        restaurants (id, name),
+        reservation_areas (id, name)
       `)
       .single()
 
