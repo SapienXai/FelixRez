@@ -331,24 +331,6 @@ export function ReservationStep1({
   return (
     <div id="step1">
       <div className="row g-3 step-1-selectors">
-        {areas && areas.length > 0 && (
-          <div className="col">
-            <label htmlFor="reservationArea" className="form-label">
-              {getTranslation("reserve.step1.areaLabel") || "Area"}
-            </label>
-            <select
-              className="form-select"
-              id="reservationArea"
-              value={selectedAreaId || ""}
-              onChange={(e) => setSelectedAreaId(e.target.value || null)}
-            >
-              <option value="">{getTranslation("reserve.step1.anyArea") || "Any area"}</option>
-              {areas.map((a) => (
-                <option key={a.id} value={a.id}>{a.name}</option>
-              ))}
-            </select>
-          </div>
-        )}
         <div className="col">
           <label htmlFor="partySize" className="form-label">
             {getTranslation("reserve.step1.partyLabel")}
@@ -384,23 +366,45 @@ export function ReservationStep1({
           </select>
         </div>
         <div className="col">
-          <label htmlFor="reservationTimeMain" className="form-label">
-            {getTranslation("reserve.step1.timeLabel")}
-          </label>
-          <select
-            className="form-select"
-            id="reservationTimeMain"
-            value={selectedTime}
-            onChange={(e) => setSelectedTime(e.target.value)}
-          >
-            <optgroup label={getTranslation("reserve.step1.availableTimesLabel")}>
-              {times.map((time) => (
-                <option key={`time-${time}`} value={time}>
-                  {time}
-                </option>
-              ))}
-            </optgroup>
-          </select>
+          <div style={{ display: 'flex', gap: '8px', alignItems: 'flex-end' }}>
+            <div style={{ flex: 1 }}>
+              <label htmlFor="reservationTimeMain" className="form-label">
+                {getTranslation("reserve.step1.timeLabel")}
+              </label>
+              <select
+                className="form-select"
+                id="reservationTimeMain"
+                value={selectedTime}
+                onChange={(e) => setSelectedTime(e.target.value)}
+              >
+                <optgroup label={getTranslation("reserve.step1.availableTimesLabel")}>
+                  {times.map((time) => (
+                    <option key={`time-${time}`} value={time}>
+                      {time}
+                    </option>
+                  ))}
+                </optgroup>
+              </select>
+            </div>
+            {areas && areas.length > 0 && (
+              <div style={{ flex: 1 }}>
+                <label htmlFor="reservationArea" className="form-label">
+                  {getTranslation("reserve.step1.areaLabel") || "Area"}
+                </label>
+                <select
+                  className="form-select"
+                  id="reservationArea"
+                  value={selectedAreaId || ""}
+                  onChange={(e) => setSelectedAreaId(e.target.value || null)}
+                >
+                  <option value="">{getTranslation("reserve.step1.anyArea") || "Any area"}</option>
+                  {areas.map((a) => (
+                    <option key={a.id} value={a.id}>{a.name}</option>
+                  ))}
+                </select>
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
