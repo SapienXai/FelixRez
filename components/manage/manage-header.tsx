@@ -83,6 +83,7 @@ export function ManageHeader({ user, toggleSidebar }: ManageHeaderProps) {
           
           // Get complete reservation data with restaurant info using join query
           let restaurantName = 'Unknown Restaurant'
+          let areaName: string | null = null
           
           try {
             const { data: reservationWithRestaurant, error } = await supabase
@@ -112,6 +113,7 @@ export function ManageHeader({ user, toggleSidebar }: ManageHeaderProps) {
               restaurantName = restaurant?.name || 'Unknown Restaurant'
             } else {
                restaurantName = (reservationWithRestaurant.restaurants as any)?.name
+               areaName = (reservationWithRestaurant as any)?.reservation_areas?.name || null
                
                // If restaurantName is still not found, try direct fetch
                if (!restaurantName) {
@@ -134,7 +136,7 @@ export function ManageHeader({ user, toggleSidebar }: ManageHeaderProps) {
             id: newReservation.id,
             customer_name: newReservation.customer_name,
             restaurant_name: restaurantName,
-            reservation_area_name: (reservationWithRestaurant as any)?.reservation_areas?.name || null,
+            reservation_area_name: areaName,
             party_size: newReservation.party_size,
             reservation_time: newReservation.reservation_time,
             reservation_date: newReservation.reservation_date,
@@ -151,7 +153,7 @@ export function ManageHeader({ user, toggleSidebar }: ManageHeaderProps) {
             id: newReservation.id,
             customer_name: newReservation.customer_name,
             restaurant_name: restaurantName,
-            reservation_area_name: (reservationWithRestaurant as any)?.reservation_areas?.name || null,
+            reservation_area_name: areaName,
             party_size: newReservation.party_size,
             reservation_time: newReservation.reservation_time,
             reservation_date: newReservation.reservation_date,

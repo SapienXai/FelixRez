@@ -43,7 +43,7 @@ export async function createReservation(params: CreateReservationParams) {
         table_number: params.tableNumber || null,
         status: "pending",
       })
-      .select()
+      .select(`*, reservation_areas ( name )`)
 
     if (error) {
       console.error("Error creating reservation:", error)
@@ -71,6 +71,7 @@ export async function createReservation(params: CreateReservationParams) {
     const { subject, html } = generateReservationConfirmationEmail({
       customerName: params.customerName,
       restaurantName: restaurant?.name || "Felix Restaurant",
+      reservationAreaName: (data?.[0] as any)?.reservation_areas?.name || null,
       reservationDate: formattedDate,
       reservationTime: params.reservationTime,
       partySize: params.partySize,
@@ -89,6 +90,7 @@ export async function createReservation(params: CreateReservationParams) {
       action: 'created',
       customerName: params.customerName,
       restaurantName: restaurant?.name || "Felix Restaurant",
+      reservationAreaName: (data?.[0] as any)?.reservation_areas?.name || null,
       reservationDate: formattedDate,
       reservationTime: params.reservationTime,
       partySize: params.partySize,
@@ -250,7 +252,8 @@ export async function updateReservation(params: UpdateReservationParams) {
       .eq("id", params.id)
       .select(`
         *,
-        restaurants (name)
+        restaurants (name),
+        reservation_areas (name)
       `)
 
     if (error) {
@@ -275,6 +278,7 @@ export async function updateReservation(params: UpdateReservationParams) {
         action: 'updated',
         customerName: params.customer_name,
         restaurantName: updatedReservation.restaurants?.name || "Felix Restaurant",
+        reservationAreaName: (updatedReservation as any)?.reservation_areas?.name || null,
         reservationDate: formattedDate,
         reservationTime: params.reservation_time,
         partySize: params.party_size,

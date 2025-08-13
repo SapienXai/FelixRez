@@ -81,6 +81,7 @@ export async function sendEmail({
 export function generateReservationConfirmationEmail({
   customerName,
   restaurantName,
+  reservationAreaName,
   reservationDate,
   reservationTime,
   partySize,
@@ -88,6 +89,7 @@ export function generateReservationConfirmationEmail({
 }: {
   customerName: string
   restaurantName: string
+  reservationAreaName?: string | null
   reservationDate: string
   reservationTime: string
   partySize: number | string
@@ -167,6 +169,12 @@ export function generateReservationConfirmationEmail({
             <strong>${isEnglish ? "Restaurant" : "Restoran"}:</strong>
             <span>${restaurantName}</span>
           </div>
+          ${reservationAreaName ? `
+          <div class="detail-row">
+            <strong>${isEnglish ? "Area" : "Alan"}:</strong>
+            <span>${reservationAreaName}</span>
+          </div>
+          ` : ''}
           <div class="detail-row">
             <strong>${isEnglish ? "Date" : "Tarih"}:</strong>
             <span>${reservationDate}</span>
@@ -206,6 +214,7 @@ export function generateManagementNotificationEmail({
   action,
   customerName,
   restaurantName,
+  reservationAreaName,
   reservationDate,
   reservationTime,
   partySize,
@@ -217,6 +226,7 @@ export function generateManagementNotificationEmail({
   action: 'created' | 'updated'
   customerName: string
   restaurantName: string
+  reservationAreaName?: string | null
   reservationDate: string
   reservationTime: string
   partySize: number | string
@@ -301,6 +311,12 @@ export function generateManagementNotificationEmail({
             <strong>Restaurant:</strong>
             <span>${restaurantName}</span>
           </div>
+          ${reservationAreaName ? `
+          <div class="detail-row">
+            <strong>Area:</strong>
+            <span>${reservationAreaName}</span>
+          </div>
+          ` : ''}
           <div class="detail-row">
             <strong>Customer Name:</strong>
             <span>${customerName}</span>
@@ -358,6 +374,7 @@ export function generateManagementNotificationEmail({
 export function generateStatusUpdateEmail({
   customerName,
   restaurantName,
+  reservationAreaName,
   reservationDate,
   reservationTime,
   partySize,
@@ -367,6 +384,7 @@ export function generateStatusUpdateEmail({
 }: {
   customerName: string
   restaurantName: string
+  reservationAreaName?: string | null
   reservationDate: string
   reservationTime: string
   partySize: number | string
@@ -473,6 +491,12 @@ export function generateStatusUpdateEmail({
             <strong>${isEnglish ? "Restaurant" : "Restoran"}:</strong>
             <span>${restaurantName}</span>
           </div>
+          ${reservationAreaName ? `
+          <div class="detail-row">
+            <strong>${isEnglish ? "Area" : "Alan"}:</strong>
+            <span>${reservationAreaName}</span>
+          </div>
+          ` : ''}
           <div class="detail-row">
             <strong>${isEnglish ? "Date" : "Tarih"}:</strong>
             <span>${reservationDate}</span>

@@ -121,7 +121,8 @@ export async function updateReservationStatus(id: string, status: string, notes?
       .from("reservations")
       .select(`
         *,
-        restaurants (name, location)
+        restaurants (name, location),
+        reservation_areas (name)
       `)
       .eq("id", id)
       .single()
@@ -162,6 +163,7 @@ export async function updateReservationStatus(id: string, status: string, notes?
       const { subject, html } = generateStatusUpdateEmail({
         customerName: reservation.customer_name,
         restaurantName: reservation.restaurants.name,
+        reservationAreaName: (reservation as any)?.reservation_areas?.name || null,
         reservationDate: formattedDate,
         reservationTime: reservation.reservation_time,
         partySize: reservation.party_size,
