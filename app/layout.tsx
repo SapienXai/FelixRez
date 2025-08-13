@@ -21,7 +21,7 @@ export const metadata: Metadata = {
     address: false,
     telephone: false,
   },
-  metadataBase: new URL('https://felixrestaurants.com'),
+  metadataBase: new URL('https://felixsmile.com'),
   alternates: {
     canonical: '/',
     languages: {
@@ -32,11 +32,11 @@ export const metadata: Metadata = {
   openGraph: {
     title: "Felix Restaurants - Premium Dining & Table Reservations",
     description: "Experience culinary excellence at Felix Restaurants. Book your table at our stunning locations with waterfront views and exceptional cuisine.",
-    url: 'https://felixrestaurants.com',
+    url: 'https://felixsmile.com',
     siteName: 'Felix Restaurants',
     images: [
       {
-        url: '/assets/felix.png',
+        url: '/assets/felixBanner.jpeg',
         width: 1200,
         height: 630,
         alt: 'Felix Restaurants - Premium Dining Experience',
@@ -49,7 +49,7 @@ export const metadata: Metadata = {
     card: 'summary_large_image',
     title: "Felix Restaurants - Premium Dining & Table Reservations",
     description: "Experience culinary excellence at Felix Restaurants. Book your table at our stunning locations with waterfront views.",
-    images: ['/assets/felix.png'],
+    images: ['/assets/felixBanner.jpeg'],
   },
   robots: {
     index: true,
@@ -93,9 +93,9 @@ export default function RootLayout({
               "@type": "Restaurant",
               "name": "Felix Restaurants",
               "description": "Experience culinary excellence at Felix Restaurants. Premium dining with waterfront views and exceptional cuisine.",
-              "url": "https://felixrestaurants.com",
-              "logo": "https://felixrestaurants.com/assets/felix.png",
-              "image": "https://felixrestaurants.com/assets/felix.png",
+              "url": "https://felixsmile.com",
+              "logo": "https://felixsmile.com/assets/felix.png",
+              "image": "https://felixsmile.com/assets/felixBanner.jpeg",
               "telephone": "+90-252-XXX-XXXX",
               "address": {
                 "@type": "PostalAddress",
