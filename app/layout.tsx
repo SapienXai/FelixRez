@@ -21,7 +21,7 @@ export const metadata: Metadata = {
     address: false,
     telephone: false,
   },
-  metadataBase: new URL('https://felixsmile.com'),
+  metadataBase: new URL('https://reserve.felixsmile.com'),
   alternates: {
     canonical: '/',
     languages: {
@@ -32,7 +32,7 @@ export const metadata: Metadata = {
   openGraph: {
     title: "Felix Restaurants - Premium Dining & Table Reservations",
     description: "Experience culinary excellence at Felix Restaurants. Book your table at our stunning locations with waterfront views and exceptional cuisine.",
-    url: 'https://felixsmile.com',
+    url: 'https://reserve.felixsmile.com',
     siteName: 'Felix Restaurants',
     images: [
       {
@@ -93,9 +93,9 @@ export default function RootLayout({
               "@type": "Restaurant",
               "name": "Felix Restaurants",
               "description": "Experience culinary excellence at Felix Restaurants. Premium dining with waterfront views and exceptional cuisine.",
-              "url": "https://felixsmile.com",
-              "logo": "https://felixsmile.com/assets/felix.png",
-              "image": "https://felixsmile.com/assets/felixBanner.jpeg",
+              "url": "https://reserve.felixsmile.com",
+              "logo": "https://reserve.felixsmile.com/assets/felix.png",
+              "image": "https://reserve.felixsmile.com/assets/felixBanner.jpeg",
               "telephone": "+90-252-XXX-XXXX",
               "address": {
                 "@type": "PostalAddress",
