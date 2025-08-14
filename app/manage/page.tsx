@@ -14,10 +14,12 @@ import { ManageHeader } from "@/components/manage/manage-header"
 import { ManageSidebar } from "@/components/manage/manage-sidebar"
 import { useLanguage } from "@/context/language-context"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { TriangleLoader } from "@/components/ui/triangle-loader"
 
 export default function ManageDashboard() {
   const { getTranslation } = useLanguage()
   const [isLoading, setIsLoading] = useState(true)
+  const [isStatsLoading, setIsStatsLoading] = useState(false)
   const [stats, setStats] = useState({
     total: 0,
     pending: 0,
@@ -72,11 +74,13 @@ export default function ManageDashboard() {
   // Fetch stats when restaurant filter changes
   useEffect(() => {
     const fetchStatsOnly = async () => {
+      setIsStatsLoading(true)
       const restaurantFilter = selectedRestaurant === "all" || !selectedRestaurant ? undefined : selectedRestaurant
       const statsResult = await getDashboardStats(restaurantFilter)
       if (statsResult.success && statsResult.stats) {
         setStats(statsResult.stats)
       }
+      setIsStatsLoading(false)
     }
 
     if (isInitialMount.current) {
@@ -347,60 +351,67 @@ export default function ManageDashboard() {
               </Card>
             </div>
 
-            <Tabs defaultValue="new" className="space-y-4">
-              <TabsList className="grid w-full grid-cols-3 lg:w-auto lg:grid-cols-none lg:flex">
+              <Tabs defaultValue="new" className="space-y-4">
+                <TabsList className="grid w-full grid-cols-3 lg:w-auto lg:grid-cols-none lg:flex">
                 <TabsTrigger value="new" className="text-xs sm:text-sm">{getTranslation("manage.dashboard.tabs.new")}</TabsTrigger>
                 <TabsTrigger value="today" className="text-xs sm:text-sm">{getTranslation("manage.dashboard.tabs.today")}</TabsTrigger>
                 <TabsTrigger value="upcoming" className="text-xs sm:text-sm">{getTranslation("manage.dashboard.tabs.upcoming")}</TabsTrigger>
               </TabsList>
-              <TabsContent value="new" className="space-y-4">
-                <div>
-                  <div className="mb-4">
-                    <h3 className="text-lg font-semibold">{getTranslation("manage.dashboard.new.cardTitle")}</h3>
-                    <p className="text-sm text-muted-foreground">
-                      {getTranslation("manage.dashboard.new.cardDescription", { count: String(getFilteredReservations(newReservations).length) })}
-                      {statusFilter !== "all" && (
-                        <span className="ml-2 text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded-full">
-                          Filtered by: {statusFilter}
-                        </span>
-                      )}
-                    </p>
+              <div className="relative">
+                {isStatsLoading && (
+                  <div className="absolute inset-0 bg-gray-100/80 backdrop-blur-sm flex items-start justify-center z-10 rounded-lg pt-12">
+                    <TriangleLoader />
                   </div>
-                  <ReservationList reservations={getFilteredReservations(newReservations)} onStatusChange={handleStatusChange} itemsPerPage={10} />
-                </div>
-              </TabsContent>
-              <TabsContent value="today" className="space-y-4">
-                <div>
-                  <div className="mb-4">
-                    <h3 className="text-lg font-semibold">{getTranslation("manage.dashboard.today.cardTitle")}</h3>
-                    <p className="text-sm text-muted-foreground">
-                      {getTranslation("manage.dashboard.today.cardDescription", { count: String(getFilteredReservations(todayReservations).length) })}
-                      {statusFilter !== "all" && (
-                        <span className="ml-2 text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded-full">
-                          Filtered by: {statusFilter}
-                        </span>
-                      )}
-                    </p>
+                )}
+                <TabsContent value="new" className="space-y-4">
+                  <div>
+                    <div className="mb-4">
+                      <h3 className="text-lg font-semibold">{getTranslation("manage.dashboard.new.cardTitle")}</h3>
+                      <p className="text-sm text-muted-foreground">
+                        {getTranslation("manage.dashboard.new.cardDescription", { count: String(getFilteredReservations(newReservations).length) })}
+                        {statusFilter !== "all" && (
+                          <span className="ml-2 text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded-full">
+                            Filtered by: {statusFilter}
+                          </span>
+                        )}
+                      </p>
+                    </div>
+                    <ReservationList reservations={getFilteredReservations(newReservations)} onStatusChange={handleStatusChange} itemsPerPage={10} />
                   </div>
-                  <ReservationList reservations={getFilteredReservations(todayReservations)} onStatusChange={handleStatusChange} itemsPerPage={10} />
-                </div>
-              </TabsContent>
-              <TabsContent value="upcoming" className="space-y-4">
-                <div>
-                  <div className="mb-4">
-                    <h3 className="text-lg font-semibold">{getTranslation("manage.dashboard.upcoming.cardTitle")}</h3>
-                    <p className="text-sm text-muted-foreground">
-                      {getTranslation("manage.dashboard.upcoming.cardDescription", { count: String(getFilteredReservations(upcomingReservations).length) })}
-                      {statusFilter !== "all" && (
-                        <span className="ml-2 text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded-full">
-                          Filtered by: {statusFilter}
-                        </span>
-                      )}
-                    </p>
+                </TabsContent>
+                <TabsContent value="today" className="space-y-4">
+                  <div>
+                    <div className="mb-4">
+                      <h3 className="text-lg font-semibold">{getTranslation("manage.dashboard.today.cardTitle")}</h3>
+                      <p className="text-sm text-muted-foreground">
+                        {getTranslation("manage.dashboard.today.cardDescription", { count: String(getFilteredReservations(todayReservations).length) })}
+                        {statusFilter !== "all" && (
+                          <span className="ml-2 text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded-full">
+                            Filtered by: {statusFilter}
+                          </span>
+                        )}
+                      </p>
+                    </div>
+                    <ReservationList reservations={getFilteredReservations(todayReservations)} onStatusChange={handleStatusChange} itemsPerPage={10} />
                   </div>
-                  <ReservationList reservations={getFilteredReservations(upcomingReservations)} onStatusChange={handleStatusChange} itemsPerPage={10} />
-                </div>
-              </TabsContent>
+                </TabsContent>
+                <TabsContent value="upcoming" className="space-y-4">
+                  <div>
+                    <div className="mb-4">
+                      <h3 className="text-lg font-semibold">{getTranslation("manage.dashboard.upcoming.cardTitle")}</h3>
+                      <p className="text-sm text-muted-foreground">
+                        {getTranslation("manage.dashboard.upcoming.cardDescription", { count: String(getFilteredReservations(upcomingReservations).length) })}
+                        {statusFilter !== "all" && (
+                          <span className="ml-2 text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded-full">
+                            Filtered by: {statusFilter}
+                          </span>
+                        )}
+                      </p>
+                    </div>
+                    <ReservationList reservations={getFilteredReservations(upcomingReservations)} onStatusChange={handleStatusChange} itemsPerPage={10} />
+                  </div>
+                </TabsContent>
+              </div>
             </Tabs>
 
             <div className="mt-6">
