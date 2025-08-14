@@ -28,7 +28,8 @@ export default function ManageDashboard() {
     percentChange: 0,
     totalKuver: 0,
     totalMealReservations: 0,
-    deckTerraceKuvers: 0,
+    deckKuvers: 0,
+    terraceKuvers: 0,
   })
   const [newReservations, setNewReservations] = useState<any[]>([])
   const [todayReservations, setTodayReservations] = useState<any[]>([])
@@ -90,7 +91,8 @@ export default function ManageDashboard() {
            percentChange: statsResult.stats.percentChange,
            totalKuver: statsResult.stats.totalKuver,
            totalMealReservations: statsResult.stats.totalMealReservations,
-           deckTerraceKuvers: statsResult.stats.deckTerraceKuvers,
+           deckKuvers: statsResult.stats.deckKuvers,
+           terraceKuvers: statsResult.stats.terraceKuvers,
          })
        }
       setIsStatsLoading(false)
@@ -174,7 +176,8 @@ export default function ManageDashboard() {
               percentChange: statsResult.stats.percentChange,
               totalKuver: statsResult.stats.totalKuver,
               totalMealReservations: statsResult.stats.totalMealReservations,
-              deckTerraceKuvers: statsResult.stats.deckTerraceKuvers,
+              deckKuvers: statsResult.stats.deckKuvers,
+              terraceKuvers: statsResult.stats.terraceKuvers,
             })
           }
         }
@@ -217,7 +220,8 @@ export default function ManageDashboard() {
           percentChange: statsResult.stats.percentChange,
           totalKuver: statsResult.stats.totalKuver,
           totalMealReservations: statsResult.stats.totalMealReservations,
-          deckTerraceKuvers: statsResult.stats.deckTerraceKuvers,
+          deckKuvers: statsResult.stats.deckKuvers,
+          terraceKuvers: statsResult.stats.terraceKuvers,
         })
       }
 
@@ -317,9 +321,6 @@ export default function ManageDashboard() {
             </div>
 
             <div className="mb-6">
-              <div className="mb-4">
-                <h2 className="text-lg font-semibold">Dashboard Overview</h2>
-              </div>
               
               <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4 transition-all duration-300">
                 <Card className={`cursor-pointer transition-all hover:shadow-md ${statusFilter === "all" ? "ring-2 ring-blue-500" : ""}`} onClick={() => handleStatusFilter("all")}>
@@ -425,10 +426,25 @@ export default function ManageDashboard() {
                      <CardContent className="p-4 md:p-6">
                        <div className="flex items-center justify-between">
                          <div>
-                           <p className="text-xs md:text-sm font-medium text-muted-foreground">Deck/Terrace</p>
-                           <p className="text-2xl md:text-3xl font-bold">{stats.deckTerraceKuvers}</p>
+                           <p className="text-xs md:text-sm font-medium text-muted-foreground">Deck</p>
+                           <p className="text-2xl md:text-3xl font-bold">{stats.deckKuvers}</p>
                          </div>
                          <div className="rounded-full bg-teal-100 p-2 md:p-3 text-teal-600">
+                           <MapPin className="h-4 w-4 md:h-6 md:w-6" />
+                         </div>
+                       </div>
+                       <p className="text-xs text-muted-foreground mt-2">Kuvers today</p>
+                     </CardContent>
+                   </Card>
+
+                   <Card className="cursor-default transition-all hover:shadow-md">
+                     <CardContent className="p-4 md:p-6">
+                       <div className="flex items-center justify-between">
+                         <div>
+                           <p className="text-xs md:text-sm font-medium text-muted-foreground">Terrace</p>
+                           <p className="text-2xl md:text-3xl font-bold">{stats.terraceKuvers}</p>
+                         </div>
+                         <div className="rounded-full bg-emerald-100 p-2 md:p-3 text-emerald-600">
                            <MapPin className="h-4 w-4 md:h-6 md:w-6" />
                          </div>
                        </div>

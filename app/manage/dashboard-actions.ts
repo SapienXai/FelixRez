@@ -162,7 +162,6 @@ export async function getDashboardStats(restaurantId?: string) {
 
     const deckKuvers = deckData?.reduce((sum, reservation) => sum + reservation.party_size, 0) || 0
     const terraceKuvers = terraceData?.reduce((sum, reservation) => sum + reservation.party_size, 0) || 0
-    const deckTerraceKuvers = deckKuvers + terraceKuvers
 
     // Get reservations from last month
     const lastMonth = new Date(today)
@@ -222,7 +221,8 @@ export async function getDashboardStats(restaurantId?: string) {
         percentChange,
         totalKuver: totalKuver,
         totalMealReservations: totalMealReservations || 0,
-        deckTerraceKuvers: deckTerraceKuvers
+        deckKuvers: deckKuvers,
+        terraceKuvers: terraceKuvers
       },
     }
   } catch (error) {
