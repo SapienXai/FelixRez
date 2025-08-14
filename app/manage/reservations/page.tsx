@@ -104,7 +104,7 @@ export default function ReservationsPage() {
 
   if (isLoading) {
     return (
-      <div className="flex h-screen items-center justify-center">
+      <div className="fixed inset-0 flex items-center justify-center bg-white z-50">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900 mx-auto"></div>
           <p className="mt-4 text-gray-700">{getTranslation("manage.common.loadingReservations")}</p>
@@ -132,7 +132,9 @@ export default function ReservationsPage() {
               <CardContent>
                 <form onSubmit={handleSearch} className="grid grid-cols-1 md:grid-cols-4 gap-4">
                   <div>
-                    <label className="text-sm font-medium mb-1 block">{getTranslation("manage.reservations.filters.status")}</label>
+                    <label className="text-sm font-medium mb-1 block">
+                      {getTranslation("manage.reservations.filters.status")}
+                    </label>
                     <Select value={filters.status} onValueChange={(value) => handleFilterChange("status", value)}>
                       <SelectTrigger>
                         <SelectValue placeholder={getTranslation("manage.reservations.filters.statusPlaceholder")} />
@@ -140,22 +142,33 @@ export default function ReservationsPage() {
                       <SelectContent>
                         <SelectItem value="all">{getTranslation("manage.reservations.filters.statusAll")}</SelectItem>
                         <SelectItem value="pending">{getTranslation("manage.reservations.filters.statusPending")}</SelectItem>
-                        <SelectItem value="confirmed">{getTranslation("manage.reservations.filters.statusConfirmed")}</SelectItem>
-                        <SelectItem value="cancelled">{getTranslation("manage.reservations.filters.statusCancelled")}</SelectItem>
+                        <SelectItem value="confirmed">
+                          {getTranslation("manage.reservations.filters.statusConfirmed")}
+                        </SelectItem>
+                        <SelectItem value="cancelled">
+                          {getTranslation("manage.reservations.filters.statusCancelled")}
+                        </SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
 
                   <div>
-                    <label className="text-sm font-medium mb-1 block">{getTranslation("manage.reservations.filters.dateRange")}</label>
-                    <Select value={filters.dateRange} onValueChange={(value) => handleFilterChange("dateRange", value)}>
+                    <label className="text-sm font-medium mb-1 block">
+                      {getTranslation("manage.reservations.filters.dateRange")}
+                    </label>
+                    <Select
+                      value={filters.dateRange}
+                      onValueChange={(value) => handleFilterChange("dateRange", value)}
+                    >
                       <SelectTrigger>
                         <SelectValue placeholder={getTranslation("manage.reservations.filters.dateRangePlaceholder")} />
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="all">{getTranslation("manage.reservations.filters.dateAll")}</SelectItem>
                         <SelectItem value="today">{getTranslation("manage.reservations.filters.dateToday")}</SelectItem>
-                        <SelectItem value="tomorrow">{getTranslation("manage.reservations.filters.dateTomorrow")}</SelectItem>
+                        <SelectItem value="tomorrow">
+                          {getTranslation("manage.reservations.filters.dateTomorrow")}
+                        </SelectItem>
                         <SelectItem value="week">{getTranslation("manage.reservations.filters.dateWeek")}</SelectItem>
                         <SelectItem value="month">{getTranslation("manage.reservations.filters.dateMonth")}</SelectItem>
                       </SelectContent>
@@ -163,7 +176,9 @@ export default function ReservationsPage() {
                   </div>
 
                   <div>
-                    <label className="text-sm font-medium mb-1 block">{getTranslation("manage.reservations.filters.search")}</label>
+                    <label className="text-sm font-medium mb-1 block">
+                      {getTranslation("manage.reservations.filters.search")}
+                    </label>
                     <Input
                       placeholder={getTranslation("manage.reservations.filters.searchPlaceholder")}
                       value={filters.searchQuery}
