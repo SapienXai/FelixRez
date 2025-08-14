@@ -30,6 +30,7 @@ export default function ManageDashboard() {
   const [upcomingReservations, setUpcomingReservations] = useState<any[]>([])
   const [restaurants, setRestaurants] = useState<any[]>([])
   const [selectedRestaurant, setSelectedRestaurant] = useState<string>("all")
+  const [statusFilter, setStatusFilter] = useState<string>("all")
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [user, setUser] = useState({ email: "", name: "Admin User" })
   const router = useRouter()
@@ -210,6 +211,16 @@ export default function ManageDashboard() {
     setSelectedRestaurant(value)
   }
 
+  const handleStatusFilter = (status: string) => {
+    setStatusFilter(status)
+  }
+
+  // Filter reservations based on status
+  const getFilteredReservations = (reservations: any[]) => {
+    if (statusFilter === "all") return reservations
+    return reservations.filter(reservation => reservation.status === statusFilter)
+  }
+
   if (isLoading) {
     return (
       <div className="flex h-screen items-center justify-center">
@@ -234,6 +245,12 @@ export default function ManageDashboard() {
               <h1 className="text-xl md:text-2xl font-semibold">{getTranslation("manage.dashboard.title")}</h1>
               
               <div className="flex items-center space-x-4">
+                <Button 
+                  onClick={() => router.push('/manage/reservations?action=new')}
+                  className="bg-blue-600 hover:bg-blue-700 text-white"
+                >
+                  + Add
+                </Button>
                 <div className="w-full sm:min-w-[200px]">
                   <Select value={selectedRestaurant} onValueChange={handleRestaurantChange}>
                     <SelectTrigger className="text-sm">
@@ -253,7 +270,7 @@ export default function ManageDashboard() {
             </div>
 
             <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4 mb-6">
-              <Card>
+              <Card className={`cursor-pointer transition-all hover:shadow-md ${statusFilter === "all" ? "ring-2 ring-blue-500" : ""}`} onClick={() => handleStatusFilter("all")}>
                 <CardContent className="p-4 md:p-6">
                   <div className="flex items-center justify-between">
                     <div>
@@ -275,7 +292,7 @@ export default function ManageDashboard() {
                 </CardContent>
               </Card>
 
-              <Card>
+              <Card className={`cursor-pointer transition-all hover:shadow-md ${statusFilter === "pending" ? "ring-2 ring-yellow-500" : ""}`} onClick={() => handleStatusFilter("pending")}>
                 <CardContent className="p-4 md:p-6">
                   <div className="flex items-center justify-between">
                     <div>
@@ -289,7 +306,7 @@ export default function ManageDashboard() {
                 </CardContent>
               </Card>
 
-              <Card>
+              <Card className={`cursor-pointer transition-all hover:shadow-md ${statusFilter === "confirmed" ? "ring-2 ring-green-500" : ""}`} onClick={() => handleStatusFilter("confirmed")}>
                 <CardContent className="p-4 md:p-6">
                   <div className="flex items-center justify-between">
                     <div>
@@ -303,7 +320,7 @@ export default function ManageDashboard() {
                 </CardContent>
               </Card>
 
-              <Card>
+              <Card className={`cursor-pointer transition-all hover:shadow-md ${statusFilter === "cancelled" ? "ring-2 ring-red-500" : ""}`} onClick={() => handleStatusFilter("cancelled")}>
                 <CardContent className="p-4 md:p-6">
                   <div className="flex items-center justify-between">
                     <div>
@@ -329,11 +346,16 @@ export default function ManageDashboard() {
                   <CardHeader>
                     <CardTitle>{getTranslation("manage.dashboard.new.cardTitle")}</CardTitle>
                     <CardDescription>
-                      {getTranslation("manage.dashboard.new.cardDescription", { count: String(newReservations.length) })}
+                      {getTranslation("manage.dashboard.new.cardDescription", { count: String(getFilteredReservations(newReservations).length) })}
+                      {statusFilter !== "all" && (
+                        <span className="ml-2 text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded-full">
+                          Filtered by: {statusFilter}
+                        </span>
+                      )}
                     </CardDescription>
                   </CardHeader>
                   <CardContent>
-                    <ReservationList reservations={newReservations} onStatusChange={handleStatusChange} itemsPerPage={10} />
+                    <ReservationList reservations={getFilteredReservations(newReservations)} onStatusChange={handleStatusChange} itemsPerPage={10} />
                   </CardContent>
                 </Card>
               </TabsContent>
@@ -342,11 +364,16 @@ export default function ManageDashboard() {
                   <CardHeader>
                     <CardTitle>{getTranslation("manage.dashboard.today.cardTitle")}</CardTitle>
                     <CardDescription>
-                      {getTranslation("manage.dashboard.today.cardDescription", { count: String(todayReservations.length) })}
+                      {getTranslation("manage.dashboard.today.cardDescription", { count: String(getFilteredReservations(todayReservations).length) })}
+                      {statusFilter !== "all" && (
+                        <span className="ml-2 text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded-full">
+                          Filtered by: {statusFilter}
+                        </span>
+                      )}
                     </CardDescription>
                   </CardHeader>
                   <CardContent>
-                    <ReservationList reservations={todayReservations} onStatusChange={handleStatusChange} itemsPerPage={10} />
+                    <ReservationList reservations={getFilteredReservations(todayReservations)} onStatusChange={handleStatusChange} itemsPerPage={10} />
                   </CardContent>
                 </Card>
               </TabsContent>
@@ -355,11 +382,16 @@ export default function ManageDashboard() {
                   <CardHeader>
                     <CardTitle>{getTranslation("manage.dashboard.upcoming.cardTitle")}</CardTitle>
                     <CardDescription>
-                      {getTranslation("manage.dashboard.upcoming.cardDescription", { count: String(upcomingReservations.length) })}
+                      {getTranslation("manage.dashboard.upcoming.cardDescription", { count: String(getFilteredReservations(upcomingReservations).length) })}
+                      {statusFilter !== "all" && (
+                        <span className="ml-2 text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded-full">
+                          Filtered by: {statusFilter}
+                        </span>
+                      )}
                     </CardDescription>
                   </CardHeader>
                   <CardContent>
-                    <ReservationList reservations={upcomingReservations} onStatusChange={handleStatusChange} itemsPerPage={10} />
+                    <ReservationList reservations={getFilteredReservations(upcomingReservations)} onStatusChange={handleStatusChange} itemsPerPage={10} />
                   </CardContent>
                 </Card>
               </TabsContent>

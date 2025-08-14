@@ -183,27 +183,27 @@ export function ReservationForm({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-[500px]">
+      <DialogContent className="w-[95vw] max-w-[425px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>
-            {mode === "create" ? "Create New Reservation" : "Edit Reservation"}
+          <DialogTitle className="text-lg">
+            {mode === "create" ? "Create Reservation" : "Edit Reservation"}
           </DialogTitle>
-          <DialogDescription>
+          <DialogDescription className="text-sm">
             {mode === "create"
-              ? "Fill in the details to create a new reservation."
-              : "Update the reservation details below."}
+              ? "Fill in the details below."
+              : "Update the reservation details."}
           </DialogDescription>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="grid grid-cols-2 gap-4">
+        <form onSubmit={handleSubmit} className="space-y-3">
+          <div className="space-y-3">
             <div className="space-y-2">
-              <Label htmlFor="restaurant">Restaurant</Label>
+              <Label htmlFor="restaurant" className="text-sm">Restaurant</Label>
               <Select
                 value={formData.restaurant_id}
                 onValueChange={(value) => handleInputChange("restaurant_id", value)}
               >
-                <SelectTrigger>
+                <SelectTrigger className="h-9">
                   <SelectValue placeholder="Select restaurant" />
                 </SelectTrigger>
                 <SelectContent>
@@ -217,13 +217,13 @@ export function ReservationForm({
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="area">Area (optional)</Label>
+              <Label htmlFor="area" className="text-sm">Area (optional)</Label>
               <Select
                 value={formData.reservation_area_id || ""}
                 onValueChange={(value) => handleInputChange("reservation_area_id", value === 'none' ? "" : value)}
                 disabled={!formData.restaurant_id || areas.length === 0}
               >
-                <SelectTrigger>
+                <SelectTrigger className="h-9">
                   <SelectValue placeholder={areas.length ? "Restaurant" : "No areas"} />
                 </SelectTrigger>
                 <SelectContent>
@@ -237,84 +237,88 @@ export function ReservationForm({
               </Select>
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="status">Status</Label>
-              <Select
-                value={formData.status}
-                onValueChange={(value) => handleInputChange("status", value)}
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="pending">Pending</SelectItem>
-                  <SelectItem value="confirmed">Confirmed</SelectItem>
-                  <SelectItem value="cancelled">Cancelled</SelectItem>
-                  <SelectItem value="completed">Completed</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-2">
+                <Label htmlFor="status" className="text-sm">Status</Label>
+                <Select
+                  value={formData.status}
+                  onValueChange={(value) => handleInputChange("status", value)}
+                >
+                  <SelectTrigger className="h-9">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="pending">Pending</SelectItem>
+                    <SelectItem value="confirmed">Confirmed</SelectItem>
+                    <SelectItem value="cancelled">Cancelled</SelectItem>
+                    <SelectItem value="completed">Completed</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="reservation_type">Reservation Type</Label>
-              <Select
-                value={formData.reservation_type}
-                onValueChange={(value) => handleInputChange("reservation_type", value)}
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="meal">Dining</SelectItem>
-                  {!restaurants.find(r => r.id === formData.restaurant_id)?.meal_only_reservations && (
-                    <SelectItem value="drinks">Drinks Only</SelectItem>
-                  )}
-                </SelectContent>
-              </Select>
+              <div className="space-y-2">
+                <Label htmlFor="reservation_type" className="text-sm">Type</Label>
+                <Select
+                  value={formData.reservation_type}
+                  onValueChange={(value) => handleInputChange("reservation_type", value)}
+                >
+                  <SelectTrigger className="h-9">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="meal">Dining</SelectItem>
+                    {!restaurants.find(r => r.id === formData.restaurant_id)?.meal_only_reservations && (
+                      <SelectItem value="drinks">Drinks Only</SelectItem>
+                    )}
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="customer_name">Customer Name</Label>
+            <Label htmlFor="customer_name" className="text-sm">Customer Name</Label>
             <Input
               id="customer_name"
+              className="h-9"
               value={formData.customer_name}
               onChange={(e) => handleInputChange("customer_name", e.target.value)}
               required
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="customer_email">Email</Label>
-              <Input
-                id="customer_email"
-                type="email"
-                value={formData.customer_email}
-                onChange={(e) => handleInputChange("customer_email", e.target.value)}
-                required
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="customer_phone">Phone</Label>
-              <Input
-                id="customer_phone"
-                value={formData.customer_phone}
-                onChange={(e) => handleInputChange("customer_phone", e.target.value)}
-                required
-              />
-            </div>
+          <div className="space-y-2">
+            <Label htmlFor="customer_email" className="text-sm">Email</Label>
+            <Input
+              id="customer_email"
+              type="email"
+              className="h-9"
+              value={formData.customer_email}
+              onChange={(e) => handleInputChange("customer_email", e.target.value)}
+              required
+            />
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="space-y-2">
+            <Label htmlFor="customer_phone" className="text-sm">Phone</Label>
+            <Input
+              id="customer_phone"
+              className="h-9"
+              value={formData.customer_phone}
+              onChange={(e) => handleInputChange("customer_phone", e.target.value)}
+              required
+            />
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
             <div className="space-y-2">
-              <Label htmlFor="party_size">Party Size</Label>
+              <Label htmlFor="party_size" className="text-sm">Party Size</Label>
               <Input
                 id="party_size"
                 type="number"
                 min="1"
                 max="20"
+                className="h-9"
                 value={formData.party_size}
                 onChange={(e) => {
                   const value = parseInt(e.target.value)
@@ -325,22 +329,24 @@ export function ReservationForm({
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="table_number">Table Number</Label>
+              <Label htmlFor="table_number" className="text-sm">Table</Label>
               <Input
                 id="table_number"
+                className="h-9"
                 value={formData.table_number}
                 onChange={(e) => handleInputChange("table_number", e.target.value)}
-                placeholder="e.g., T1, A5, Window 3"
+                placeholder="e.g., T1, A5"
               />
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-2 gap-3">
             <div className="space-y-2">
-              <Label htmlFor="reservation_date">Date</Label>
+              <Label htmlFor="reservation_date" className="text-sm">Date</Label>
               <Input
                 id="reservation_date"
                 type="date"
+                className="h-9"
                 value={formData.reservation_date}
                 onChange={(e) => handleInputChange("reservation_date", e.target.value)}
                 required
@@ -348,10 +354,11 @@ export function ReservationForm({
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="reservation_time">Time</Label>
+              <Label htmlFor="reservation_time" className="text-sm">Time</Label>
               <Input
                 id="reservation_time"
                 type="time"
+                className="h-9"
                 value={formData.reservation_time}
                 onChange={(e) => handleInputChange("reservation_time", e.target.value)}
                 required
@@ -360,28 +367,29 @@ export function ReservationForm({
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="special_requests">Special Requests</Label>
+            <Label htmlFor="special_requests" className="text-sm">Special Requests</Label>
             <Textarea
               id="special_requests"
               value={formData.special_requests}
               onChange={(e) => handleInputChange("special_requests", e.target.value)}
-              placeholder="Any special requests or notes..."
-              rows={3}
+              placeholder="Any special requests..."
+              rows={2}
+              className="text-sm"
             />
           </div>
 
-          <DialogFooter>
-            <Button type="button" variant="outline" onClick={onClose}>
+          <DialogFooter className="flex-col sm:flex-row gap-2 pt-4">
+            <Button type="button" variant="outline" onClick={onClose} className="w-full sm:w-auto h-9">
               Cancel
             </Button>
-            <Button type="submit" disabled={loading}>
+            <Button type="submit" disabled={loading} className="w-full sm:w-auto h-9">
               {loading
                 ? mode === "create"
                   ? "Creating..."
                   : "Updating..."
                 : mode === "create"
-                ? "Create Reservation"
-                : "Update Reservation"}
+                ? "Create"
+                : "Update"}
             </Button>
           </DialogFooter>
         </form>

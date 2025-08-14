@@ -49,6 +49,14 @@ export default function ReservationsPage() {
       fetchReservations()
     }
 
+    // Check URL parameters for auto-opening create form
+    const urlParams = new URLSearchParams(window.location.search)
+    if (urlParams.get('action') === 'new') {
+      setShowCreateForm(true)
+      // Clean up URL without refreshing
+      window.history.replaceState({}, '', '/manage/reservations')
+    }
+
     checkSession()
   }, [router, supabase])
 
