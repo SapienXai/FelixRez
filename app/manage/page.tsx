@@ -44,6 +44,7 @@ export default function ManageDashboard() {
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(undefined)
   const [activeTab, setActiveTab] = useState<string>("new")
   const [sidebarOpen, setSidebarOpen] = useState(false)
+  const [datePopoverOpen, setDatePopoverOpen] = useState(false)
   const [cardsExpanded, setCardsExpanded] = useState(false)
   const [user, setUser] = useState({ email: "", name: "Admin User" })
   const router = useRouter()
@@ -519,58 +520,72 @@ export default function ManageDashboard() {
 
               <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
                 <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-                  <TabsList className={`grid w-full ${selectedDate ? 'grid-cols-4' : 'grid-cols-3'} lg:w-auto lg:grid-cols-none lg:flex`}>
+                  <TabsList className={`grid w-full ${selectedDate ? 'grid-cols-4' : 'grid-cols-4'} lg:w-auto lg:grid-cols-none lg:flex`}>
                     <TabsTrigger value="new" className="text-xs sm:text-sm">{getTranslation("manage.dashboard.tabs.new")}</TabsTrigger>
                     <TabsTrigger value="today" className="text-xs sm:text-sm">{getTranslation("manage.dashboard.tabs.today")}</TabsTrigger>
                     <TabsTrigger value="upcoming" className="text-xs sm:text-sm">{getTranslation("manage.dashboard.tabs.upcoming")}</TabsTrigger>
-                    {selectedDate && (
-                      <TabsTrigger value="selected-date" className="text-xs sm:text-sm">
-                        {format(selectedDate, 'MMM dd')} ({selectedDateReservations.length})
-                      </TabsTrigger>
-                    )}
-                  </TabsList>
-                  <div className="w-full sm:w-auto sm:min-w-[200px]">
-                    <Popover>
-                      <PopoverTrigger asChild>
-                        <Button
-                          variant="outline"
-                          className="text-sm justify-start text-left font-normal w-full sm:w-auto"
-                          size="sm"
-                        >
-                          <Calendar className="mr-2 h-4 w-4" />
-                          {selectedDate ? format(selectedDate, "PPP") : "Select date"}
-                        </Button>
-                      </PopoverTrigger>
-                      <PopoverContent className="w-auto p-0" align="start">
-                        <CalendarComponent
-                          mode="single"
-                          selected={selectedDate}
-                          onSelect={(date) => {
-                            setSelectedDate(date)
-                            if (date) {
-                              setActiveTab("selected-date")
-                            }
-                          }}
-                          initialFocus
-                        />
-                        {selectedDate && (
+                    {selectedDate ? (
+                      <Popover open={datePopoverOpen} onOpenChange={setDatePopoverOpen}>
+                        <PopoverTrigger asChild>
+                          <TabsTrigger value="selected-date" className="text-xs sm:text-sm">
+                            <Calendar className="mr-2 h-4 w-4" />
+                            {format(selectedDate, 'MMM dd')} ({selectedDateReservations.length})
+                          </TabsTrigger>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-auto p-0" align="start">
+                          <CalendarComponent
+                            mode="single"
+                            selected={selectedDate}
+                            onSelect={(date) => {
+                              setSelectedDate(date);
+                              if (date) {
+                                setActiveTab("selected-date");
+                              }
+                              setDatePopoverOpen(false);
+                            }}
+                            initialFocus
+                          />
                           <div className="p-3 border-t">
                             <Button
                               variant="outline"
                               size="sm"
                               onClick={() => {
-                                setSelectedDate(undefined)
-                                setActiveTab("new")
+                                setSelectedDate(undefined);
+                                setActiveTab("new");
+                                setDatePopoverOpen(false);
                               }}
                               className="w-full"
                             >
-                              Clear date
+                              {getTranslation("manage.dashboard.clearDate")}
                             </Button>
                           </div>
-                        )}
-                      </PopoverContent>
-                    </Popover>
-                  </div>
+                        </PopoverContent>
+                      </Popover>
+                    ) : (
+                      <Popover open={datePopoverOpen} onOpenChange={setDatePopoverOpen}>
+                        <PopoverTrigger asChild>
+                          <TabsTrigger value="select-date" className="text-xs sm:text-sm">
+                            <Calendar className="mr-2 h-4 w-4" />
+                            {getTranslation("manage.dashboard.tabs.selectDate")}
+                          </TabsTrigger>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-auto p-0" align="start">
+                          <CalendarComponent
+                            mode="single"
+                            selected={selectedDate}
+                            onSelect={(date) => {
+                              setSelectedDate(date);
+                              if (date) {
+                                setActiveTab("selected-date");
+                              }
+                              setDatePopoverOpen(false);
+                            }}
+                            initialFocus
+                          />
+                        </PopoverContent>
+                      </Popover>
+                    )}
+                  </TabsList>
                 </div>
               <div className="relative">
                 {isStatsLoading && (

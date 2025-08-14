@@ -207,7 +207,8 @@ export const translations = {
         filter: {
           allRestaurants: "All Restaurants",
         },
-        tabs: { new: "New", today: "Today", upcoming: "Upcoming" },
+        tabs: { new: "New", today: "Today", upcoming: "Upcoming", selectDate: "Select Date" },
+        clearDate: "Clear date",
         new: {
           cardTitle: "New Reservations",
           cardDescription: "Recently created reservations ordered by creation time. {count} total.",
@@ -577,7 +578,8 @@ export const translations = {
         filter: {
           allRestaurants: "Tüm Restoranlar",
         },
-        tabs: { new: "Yeni", today: "Bugün", upcoming: "Yaklaşan" },
+        tabs: { new: "Yeni", today: "Bugün", upcoming: "Yaklaşan", selectDate: "Tarih Seç" },
+        clearDate: "Tarihi temizle",
         new: {
           cardTitle: "Yeni Rezervasyonlar",
           cardDescription: "Oluşturulma zamanına göre sıralanmış son rezervasyonlar. Toplam {count}.",
