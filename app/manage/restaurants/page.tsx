@@ -12,6 +12,7 @@ import { getRestaurants, deleteRestaurant } from '@/app/manage/actions';
 import { useLanguage } from '@/context/language-context';
 import { getSupabaseBrowserClient } from '@/lib/supabase';
 import { MoreHorizontal, Edit, Trash2, Plus } from 'lucide-react';
+import { TriangleLoader } from '@/components/ui/triangle-loader';
 import { toast } from 'sonner';
 import Image from 'next/image';
 import type { Database } from '@/types/supabase';
@@ -78,6 +79,8 @@ export default function RestaurantsPage() {
       confirmText: 'Delete',
       cancelText: 'Cancel',
       variant: 'destructive',
+      requireTextConfirmation: true,
+      confirmationText: 'delete',
       onConfirm: async () => {
         const result = await deleteRestaurant(id);
         if (result.success) {
@@ -107,15 +110,10 @@ export default function RestaurantsPage() {
 
   if (loading) {
     return (
-      <div className="flex h-screen bg-gray-100">
-        <ManageSidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
-        <div className="flex-1 flex flex-col overflow-hidden">
-          <ManageHeader user={user} toggleSidebar={toggleSidebar} />
-          <main className="flex-1 overflow-y-auto p-4 md:p-6">
-            <div className="max-w-7xl mx-auto">
-              <div className="text-center">{getTranslation('manage.common.loadingRestaurants')}</div>
-            </div>
-          </main>
+      <div className="fixed inset-0 bg-gray-100 flex items-center justify-center z-50">
+        <div className="text-center">
+          <TriangleLoader />
+          <p className="mt-4 text-lg font-semibold text-gray-600">{getTranslation('manage.common.loadingRestaurants')}</p>
         </div>
       </div>
     );

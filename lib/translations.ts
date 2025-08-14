@@ -282,6 +282,7 @@ export const translations = {
         deleteUser: "Delete User",
         confirmDelete: "Are you sure you want to delete this user?",
         userDeleted: "User deleted successfully",
+        loadingUsers: "Loading users",
         userAdded: "User added successfully",
         userUpdated: "User updated successfully",
         form: {
@@ -653,6 +654,7 @@ export const translations = {
         deleteUser: "Kullanıcıyı Sil",
         confirmDelete: "Bu kullanıcıyı silmek istediğinizden emin misiniz?",
         userDeleted: "Kullanıcı başarıyla silindi",
+        loadingUsers: "Kullanıcılar yükleniyor",
         userAdded: "Kullanıcı başarıyla eklendi",
         userUpdated: "Kullanıcı başarıyla güncellendi",
         form: {

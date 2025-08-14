@@ -16,6 +16,7 @@ import { ManageSidebar } from "@/components/manage/manage-sidebar"
 import { getSupabaseBrowserClient } from "@/lib/supabase"
 import { toast } from "@/hooks/use-toast"
 import { getUsers, createUser, updateUser, deleteUser } from "./actions"
+import { TriangleLoader } from "@/components/ui/triangle-loader";
 
 interface User {
   id: string
@@ -49,6 +50,8 @@ export default function UsersPage() {
   })
   const [formErrors, setFormErrors] = useState<Record<string, string>>({})
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [deleteConfirmText, setDeleteConfirmText] = useState("")
+  const [deletingUserId, setDeletingUserId] = useState<string | null>(null)
   
   const supabase = getSupabaseBrowserClient()
 
@@ -175,6 +178,15 @@ export default function UsersPage() {
   }
 
   const handleDeleteUser = async (userId: string) => {
+    if (deleteConfirmText !== "delete") {
+      toast({
+        title: "Error",
+        description: "Please type 'delete' to confirm",
+        variant: "destructive"
+      })
+      return
+    }
+
     try {
       const result = await deleteUser(userId)
       if (result.success) {
@@ -183,6 +195,8 @@ export default function UsersPage() {
           title: "Success",
           description: getTranslation("manage.users.userDeleted")
         })
+        setDeleteConfirmText("")
+        setDeletingUserId(null)
       } else {
         toast({
           title: "Error",
@@ -198,6 +212,16 @@ export default function UsersPage() {
         variant: "destructive"
       })
     }
+  }
+
+  const handleOpenDeleteDialog = (userId: string) => {
+    setDeletingUserId(userId)
+    setDeleteConfirmText("")
+  }
+
+  const handleCloseDeleteDialog = () => {
+    setDeletingUserId(null)
+    setDeleteConfirmText("")
   }
 
   const handleEditUser = (user: User) => {
@@ -242,10 +266,10 @@ export default function UsersPage() {
 
   if (isLoading) {
     return (
-      <div className="flex h-screen items-center justify-center">
+      <div className="fixed inset-0 bg-gray-100 flex items-center justify-center z-50">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900 mx-auto"></div>
-          <p className="mt-4 text-gray-700">Loading users...</p>
+          <TriangleLoader />
+          <p className="mt-4 text-lg font-semibold text-gray-600">{getTranslation('manage.users.loadingUsers')}</p>
         </div>
       </div>
     )
@@ -386,9 +410,9 @@ export default function UsersPage() {
                                 <Edit className="h-4 w-4 mr-1" />
                                 {getTranslation("manage.users.table.edit")}
                               </Button>
-                              <AlertDialog>
+                              <AlertDialog open={deletingUserId === user.id} onOpenChange={(open) => !open && handleCloseDeleteDialog()}>
                                 <AlertDialogTrigger asChild>
-                                  <Button variant="outline" size="sm">
+                                  <Button variant="outline" size="sm" onClick={() => handleOpenDeleteDialog(user.id)}>
                                     <Trash2 className="h-4 w-4 mr-1" />
                                     {getTranslation("manage.users.table.delete")}
                                   </Button>
@@ -398,11 +422,25 @@ export default function UsersPage() {
                                     <AlertDialogTitle>{getTranslation("manage.users.deleteUser")}</AlertDialogTitle>
                                     <AlertDialogDescription>
                                       {getTranslation("manage.users.confirmDelete")}
+                                      <br /><br />
+                                      <strong>Type "delete" to confirm:</strong>
                                     </AlertDialogDescription>
                                   </AlertDialogHeader>
+                                  <div className="py-4">
+                                    <Input
+                                      value={deleteConfirmText}
+                                      onChange={(e) => setDeleteConfirmText(e.target.value)}
+                                      placeholder="Type 'delete' to confirm"
+                                      className="w-full"
+                                    />
+                                  </div>
                                   <AlertDialogFooter>
-                                    <AlertDialogCancel>{getTranslation("manage.users.form.cancel")}</AlertDialogCancel>
-                                    <AlertDialogAction onClick={() => handleDeleteUser(user.id)}>
+                                    <AlertDialogCancel onClick={handleCloseDeleteDialog}>{getTranslation("manage.users.form.cancel")}</AlertDialogCancel>
+                                    <AlertDialogAction 
+                                      onClick={() => handleDeleteUser(user.id)}
+                                      disabled={deleteConfirmText !== "delete"}
+                                      className={deleteConfirmText !== "delete" ? "opacity-50 cursor-not-allowed" : ""}
+                                    >
                                       {getTranslation("manage.users.table.delete")}
                                     </AlertDialogAction>
                                   </AlertDialogFooter>

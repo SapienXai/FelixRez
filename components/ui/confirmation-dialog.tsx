@@ -11,6 +11,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
+import { Input } from '@/components/ui/input';
 
 interface ConfirmationDialogProps {
   isOpen: boolean;
@@ -21,6 +22,8 @@ interface ConfirmationDialogProps {
   confirmText?: string;
   cancelText?: string;
   variant?: 'default' | 'destructive';
+  requireTextConfirmation?: boolean;
+  confirmationText?: string;
 }
 
 export function ConfirmationDialog({
@@ -31,25 +34,63 @@ export function ConfirmationDialog({
   description,
   confirmText = 'Confirm',
   cancelText = 'Cancel',
-  variant = 'default'
+  variant = 'default',
+  requireTextConfirmation = false,
+  confirmationText = 'delete'
 }: ConfirmationDialogProps) {
+  const [inputText, setInputText] = useState('');
+
   const handleConfirm = () => {
+    if (requireTextConfirmation && inputText !== confirmationText) {
+      return;
+    }
     onConfirm();
     onClose();
+    setInputText('');
+  };
+
+  const handleClose = () => {
+    onClose();
+    setInputText('');
   };
 
   return (
-    <AlertDialog open={isOpen} onOpenChange={onClose}>
+    <AlertDialog open={isOpen} onOpenChange={handleClose}>
       <AlertDialogContent>
         <AlertDialogHeader>
           <AlertDialogTitle>{title}</AlertDialogTitle>
-          <AlertDialogDescription>{description}</AlertDialogDescription>
+          <AlertDialogDescription>
+            {description}
+            {requireTextConfirmation && (
+              <>
+                <br /><br />
+                <strong>Type "{confirmationText}" to confirm:</strong>
+              </>
+            )}
+          </AlertDialogDescription>
         </AlertDialogHeader>
+        {requireTextConfirmation && (
+          <div className="py-4">
+            <Input
+              value={inputText}
+              onChange={(e) => setInputText(e.target.value)}
+              placeholder={`Type '${confirmationText}' to confirm`}
+              className="w-full"
+            />
+          </div>
+        )}
         <AlertDialogFooter>
-          <AlertDialogCancel onClick={onClose}>{cancelText}</AlertDialogCancel>
+          <AlertDialogCancel onClick={handleClose}>{cancelText}</AlertDialogCancel>
           <AlertDialogAction
             onClick={handleConfirm}
-            className={variant === 'destructive' ? 'bg-red-600 hover:bg-red-700' : ''}
+            disabled={requireTextConfirmation && inputText !== confirmationText}
+            className={`${
+              variant === 'destructive' ? 'bg-red-600 hover:bg-red-700' : ''
+            } ${
+              requireTextConfirmation && inputText !== confirmationText
+                ? 'opacity-50 cursor-not-allowed'
+                : ''
+            }`}
           >
             {confirmText}
           </AlertDialogAction>
@@ -68,6 +109,8 @@ export function useConfirmationDialog() {
     confirmText?: string;
     cancelText?: string;
     variant?: 'default' | 'destructive';
+    requireTextConfirmation?: boolean;
+    confirmationText?: string;
   } | null>(null);
 
   const showConfirmation = ({
@@ -76,7 +119,9 @@ export function useConfirmationDialog() {
     onConfirm,
     confirmText,
     cancelText,
-    variant
+    variant,
+    requireTextConfirmation,
+    confirmationText
   }: {
     title: string;
     description: string;
@@ -84,8 +129,10 @@ export function useConfirmationDialog() {
     confirmText?: string;
     cancelText?: string;
     variant?: 'default' | 'destructive';
+    requireTextConfirmation?: boolean;
+    confirmationText?: string;
   }) => {
-    setConfig({ title, description, onConfirm, confirmText, cancelText, variant });
+    setConfig({ title, description, onConfirm, confirmText, cancelText, variant, requireTextConfirmation, confirmationText });
     setIsOpen(true);
   };
 
@@ -104,6 +151,8 @@ export function useConfirmationDialog() {
       confirmText={config.confirmText}
       cancelText={config.cancelText}
       variant={config.variant}
+      requireTextConfirmation={config.requireTextConfirmation}
+      confirmationText={config.confirmationText}
     />
   ) : null;
 
