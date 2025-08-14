@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useState, useRef } from "react"
 import { useRouter } from "next/navigation"
 import { getSupabaseBrowserClient } from "@/lib/supabase"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -35,6 +35,7 @@ export default function ManageDashboard() {
   const [user, setUser] = useState({ email: "", name: "Admin User" })
   const router = useRouter()
   const supabase = getSupabaseBrowserClient()
+  const isInitialMount = useRef(true);
 
   useEffect(() => {
     const checkSession = async () => {
@@ -68,10 +69,22 @@ export default function ManageDashboard() {
     return () => subscription?.subscription?.unsubscribe?.()
   }, [router, supabase])
 
-  // Fetch dashboard data when restaurant filter changes
+  // Fetch stats when restaurant filter changes
   useEffect(() => {
-    if (restaurants.length > 0) {
-      fetchDashboardData()
+    const fetchStatsOnly = async () => {
+      const restaurantFilter = selectedRestaurant === "all" || !selectedRestaurant ? undefined : selectedRestaurant
+      const statsResult = await getDashboardStats(restaurantFilter)
+      if (statsResult.success && statsResult.stats) {
+        setStats(statsResult.stats)
+      }
+    }
+
+    if (isInitialMount.current) {
+      isInitialMount.current = false
+    } else {
+      if (restaurants.length > 0) {
+        fetchStatsOnly()
+      }
     }
   }, [selectedRestaurant])
 
@@ -102,14 +115,6 @@ export default function ManageDashboard() {
             .single()
 
           if (error || !newReservation) return
-
-          // Respect current restaurant filter
-          if (selectedRestaurant && selectedRestaurant !== 'all' && newReservation.restaurant_id !== selectedRestaurant) {
-            // Not in current filter; still refresh stats only
-            const statsResult = await getDashboardStats(selectedRestaurant)
-            if (statsResult.success && statsResult.stats) setStats(statsResult.stats)
-            return
-          }
 
           // Helper to avoid duplicates in lists
           const notIn = (arr: any[]) => !arr.some((r) => r.id === newReservation.id)
@@ -172,9 +177,9 @@ export default function ManageDashboard() {
       const restaurantFilter = selectedRestaurant === 'all' || !selectedRestaurant ? undefined : selectedRestaurant
       const [statsResult, newResult, todayResult, upcomingResult] = await Promise.all([
         getDashboardStats(restaurantFilter),
-        getNewReservations(restaurantFilter),
-        getTodayReservations(restaurantFilter),
-        getUpcomingReservations(restaurantFilter),
+        getNewReservations(undefined),
+        getTodayReservations(undefined),
+        getUpcomingReservations(undefined),
       ])
 
       if (statsResult.success && statsResult.stats) {
@@ -215,10 +220,16 @@ export default function ManageDashboard() {
     setStatusFilter(status)
   }
 
-  // Filter reservations based on status
+  // Filter reservations based on status and restaurant
   const getFilteredReservations = (reservations: any[]) => {
-    if (statusFilter === "all") return reservations
-    return reservations.filter(reservation => reservation.status === statusFilter)
+    let filtered = reservations
+    if (selectedRestaurant !== "all") {
+      filtered = filtered.filter(r => r.restaurant_id === selectedRestaurant)
+    }
+    if (statusFilter !== "all") {
+      filtered = filtered.filter(reservation => reservation.status === statusFilter)
+    }
+    return filtered
   }
 
   if (isLoading) {
