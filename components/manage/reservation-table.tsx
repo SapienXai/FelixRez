@@ -50,7 +50,7 @@ export function ReservationTable({ reservations, onRefresh, itemsPerPage = 10 }:
   const [isLoading, setIsLoading] = useState(false)
   const [editingReservation, setEditingReservation] = useState<ReservationWithRestaurant | null>(null)
   const [currentItemsPerPage, setCurrentItemsPerPage] = useState(itemsPerPage)
-  const [viewMode, setViewMode] = useState<"table" | "card">("table")
+  const [viewMode, setViewMode] = useState<"table" | "card">("card")
 
   const {
     currentPage,

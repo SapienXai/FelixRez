@@ -55,7 +55,7 @@ interface ReservationListProps {
 }
 
 export function ReservationList({ reservations, onStatusChange, itemsPerPage = 5 }: ReservationListProps) {
-  const [viewMode, setViewMode] = useState<"table" | "card">("table")
+  const [viewMode, setViewMode] = useState<"table" | "card">("card")
   const [actionDialog, setActionDialog] = useState<{
     isOpen: boolean
     reservation: ReservationWithRestaurant | null
