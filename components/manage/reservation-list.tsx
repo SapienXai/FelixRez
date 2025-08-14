@@ -29,13 +29,14 @@ import {
 import { Textarea } from "@/components/ui/textarea"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Label } from "@/components/ui/label"
-import { CheckCircle, XCircle, Clock, Edit, List, Grid, User, Phone, Mail, Calendar, MoreHorizontal, Utensils, Coffee } from "lucide-react"
+import { CheckCircle, XCircle, Clock, Edit, List, Grid, User, Phone, Mail, Calendar, MoreHorizontal, Utensils, Coffee, Trash2 } from "lucide-react"
 import type { Reservation } from "@/types/supabase"
-import { updateReservationStatus } from "@/app/manage/actions"
+import { updateReservationStatus, deleteReservation } from "@/app/manage/actions"
 import { toast } from "sonner"
 import { ReservationForm } from "@/components/manage/reservation-form"
 import { usePagination } from "@/hooks/use-pagination"
 import { PaginationControls } from "@/components/ui/pagination-controls"
+import { useLanguage } from "@/context/language-context"
 
 interface ReservationWithRestaurant extends Reservation {
   restaurants?: {
@@ -55,12 +56,17 @@ interface ReservationListProps {
 }
 
 export function ReservationList({ reservations, onStatusChange, itemsPerPage = 5 }: ReservationListProps) {
+  const { getTranslation } = useLanguage()
   const [viewMode, setViewMode] = useState<"table" | "card">("card")
   const [actionDialog, setActionDialog] = useState<{
     isOpen: boolean
     reservation: ReservationWithRestaurant | null
     action: "confirm" | "cancel" | null
   }>({ isOpen: false, reservation: null, action: null })
+  const [deleteDialog, setDeleteDialog] = useState<{
+    isOpen: boolean
+    reservation: ReservationWithRestaurant | null
+  }>({ isOpen: false, reservation: null })
   const [editForm, setEditForm] = useState<{
     isOpen: boolean
     reservation: ReservationWithRestaurant | null
@@ -116,6 +122,31 @@ export function ReservationList({ reservations, onStatusChange, itemsPerPage = 5
 
   const openActionDialog = (reservation: ReservationWithRestaurant, action: "confirm" | "cancel") => {
     setActionDialog({ isOpen: true, reservation, action })
+  }
+
+  const openDeleteDialog = (reservation: ReservationWithRestaurant) => {
+    setDeleteDialog({ isOpen: true, reservation })
+  }
+
+  const handleDelete = async () => {
+    if (!deleteDialog.reservation) return
+
+    setLoading(true)
+    try {
+      const result = await deleteReservation(deleteDialog.reservation.id)
+
+      if (result.success) {
+        toast.success(getTranslation("manage.reservations.list.deleteSuccess"))
+        onStatusChange()
+        setDeleteDialog({ isOpen: false, reservation: null })
+      } else {
+        toast.error(getTranslation("manage.reservations.list.deleteError"))
+      }
+    } catch (error) {
+      toast.error(getTranslation("manage.reservations.list.deleteError"))
+    } finally {
+      setLoading(false)
+    }
   }
 
   const openEditForm = (reservation: ReservationWithRestaurant) => {
@@ -241,7 +272,7 @@ export function ReservationList({ reservations, onStatusChange, itemsPerPage = 5
                     className="text-blue-600"
                   >
                     <Edit className="mr-2 h-4 w-4" />
-                    Edit Reservation
+                    {getTranslation("manage.reservations.list.editReservation")}
                   </DropdownMenuItem>
                   <DropdownMenuItem
                     onClick={() => openActionDialog(reservation, "confirm")}
@@ -249,7 +280,7 @@ export function ReservationList({ reservations, onStatusChange, itemsPerPage = 5
                     className="text-green-600"
                   >
                     <CheckCircle className="mr-2 h-4 w-4" />
-                    Confirm Reservation
+                    {getTranslation("manage.reservations.list.confirmReservation")}
                   </DropdownMenuItem>
                   <DropdownMenuItem
                     onClick={() => openActionDialog(reservation, "cancel")}
@@ -257,7 +288,14 @@ export function ReservationList({ reservations, onStatusChange, itemsPerPage = 5
                     className="text-red-600"
                   >
                     <XCircle className="mr-2 h-4 w-4" />
-                    Cancel Reservation
+                    {getTranslation("manage.reservations.list.cancelReservation")}
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onClick={() => openDeleteDialog(reservation)}
+                    className="text-red-600"
+                  >
+                    <Trash2 className="mr-2 h-4 w-4" />
+                    {getTranslation("manage.reservations.list.deleteReservation")}
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
@@ -384,7 +422,7 @@ export function ReservationList({ reservations, onStatusChange, itemsPerPage = 5
                             className="text-blue-600"
                           >
                             <Edit className="mr-2 h-4 w-4" />
-                            Edit Reservation
+                            {getTranslation("manage.reservations.list.editReservation")}
                           </DropdownMenuItem>
                           <DropdownMenuItem
                             onClick={() => openActionDialog(reservation, "confirm")}
@@ -392,7 +430,7 @@ export function ReservationList({ reservations, onStatusChange, itemsPerPage = 5
                             className="text-green-600"
                           >
                             <CheckCircle className="mr-2 h-4 w-4" />
-                            Confirm Reservation
+                            {getTranslation("manage.reservations.list.confirmReservation")}
                           </DropdownMenuItem>
                           <DropdownMenuItem
                             onClick={() => openActionDialog(reservation, "cancel")}
@@ -400,7 +438,14 @@ export function ReservationList({ reservations, onStatusChange, itemsPerPage = 5
                             className="text-red-600"
                           >
                             <XCircle className="mr-2 h-4 w-4" />
-                            Cancel Reservation
+                            {getTranslation("manage.reservations.list.cancelReservation")}
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            onClick={() => openDeleteDialog(reservation)}
+                            className="text-red-600"
+                          >
+                            <Trash2 className="mr-2 h-4 w-4" />
+                            {getTranslation("manage.reservations.list.deleteReservation")}
                           </DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>
@@ -448,7 +493,7 @@ export function ReservationList({ reservations, onStatusChange, itemsPerPage = 5
         <DialogContent>
           <DialogHeader>
             <DialogTitle>
-              {actionDialog.action === "confirm" ? "Confirm Reservation" : "Cancel Reservation"}
+              {actionDialog.action === "confirm" ? getTranslation("manage.reservations.list.confirmReservation") : getTranslation("manage.reservations.list.cancelReservation")}
             </DialogTitle>
             <div className="text-sm text-muted-foreground">
               {actionDialog.reservation && (
@@ -519,15 +564,67 @@ export function ReservationList({ reservations, onStatusChange, itemsPerPage = 5
                 setSendEmail(true)
               }}
             >
-              Cancel
+              {getTranslation("manage.reservations.list.cancel")}
             </Button>
             <Button onClick={handleAction} disabled={loading}>
               {loading
-                ? "Processing..."
+                ? getTranslation("manage.reservations.list.processing")
                 : actionDialog.action === "confirm"
-                ? "Confirm Reservation"
-                : "Cancel Reservation"}
+                ? getTranslation("manage.reservations.list.confirmReservation")
+                : getTranslation("manage.reservations.list.cancelReservation")}
             </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog
+        open={deleteDialog.isOpen}
+        onOpenChange={(open) => {
+          if (!open) {
+            setDeleteDialog({ isOpen: false, reservation: null })
+          }
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{getTranslation("manage.reservations.list.deleteReservation")}</DialogTitle>
+            <DialogDescription>
+              {getTranslation("manage.reservations.list.deleteConfirmation")}
+            </DialogDescription>
+            {deleteDialog.reservation && (
+              <div className="text-sm text-muted-foreground mt-2">
+                <div className="space-y-1">
+                  <div>
+                    <strong>Customer:</strong> {deleteDialog.reservation.customer_name}
+                  </div>
+                  <div>
+                    <strong>Restaurant:</strong> {deleteDialog.reservation.restaurants?.name}
+                  </div>
+                  <div>
+                    <strong>Date:</strong> {new Date(deleteDialog.reservation.reservation_date).toLocaleDateString()}
+                  </div>
+                  <div>
+                    <strong>Time:</strong> {deleteDialog.reservation.reservation_time}
+                  </div>
+                </div>
+              </div>
+            )}
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+               variant="outline"
+               onClick={() => setDeleteDialog({ isOpen: false, reservation: null })}
+             >
+               {getTranslation("manage.reservations.list.cancel")}
+             </Button>
+             <Button
+               variant="destructive"
+               onClick={handleDelete}
+               disabled={loading}
+             >
+               {loading ? getTranslation("manage.reservations.list.deleting") : getTranslation("manage.reservations.list.deleteReservation")}
+             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
