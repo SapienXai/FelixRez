@@ -20,6 +20,7 @@ interface CreateReservationParams {
   customerEmail: string
   specialRequests?: string
   tableNumber?: string
+  reservationType?: string
   lang?: string
 }
 
@@ -41,6 +42,7 @@ export async function createReservation(params: CreateReservationParams) {
         customer_email: params.customerEmail,
         special_requests: params.specialRequests || null,
         table_number: params.tableNumber || null,
+        reservation_type: params.reservationType || "meal",
         status: "pending",
       })
       .select(`*, reservation_areas ( name )`)
@@ -75,6 +77,7 @@ export async function createReservation(params: CreateReservationParams) {
       reservationDate: formattedDate,
       reservationTime: params.reservationTime,
       partySize: params.partySize,
+      reservationType: params.reservationType,
       lang: params.lang === 'tr' ? 'tr' : 'en',
     })
 
@@ -98,6 +101,7 @@ export async function createReservation(params: CreateReservationParams) {
       customerPhone: params.customerPhone,
       specialRequests: params.specialRequests,
       reservationId: data?.[0]?.id || 'Unknown',
+      reservationType: params.reservationType,
     })
 
     const mgmtEmailResult = await sendEmail({
@@ -231,6 +235,7 @@ interface UpdateReservationParams {
   reservation_time: string
   special_requests?: string
   table_number?: string
+  reservation_type?: string
 }
 
 export async function updateReservation(params: UpdateReservationParams) {
@@ -286,6 +291,7 @@ export async function updateReservation(params: UpdateReservationParams) {
         customerPhone: params.customer_phone,
         specialRequests: params.special_requests,
         reservationId: params.id,
+        reservationType: params.reservation_type,
       })
 
       const mgmtEmailResult = await sendEmail({

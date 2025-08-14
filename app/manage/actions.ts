@@ -169,6 +169,7 @@ export async function updateReservationStatus(id: string, status: string, notes?
         partySize: reservation.party_size,
         status: status === "confirmed" ? "confirmed" : "cancelled",
         notes: notes,
+        reservationType: reservation.reservation_type,
         lang,
       })
 
@@ -282,6 +283,7 @@ export async function createReservation(reservationData: {
   reservation_time: string
   special_requests?: string
   status?: string
+  reservation_type?: string
 }) {
   try {
     const supabase = createServiceRoleClient()
@@ -326,6 +328,7 @@ export async function updateReservation(id: string, reservationData: {
   special_requests?: string
   status?: string
   table_number?: string
+  reservation_type?: string
 }) {
   try {
     const supabase = createServiceRoleClient()
@@ -427,6 +430,7 @@ export async function createRestaurant(data: {
   min_advance_hours?: number;
   max_party_size?: number;
   min_party_size?: number;
+  meal_only_reservations?: boolean;
 }) {
   try {
     const supabase = createServiceRoleClient()
@@ -452,6 +456,7 @@ export async function createRestaurant(data: {
         min_advance_hours: data.min_advance_hours,
         max_party_size: data.max_party_size,
         min_party_size: data.min_party_size,
+        meal_only_reservations: data.meal_only_reservations,
       })
       .select()
       .single()
@@ -504,6 +509,7 @@ export async function updateRestaurant(id: string, data: {
   min_advance_hours?: number;
   max_party_size?: number;
   min_party_size?: number;
+  meal_only_reservations?: boolean;
 }) {
   try {
     const supabase = createServiceRoleClient()
@@ -529,6 +535,7 @@ export async function updateRestaurant(id: string, data: {
         min_advance_hours: data.min_advance_hours,
         max_party_size: data.max_party_size,
         min_party_size: data.min_party_size,
+        meal_only_reservations: data.meal_only_reservations,
         updated_at: new Date().toISOString(),
       })
       .eq("id", id)

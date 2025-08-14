@@ -27,6 +27,7 @@ import { toast } from "sonner"
 interface Restaurant {
   id: string
   name: string
+  meal_only_reservations?: boolean
 }
 
 interface ReservationWithRestaurant {
@@ -78,6 +79,7 @@ export function ReservationForm({
     special_requests: "",
     status: "pending",
     table_number: "",
+    reservation_type: "meal",
   })
 
   // Load restaurants on component mount
@@ -128,6 +130,7 @@ export function ReservationForm({
         special_requests: reservation.special_requests || "",
         status: reservation.status || "pending",
         table_number: reservation.table_number || "",
+        reservation_type: (reservation as any).reservation_type || "meal",
       })
     } else if (mode === "create") {
       // Reset form for create mode
@@ -143,6 +146,7 @@ export function ReservationForm({
         special_requests: "",
         status: "pending",
         table_number: "",
+        reservation_type: "meal",
       })
     }
   }, [mode, reservation, isOpen])
@@ -247,6 +251,24 @@ export function ReservationForm({
                   <SelectItem value="confirmed">Confirmed</SelectItem>
                   <SelectItem value="cancelled">Cancelled</SelectItem>
                   <SelectItem value="completed">Completed</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="reservation_type">Reservation Type</Label>
+              <Select
+                value={formData.reservation_type}
+                onValueChange={(value) => handleInputChange("reservation_type", value)}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="meal">Dining</SelectItem>
+                  {!restaurants.find(r => r.id === formData.restaurant_id)?.meal_only_reservations && (
+                    <SelectItem value="drinks">Drinks Only</SelectItem>
+                  )}
                 </SelectContent>
               </Select>
             </div>

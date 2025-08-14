@@ -17,7 +17,7 @@ import {
 import { Textarea } from "@/components/ui/textarea"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Label } from "@/components/ui/label"
-import { Loader2, MoreHorizontal, CheckCircle, XCircle, Clock, Calendar, Mail, Edit, Grid, List, Phone, User } from "lucide-react"
+import { Loader2, MoreHorizontal, CheckCircle, XCircle, Clock, Calendar, Mail, Edit, Grid, List, Phone, User, Utensils, Coffee } from "lucide-react"
 import type { Reservation } from "@/types/supabase"
 import { updateReservationStatus } from "@/app/manage/actions"
 import { ReservationForm } from "./reservation-form"
@@ -130,11 +130,18 @@ export function ReservationTable({ reservations, onRefresh, itemsPerPage = 10 }:
             </div>
           </CardHeader>
           <CardContent className="space-y-3">
-            {reservation.reservation_areas?.name && (
-              <div>
+            <div className="flex flex-wrap gap-2">
+              {reservation.reservation_areas?.name && (
                 <Badge variant="outline">Area: {reservation.reservation_areas.name}</Badge>
-              </div>
-            )}
+              )}
+              <Badge variant={reservation.reservation_type === 'drinks' ? 'secondary' : 'default'} className="flex items-center gap-1">
+                {reservation.reservation_type === 'drinks' ? (
+                  <><Coffee className="h-3 w-3" /> Drinks Only</>
+                ) : (
+                  <><Utensils className="h-3 w-3" /> Dining</>
+                )}
+              </Badge>
+            </div>
             <div className="flex items-center space-x-2">
               <User className="h-4 w-4 text-muted-foreground" />
               <span className="font-medium">{reservation.customer_name}</span>
@@ -261,6 +268,7 @@ export function ReservationTable({ reservations, onRefresh, itemsPerPage = 10 }:
                  <TableHead>Date & Time</TableHead>
                  <TableHead className="hidden md:table-cell">Area</TableHead>
                  <TableHead className="hidden sm:table-cell">Party Size</TableHead>
+                 <TableHead className="hidden lg:table-cell">Type</TableHead>
                  <TableHead>Status</TableHead>
                  <TableHead className="text-right">Actions</TableHead>
                </TableRow>
@@ -314,6 +322,15 @@ export function ReservationTable({ reservations, onRefresh, itemsPerPage = 10 }:
                     <span className="text-muted-foreground">-</span>
                   )}</TableCell>
                    <TableCell className="hidden sm:table-cell">{reservation.party_size}</TableCell>
+                   <TableCell className="hidden lg:table-cell">
+                     <Badge variant={reservation.reservation_type === 'drinks' ? 'secondary' : 'default'} className="flex items-center gap-1 w-fit">
+                       {reservation.reservation_type === 'drinks' ? (
+                         <><Coffee className="h-3 w-3" /> Drinks</>
+                       ) : (
+                         <><Utensils className="h-3 w-3" /> Dining</>
+                       )}
+                     </Badge>
+                   </TableCell>
                    <TableCell>{getStatusBadge(reservation.status || "pending")}</TableCell>
                    <TableCell className="text-right">
                      <DropdownMenu>

@@ -131,6 +131,10 @@ export const translations = {
         termsLink: "Terms and Conditions",
         termsNoticeAnd: "and",
         privacyLink: "Privacy Policy",
+        reservationTypeTitle: "Reservation Type",
+        reservationTypeMeal: "Dining (with food)",
+        reservationTypeDrinks: "Drinks only",
+        mealOnlyNotice: "This restaurant only accepts dining reservations.",
         termsNoticeSuffix: "of Felix Smile Company.",
       },
       footer: {
@@ -443,6 +447,10 @@ export const translations = {
         termsNoticeAnd: "ve",
         privacyLink: "Gizlilik Politikası",
         termsNoticeSuffix: "kabul etmiş olursunuz.",
+        reservationType: "Rezervasyon Türü",
+        reservationTypeMeal: "Yemekli (yemek ile)",
+        reservationTypeDrinks: "Sadece içecek",
+        mealOnlyNotice: "Bu restoran sadece yemekli rezervasyon kabul etmektedir.",
       },
       footer: {
         continueButton: "Devam Et",

@@ -85,6 +85,7 @@ export function generateReservationConfirmationEmail({
   reservationDate,
   reservationTime,
   partySize,
+  reservationType,
   lang = "en",
 }: {
   customerName: string
@@ -93,6 +94,7 @@ export function generateReservationConfirmationEmail({
   reservationDate: string
   reservationTime: string
   partySize: number | string
+  reservationType?: string
   lang?: string
 }) {
   const isEnglish = lang === "en"
@@ -187,6 +189,12 @@ export function generateReservationConfirmationEmail({
             <strong>${isEnglish ? "Party Size" : "Kişi Sayısı"}:</strong>
             <span>${partySize}</span>
           </div>
+          ${reservationType ? `
+          <div class="detail-row">
+            <strong>${isEnglish ? "Reservation Type" : "Rezervasyon Türü"}:</strong>
+            <span>${reservationType === 'meal' ? (isEnglish ? 'Dining' : 'Yemek') : (isEnglish ? 'Drinks Only' : 'Sadece İçecek')}</span>
+          </div>
+          ` : ''}
         </div>
         
         <p>
@@ -222,6 +230,7 @@ export function generateManagementNotificationEmail({
   customerPhone,
   specialRequests,
   reservationId,
+  reservationType,
 }: {
   action: 'created' | 'updated'
   customerName: string
@@ -234,6 +243,7 @@ export function generateManagementNotificationEmail({
   customerPhone: string
   specialRequests?: string
   reservationId: string
+  reservationType?: string
 }) {
   const subject = `New Reservation ${action === 'created' ? 'Created' : 'Updated'}: ${restaurantName}`
 
@@ -341,6 +351,12 @@ export function generateManagementNotificationEmail({
             <strong>Party Size:</strong>
             <span>${partySize}</span>
           </div>
+          ${reservationType ? `
+          <div class="detail-row">
+            <strong>Reservation Type:</strong>
+            <span>${reservationType === 'meal' ? 'Dining' : 'Drinks Only'}</span>
+          </div>
+          ` : ''}
           ${specialRequests ? `
           <div class="detail-row">
             <strong>Special Requests:</strong>
@@ -380,6 +396,7 @@ export function generateStatusUpdateEmail({
   partySize,
   status,
   notes,
+  reservationType,
   lang = "en",
 }: {
   customerName: string
@@ -390,6 +407,7 @@ export function generateStatusUpdateEmail({
   partySize: number | string
   status: "confirmed" | "cancelled"
   notes?: string
+  reservationType?: string
   lang?: string
 }) {
   const isEnglish = lang === "en"
@@ -509,6 +527,12 @@ export function generateStatusUpdateEmail({
             <strong>${isEnglish ? "Party Size" : "Kişi Sayısı"}:</strong>
             <span>${partySize}</span>
           </div>
+          ${reservationType ? `
+          <div class="detail-row">
+            <strong>${isEnglish ? "Reservation Type" : "Rezervasyon Türü"}:</strong>
+            <span>${reservationType === 'meal' ? (isEnglish ? 'Dining' : 'Yemek') : (isEnglish ? 'Drinks Only' : 'Sadece İçecek')}</span>
+          </div>
+          ` : ''}
         </div>
         
         ${

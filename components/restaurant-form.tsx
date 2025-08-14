@@ -62,7 +62,6 @@ export function RestaurantForm({ restaurant, onSuccess, onClose, open = true }: 
   const [activeTab, setActiveTab] = useState('basic');
   const [reservationAreas, setReservationAreas] = useState<ReservationAreaFormData[]>([]);
   const [formData, setFormData] = useState({
-    // Basic info
     name: restaurant?.name || '',
     description: restaurant?.description || '',
     cuisine: restaurant?.cuisine || '',
@@ -72,7 +71,6 @@ export function RestaurantForm({ restaurant, onSuccess, onClose, open = true }: 
     atmosphere: restaurant?.atmosphere || '',
     media_type: restaurant?.media_type || '',
     media_url: restaurant?.media?.[0]?.media_url || '',
-    // Reservation settings
     reservation_enabled: restaurant?.reservation_enabled ?? true,
     opening_time: restaurant?.opening_time || '09:00',
     closing_time: restaurant?.closing_time || '22:00',
@@ -82,6 +80,7 @@ export function RestaurantForm({ restaurant, onSuccess, onClose, open = true }: 
     max_party_size: restaurant?.max_party_size || 12,
     min_party_size: restaurant?.min_party_size || 1,
     allowed_days_of_week: restaurant?.allowed_days_of_week || [1, 2, 3, 4, 5, 6, 7],
+    meal_only_reservations: (restaurant as any)?.meal_only_reservations ?? false,
   });
 
   // Reset form when creating a new restaurant (open without a restaurant)
@@ -106,6 +105,7 @@ export function RestaurantForm({ restaurant, onSuccess, onClose, open = true }: 
         max_party_size: 12,
         min_party_size: 1,
         allowed_days_of_week: [1, 2, 3, 4, 5, 6, 7],
+        meal_only_reservations: false,
       })
       setReservationAreas([])
     }
@@ -133,6 +133,7 @@ export function RestaurantForm({ restaurant, onSuccess, onClose, open = true }: 
       max_party_size: restaurant.max_party_size || 12,
       min_party_size: restaurant.min_party_size || 1,
       allowed_days_of_week: restaurant.allowed_days_of_week || [1, 2, 3, 4, 5, 6, 7],
+      meal_only_reservations: (restaurant as any)?.meal_only_reservations ?? false,
     });
     // Reset areas until loaded for this restaurant
     setReservationAreas([])
@@ -380,6 +381,15 @@ export function RestaurantForm({ restaurant, onSuccess, onClose, open = true }: 
 
               {formData.reservation_enabled && (
                 <div className="space-y-4">
+                  <div className="flex items-center space-x-2 mb-4">
+                    <Switch
+                      id="meal-only-reservations"
+                      checked={formData.meal_only_reservations}
+                      onCheckedChange={(checked) => setFormData({ ...formData, meal_only_reservations: checked })}
+                    />
+                    <Label htmlFor="meal-only-reservations">Accept only dining reservations (no drinks-only)</Label>
+                  </div>
+
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="space-y-2">
                       <Label htmlFor="opening-time">Opening Time</Label>

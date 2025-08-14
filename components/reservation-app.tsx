@@ -66,6 +66,7 @@ export function ReservationApp({ initialRestaurant, initialLang }: ReservationAp
   const [customerPhone, setCustomerPhone] = useState("")
   const [customerEmail, setCustomerEmail] = useState("")
   const [specialRequests, setSpecialRequests] = useState("")
+  const [reservationType, setReservationType] = useState("meal")
   const [message, setMessage] = useState("")
   const [isSuccess, setIsSuccess] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
@@ -214,6 +215,7 @@ export function ReservationApp({ initialRestaurant, initialLang }: ReservationAp
         customerPhone,
         customerEmail,
         specialRequests: specialRequests || undefined,
+        reservationType,
         lang: currentLang,
       })
 
@@ -363,6 +365,9 @@ export function ReservationApp({ initialRestaurant, initialLang }: ReservationAp
               setCustomerEmail={setCustomerEmail}
               specialRequests={specialRequests}
               setSpecialRequests={setSpecialRequests}
+              reservationType={reservationType}
+              setReservationType={setReservationType}
+              mealOnlyReservations={restaurantData?.meal_only_reservations || false}
               getDisplayDate={getDisplayDate}
               attemptedSubmit={showStep2Errors}
             />

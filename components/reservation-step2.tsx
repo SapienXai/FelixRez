@@ -17,6 +17,9 @@ interface ReservationStep2Props {
   setCustomerEmail: (email: string) => void
   specialRequests: string
   setSpecialRequests: (requests: string) => void
+  reservationType: string
+  setReservationType: (type: string) => void
+  mealOnlyReservations: boolean
   getDisplayDate: (date: Date, lang: string, includeDayName?: boolean) => string
   attemptedSubmit?: boolean
 }
@@ -34,6 +37,9 @@ export function ReservationStep2({
   setCustomerEmail,
   specialRequests,
   setSpecialRequests,
+  reservationType,
+  setReservationType,
+  mealOnlyReservations,
   getDisplayDate,
   attemptedSubmit = false,
 }: ReservationStep2Props) {
@@ -180,6 +186,44 @@ export function ReservationStep2({
             </div>
           </div>
         )}
+      </div>
+
+      {/* Reservation Type Selection */}
+      <div className="reservation-type-section">
+        <h2 className="section-title">{getTranslation("reserve.step2.reservationTypeTitle")}</h2>
+        <div className="reservation-type-options mt-3">
+          <div className="flex gap-4">
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input
+                type="radio"
+                name="reservationType"
+                value="meal"
+                checked={reservationType === "meal"}
+                onChange={(e) => setReservationType(e.target.value)}
+                className="w-4 h-4 text-blue-600"
+              />
+              <span className="text-sm">{getTranslation("reserve.step2.reservationTypeMeal")}</span>
+            </label>
+            {!mealOnlyReservations && (
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="radio"
+                  name="reservationType"
+                  value="drinks"
+                  checked={reservationType === "drinks"}
+                  onChange={(e) => setReservationType(e.target.value)}
+                  className="w-4 h-4 text-blue-600"
+                />
+                <span className="text-sm">{getTranslation("reserve.step2.reservationTypeDrinks")}</span>
+              </label>
+            )}
+          </div>
+          {mealOnlyReservations && (
+            <p className="text-xs text-gray-600 mt-2">
+              {getTranslation("reserve.step2.mealOnlyNotice")}
+            </p>
+          )}
+        </div>
       </div>
 
       <div className="special-request-section">

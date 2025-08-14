@@ -25,6 +25,7 @@ export interface Database {
           min_party_size: number | null
           blocked_dates: string[] | null
           special_hours: Json | null
+          meal_only_reservations: boolean | null
           created_at: string
           updated_at: string
         }
@@ -49,6 +50,7 @@ export interface Database {
           min_party_size?: number | null
           blocked_dates?: string[] | null
           special_hours?: Json | null
+          meal_only_reservations?: boolean | null
           created_at?: string
           updated_at?: string
         }
@@ -73,6 +75,7 @@ export interface Database {
           min_party_size?: number | null
           blocked_dates?: string[] | null
           special_hours?: Json | null
+          meal_only_reservations?: boolean | null
           created_at?: string
           updated_at?: string
         }
@@ -180,6 +183,7 @@ export interface Database {
           notes: string | null
           table_number: string | null
           reservation_area_id: string | null
+          reservation_type: string | null
           created_at: string
           updated_at: string
         }
@@ -197,6 +201,7 @@ export interface Database {
           notes?: string | null
           table_number?: string | null
           reservation_area_id?: string | null
+          reservation_type?: string | null
           created_at?: string
           updated_at?: string
         }
@@ -214,6 +219,7 @@ export interface Database {
           notes?: string | null
           table_number?: string | null
           reservation_area_id?: string | null
+          reservation_type?: string | null
           created_at?: string
           updated_at?: string
         }
