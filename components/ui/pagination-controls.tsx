@@ -80,15 +80,21 @@ export function PaginationControls({
 
   if (totalPages <= 1) {
     return (
-      <div className="flex items-center justify-between px-2">
+      <div className="flex flex-col space-y-3 px-2 md:flex-row md:items-center md:justify-between md:space-y-0">
         <div className="text-sm text-muted-foreground">
-          Showing {totalItems} {totalItems === 1 ? 'item' : 'items'}
+          <span className="hidden md:inline">
+            Showing {totalItems} {totalItems === 1 ? 'item' : 'items'}
+          </span>
+          <span className="md:hidden">
+            {totalItems} {totalItems === 1 ? 'item' : 'items'}
+          </span>
         </div>
         {showItemsPerPage && onItemsPerPageChange && (
-          <div className="flex items-center space-x-2">
-            <span className="text-sm text-muted-foreground">Items per page:</span>
+          <div className="flex items-center justify-center space-x-2 md:justify-start">
+            <span className="text-sm text-muted-foreground hidden md:inline">Items per page:</span>
+            <span className="text-sm text-muted-foreground md:hidden">Per page:</span>
             <Select value={itemsPerPage.toString()} onValueChange={(value) => onItemsPerPageChange(parseInt(value))}>
-              <SelectTrigger className="w-20">
+              <SelectTrigger className="w-16 md:w-20">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -105,17 +111,24 @@ export function PaginationControls({
   }
 
   return (
-    <div className="flex items-center justify-between px-2">
-      <div className="text-sm text-muted-foreground">
-        Showing {startIndex + 1} to {endIndex} of {totalItems} items
+    <div className="flex flex-col space-y-3 px-2 md:flex-row md:items-center md:justify-between md:space-y-0">
+      {/* Mobile: Compact info */}
+      <div className="text-sm text-muted-foreground md:block">
+        <span className="hidden md:inline">
+          Showing {startIndex + 1} to {endIndex} of {totalItems} items
+        </span>
+        <span className="md:hidden">
+          {startIndex + 1}-{endIndex} of {totalItems}
+        </span>
       </div>
       
-      <div className="flex items-center space-x-6">
+      <div className="flex flex-col space-y-3 md:flex-row md:items-center md:space-x-6 md:space-y-0">
         {showItemsPerPage && onItemsPerPageChange && (
-          <div className="flex items-center space-x-2">
-            <span className="text-sm text-muted-foreground">Items per page:</span>
+          <div className="flex items-center justify-center space-x-2 md:justify-start">
+            <span className="text-sm text-muted-foreground hidden md:inline">Items per page:</span>
+            <span className="text-sm text-muted-foreground md:hidden">Per page:</span>
             <Select value={itemsPerPage.toString()} onValueChange={(value) => onItemsPerPageChange(parseInt(value))}>
-              <SelectTrigger className="w-20">
+              <SelectTrigger className="w-16 md:w-20">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -129,7 +142,7 @@ export function PaginationControls({
         )}
         
         <Pagination>
-          <PaginationContent>
+          <PaginationContent className="gap-1 md:gap-1">
             <PaginationItem>
               <PaginationPrevious 
                 onClick={() => canGoPrevious && onPageChange(currentPage - 1)}
@@ -137,8 +150,9 @@ export function PaginationControls({
               />
             </PaginationItem>
             
+            {/* Show fewer page numbers on mobile */}
             {getPageNumbers().map((page, index) => (
-              <PaginationItem key={index}>
+              <PaginationItem key={index} className="hidden sm:block">
                 {page === 'ellipsis' ? (
                   <PaginationEllipsis />
                 ) : (
@@ -152,6 +166,13 @@ export function PaginationControls({
                 )}
               </PaginationItem>
             ))}
+            
+            {/* Mobile: Show current page info */}
+            <PaginationItem className="sm:hidden">
+              <span className="flex h-9 w-auto min-w-[3rem] items-center justify-center px-2 text-sm">
+                {currentPage}/{totalPages}
+              </span>
+            </PaginationItem>
             
             <PaginationItem>
               <PaginationNext 
