@@ -247,9 +247,10 @@ export default function ManageDashboard() {
               <div className="flex items-center space-x-4">
                 <Button 
                   onClick={() => router.push('/manage/reservations?action=new')}
-                  className="bg-blue-600 hover:bg-blue-700 text-white"
+                  className="bg-black hover:bg-gray-800 text-white"
+                  size="sm"
                 >
-                  + Add
+                  + {getTranslation("manage.reservations.list.addReservation")}
                 </Button>
                 <div className="w-full sm:min-w-[200px]">
                   <Select value={selectedRestaurant} onValueChange={handleRestaurantChange}>

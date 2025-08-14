@@ -203,9 +203,9 @@ export default function ReservationsPage() {
                     {getTranslation("manage.reservations.list.showing", { count: String(reservations.length) })}
                   </CardDescription>
                 </div>
-                <Button onClick={() => setShowCreateForm(true)} className="flex items-center gap-2">
+                <Button onClick={() => setShowCreateForm(true)} size="sm" className="flex items-center gap-2">
                   <Plus className="h-4 w-4" />
-                  Add Reservation
+                  {getTranslation("manage.reservations.list.addReservation")}
                 </Button>
               </CardHeader>
               <CardContent>

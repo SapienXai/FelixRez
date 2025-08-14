@@ -23,6 +23,7 @@ import {
 import { createReservation, updateReservation, getRestaurants } from "@/app/manage/actions"
 import { getReservationAreas } from "@/app/manage/reservation-areas-actions"
 import { toast } from "sonner"
+import { useLanguage } from "@/context/language-context"
 
 interface Restaurant {
   id: string
@@ -64,6 +65,7 @@ export function ReservationForm({
   reservation,
   mode,
 }: ReservationFormProps) {
+  const { getTranslation } = useLanguage()
   const [loading, setLoading] = useState(false)
   const [restaurants, setRestaurants] = useState<Restaurant[]>([])
   const [areas, setAreas] = useState<{ id: string; name: string; is_active: boolean }[]>([])
@@ -186,25 +188,25 @@ export function ReservationForm({
       <DialogContent className="w-[95vw] max-w-[425px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="text-lg">
-            {mode === "create" ? "Create Reservation" : "Edit Reservation"}
+            {mode === "create" ? getTranslation("manage.reservationForm.title") : getTranslation("manage.reservationForm.editTitle")}
           </DialogTitle>
           <DialogDescription className="text-sm">
             {mode === "create"
-              ? "Fill in the details below."
-              : "Update the reservation details."}
+              ? getTranslation("manage.reservationForm.description")
+              : getTranslation("manage.reservationForm.editDescription")}
           </DialogDescription>
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-3">
           <div className="space-y-3">
             <div className="space-y-2">
-              <Label htmlFor="restaurant" className="text-sm">Restaurant</Label>
+              <Label htmlFor="restaurant" className="text-sm">{getTranslation("manage.reservationForm.restaurant")}</Label>
               <Select
                 value={formData.restaurant_id}
                 onValueChange={(value) => handleInputChange("restaurant_id", value)}
               >
                 <SelectTrigger className="h-9">
-                  <SelectValue placeholder="Select restaurant" />
+                  <SelectValue placeholder={getTranslation("manage.reservationForm.restaurantPlaceholder")} />
                 </SelectTrigger>
                 <SelectContent>
                   {restaurants.map((restaurant) => (
@@ -217,17 +219,17 @@ export function ReservationForm({
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="area" className="text-sm">Area (optional)</Label>
+              <Label htmlFor="area" className="text-sm">{getTranslation("manage.reservationForm.area")}</Label>
               <Select
                 value={formData.reservation_area_id || ""}
                 onValueChange={(value) => handleInputChange("reservation_area_id", value === 'none' ? "" : value)}
                 disabled={!formData.restaurant_id || areas.length === 0}
               >
                 <SelectTrigger className="h-9">
-                  <SelectValue placeholder={areas.length ? "Restaurant" : "No areas"} />
+                  <SelectValue placeholder={areas.length ? getTranslation("manage.reservationForm.areaPlaceholder") : getTranslation("manage.reservationForm.noAreas")} />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="none">Restaurant</SelectItem>
+                  <SelectItem value="none">{getTranslation("manage.reservationForm.restaurant")}</SelectItem>
                   {areas.map((area) => (
                     <SelectItem key={area.id} value={area.id}>
                       {area.name}
@@ -239,36 +241,36 @@ export function ReservationForm({
 
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-2">
-                <Label htmlFor="status" className="text-sm">Status</Label>
+                <Label htmlFor="status" className="text-sm">{getTranslation("manage.reservationForm.status")}</Label>
                 <Select
                   value={formData.status}
                   onValueChange={(value) => handleInputChange("status", value)}
                 >
                   <SelectTrigger className="h-9">
-                    <SelectValue />
+                    <SelectValue placeholder={getTranslation("manage.reservationForm.statusPlaceholder")} />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="pending">Pending</SelectItem>
-                    <SelectItem value="confirmed">Confirmed</SelectItem>
-                    <SelectItem value="cancelled">Cancelled</SelectItem>
-                    <SelectItem value="completed">Completed</SelectItem>
+                    <SelectItem value="pending">{getTranslation("manage.reservationForm.statusPending")}</SelectItem>
+                    <SelectItem value="confirmed">{getTranslation("manage.reservationForm.statusConfirmed")}</SelectItem>
+                    <SelectItem value="cancelled">{getTranslation("manage.reservationForm.statusCancelled")}</SelectItem>
+                    <SelectItem value="completed">{getTranslation("manage.reservationForm.statusCompleted")}</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="reservation_type" className="text-sm">Type</Label>
+                <Label htmlFor="reservation_type" className="text-sm">{getTranslation("manage.reservationForm.reservationType")}</Label>
                 <Select
                   value={formData.reservation_type}
                   onValueChange={(value) => handleInputChange("reservation_type", value)}
                 >
                   <SelectTrigger className="h-9">
-                    <SelectValue />
+                    <SelectValue placeholder={getTranslation("manage.reservationForm.reservationTypePlaceholder")} />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="meal">Dining</SelectItem>
+                    <SelectItem value="meal">{getTranslation("manage.reservationForm.reservationTypeDining")}</SelectItem>
                     {!restaurants.find(r => r.id === formData.restaurant_id)?.meal_only_reservations && (
-                      <SelectItem value="drinks">Drinks Only</SelectItem>
+                      <SelectItem value="drinks">{getTranslation("manage.reservationForm.reservationTypeDrinks")}</SelectItem>
                     )}
                   </SelectContent>
                 </Select>
@@ -277,42 +279,45 @@ export function ReservationForm({
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="customer_name" className="text-sm">Customer Name</Label>
+            <Label htmlFor="customer_name" className="text-sm">{getTranslation("manage.reservationForm.customerName")}</Label>
             <Input
               id="customer_name"
               className="h-9"
               value={formData.customer_name}
               onChange={(e) => handleInputChange("customer_name", e.target.value)}
+              placeholder={getTranslation("manage.reservationForm.customerNamePlaceholder")}
               required
             />
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="customer_email" className="text-sm">Email</Label>
+            <Label htmlFor="customer_email" className="text-sm">{getTranslation("manage.reservationForm.email")}</Label>
             <Input
               id="customer_email"
               type="email"
               className="h-9"
               value={formData.customer_email}
               onChange={(e) => handleInputChange("customer_email", e.target.value)}
+              placeholder={getTranslation("manage.reservationForm.emailPlaceholder")}
               required
             />
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="customer_phone" className="text-sm">Phone</Label>
+            <Label htmlFor="customer_phone" className="text-sm">{getTranslation("manage.reservationForm.phone")}</Label>
             <Input
               id="customer_phone"
               className="h-9"
               value={formData.customer_phone}
               onChange={(e) => handleInputChange("customer_phone", e.target.value)}
+              placeholder={getTranslation("manage.reservationForm.phonePlaceholder")}
               required
             />
           </div>
 
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-2">
-              <Label htmlFor="party_size" className="text-sm">Party Size</Label>
+              <Label htmlFor="party_size" className="text-sm">{getTranslation("manage.reservationForm.partySize")}</Label>
               <Input
                 id="party_size"
                 type="number"
@@ -324,25 +329,26 @@ export function ReservationForm({
                   const value = parseInt(e.target.value)
                   handleInputChange("party_size", isNaN(value) ? 1 : value)
                 }}
+                placeholder={getTranslation("manage.reservationForm.partySizePlaceholder")}
                 required
               />
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="table_number" className="text-sm">Table</Label>
+              <Label htmlFor="table_number" className="text-sm">{getTranslation("manage.reservationForm.tableNumber")}</Label>
               <Input
                 id="table_number"
                 className="h-9"
                 value={formData.table_number}
                 onChange={(e) => handleInputChange("table_number", e.target.value)}
-                placeholder="e.g., T1, A5"
+                placeholder={getTranslation("manage.reservationForm.tableNumberPlaceholder")}
               />
             </div>
           </div>
 
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-2">
-              <Label htmlFor="reservation_date" className="text-sm">Date</Label>
+              <Label htmlFor="reservation_date" className="text-sm">{getTranslation("manage.reservationForm.date")}</Label>
               <Input
                 id="reservation_date"
                 type="date"
@@ -354,7 +360,7 @@ export function ReservationForm({
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="reservation_time" className="text-sm">Time</Label>
+              <Label htmlFor="reservation_time" className="text-sm">{getTranslation("manage.reservationForm.time")}</Label>
               <Input
                 id="reservation_time"
                 type="time"
@@ -367,12 +373,12 @@ export function ReservationForm({
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="special_requests" className="text-sm">Special Requests</Label>
+            <Label htmlFor="special_requests" className="text-sm">{getTranslation("manage.reservationForm.specialRequests")}</Label>
             <Textarea
               id="special_requests"
               value={formData.special_requests}
               onChange={(e) => handleInputChange("special_requests", e.target.value)}
-              placeholder="Any special requests..."
+              placeholder={getTranslation("manage.reservationForm.specialRequestsPlaceholder")}
               rows={2}
               className="text-sm"
             />
@@ -380,16 +386,16 @@ export function ReservationForm({
 
           <DialogFooter className="flex-col sm:flex-row gap-2 pt-4">
             <Button type="button" variant="outline" onClick={onClose} className="w-full sm:w-auto h-9">
-              Cancel
+              {getTranslation("manage.reservationForm.cancel")}
             </Button>
             <Button type="submit" disabled={loading} className="w-full sm:w-auto h-9">
               {loading
                 ? mode === "create"
-                  ? "Creating..."
-                  : "Updating..."
+                  ? getTranslation("manage.reservationForm.creating")
+                  : getTranslation("manage.reservationForm.updating")
                 : mode === "create"
-                ? "Create"
-                : "Update"}
+                ? getTranslation("manage.reservationForm.create")
+                : getTranslation("manage.reservationForm.update")}
             </Button>
           </DialogFooter>
         </form>
