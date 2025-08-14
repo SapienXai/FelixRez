@@ -6,7 +6,6 @@ export const translations = {
     },
     header: {
       title: "Felix Restaurants",
-      subtitle: "Experience culinary excellence in stunning locations",
     },
     card: {
       cuisine: "Cuisine",
@@ -34,8 +33,13 @@ export const translations = {
       atmosphereValue: "Lively",
     },
     footer: {
-      copyright: "© 2025 Felix Restaurants. All rights reserved.",
-    },
+    copyright: "© 2024 Felix Restaurant. All rights reserved.",
+    motto: "Where every meal becomes a cherished memory",
+    website: "Website",
+    followUs: "Follow Us",
+    terms: "Terms",
+    privacy: "Privacy"
+  },
     recentReservation: {
       title: "Your Recent Reservation",
       edit: "Edit",
@@ -312,7 +316,6 @@ export const translations = {
     },
     header: {
       title: "Felix Restoranları",
-      subtitle: "Büyüleyici konumlarda mutfak mükemmelliğini deneyimleyin",
     },
     card: {
       cuisine: "Mutfak",
@@ -340,8 +343,13 @@ export const translations = {
       atmosphereValue: "Canlı",
     },
     footer: {
-      copyright: "© 2025 Felix Restoranları. Tüm hakları saklıdır.",
-    },
+    copyright: "© 2024 Felix Restaurant. Tüm hakları saklıdır.",
+    motto: "Her yemeğin değerli bir anıya dönüştüğü yer",
+    website: "Web Sitesi",
+    followUs: "Bizi Takip Edin",
+    terms: "Şartlar",
+    privacy: "Gizlilik"
+  },
     recentReservation: {
       title: "Son Rezervasyonunuz",
       edit: "Düzenle",

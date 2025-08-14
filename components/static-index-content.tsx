@@ -3,7 +3,6 @@ export function StaticIndexContent() {
     <div className="index-page">
       <div className="index-page-header">
         <h1 className="main-title">Felix Restaurants</h1>
-        <p className="sub-title">Experience culinary excellence in stunning locations</p>
       </div>
       <div className="index-page-content">
         <div className="restaurant-grid">

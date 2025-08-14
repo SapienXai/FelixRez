@@ -59,6 +59,12 @@ export function RestaurantCard({ restaurant }: RestaurantCardProps) {
           <video ref={videoRef} src={restaurant.media[0]} autoPlay loop muted playsInline poster="" />
         )}
       </div>
+      
+      {/* Call button in top-right corner */}
+      <a href={`tel:${restaurant.phone}`} className="call-btn-corner">
+        <i className="fas fa-phone"></i>
+      </a>
+      
       <div className="card-overlay">
         <div className="card-content">
           <div className="card-top">
@@ -88,10 +94,6 @@ export function RestaurantCard({ restaurant }: RestaurantCardProps) {
                 {getTranslation("card.reserveButton")}
               </Link>
               <div className="button-group">
-                <a href={`tel:${restaurant.phone}`} className="contact-btn">
-                  <i className="fas fa-phone"></i>
-                  <span>{getTranslation("card.callButton")}</span>
-                </a>
                 <a
                   href={`https://wa.me/${restaurant.phone.replace("+", "")}`}
                   target="_blank"
@@ -109,6 +111,15 @@ export function RestaurantCard({ restaurant }: RestaurantCardProps) {
                 >
                   <i className="fas fa-map-marker-alt"></i>
                   <span>{getTranslation("card.locationButton")}</span>
+                </a>
+                <a
+                  href="https://www.instagram.com/stories/highlights/18081008554710474/"
+                  target="_blank"
+                  className="contact-btn events-btn"
+                  rel="noreferrer"
+                >
+                  <i className="fas fa-calendar-alt"></i>
+                  <span>Events</span>
                 </a>
               </div>
             </div>

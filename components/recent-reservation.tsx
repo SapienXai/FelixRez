@@ -176,11 +176,7 @@ export function RecentReservation() {
   }
 
   if (!reservation) {
-    return (
-      <div className="index-page-subtitle-container">
-        <p>{getTranslation("header.subtitle")}</p>
-      </div>
-    )
+    return null
   }
 
   return (

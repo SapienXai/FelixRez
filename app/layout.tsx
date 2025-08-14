@@ -10,8 +10,8 @@ import { Toaster } from "@/components/ui/toaster"
 const inter = Inter({ subsets: ["latin"] })
 
 export const metadata: Metadata = {
-  title: "Felix Restaurants - Premium Dining & Table Reservations",
-  description: "Experience culinary excellence at Felix Restaurants. Book your table at our stunning locations including Felix Beach, Felix Garden, and Felix Marina. Premium dining with waterfront views, elegant atmosphere, and exceptional cuisine.",
+  title: "Felix Reservations",
+  description: "Premium Dining & Table Reservations: Experience culinary excellence at Felix Restaurants. Book your table at our stunning locations with waterfront views and exceptional cuisine.",
   keywords: "Felix Restaurants, table reservation, fine dining, restaurant booking, waterfront dining, luxury restaurants, Turkish cuisine, seafood restaurant, beach dining, marina restaurant, garden restaurant, Marmaris restaurants, premium dining, culinary excellence",
   authors: [{ name: "Felix Restaurants" }],
   creator: "Felix Restaurants",
@@ -30,8 +30,8 @@ export const metadata: Metadata = {
     },
   },
   openGraph: {
-    title: "Felix Restaurants - Premium Dining & Table Reservations",
-    description: "Experience culinary excellence at Felix Restaurants. Book your table at our stunning locations with waterfront views and exceptional cuisine.",
+    title: "Felix Reservations",
+    description: "Premium Dining & Table Reservations: Experience culinary excellence at Felix Restaurants. Book your table at our stunning locations with waterfront views and exceptional cuisine.",
     url: 'https://reserve.felixsmile.com',
     siteName: 'Felix Restaurants',
     images: [
@@ -47,8 +47,8 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: 'summary_large_image',
-    title: "Felix Restaurants - Premium Dining & Table Reservations",
-    description: "Experience culinary excellence at Felix Restaurants. Book your table at our stunning locations with waterfront views.",
+    title: "Felix Reservations",
+    description: "Premium Dining & Table Reservations: Experience culinary excellence at Felix Restaurants. Book your table at our stunning locations with waterfront views and exceptional cuisine.",
     images: ['/assets/felixBanner.jpeg'],
   },
   robots: {

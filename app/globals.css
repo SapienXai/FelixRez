@@ -72,17 +72,7 @@ body {
   padding-top: 56px;
 }
 
-.index-page-subtitle-container {
-  text-align: center;
-  padding: 20px 20px;
-  background-color: #f5f5f7;
-}
 
-.index-page-subtitle-container p {
-  font-size: 1.1rem;
-  color: #666;
-  margin: 0;
-}
 
 /* Restaurant Grid Styles */
 .restaurant-grid {
@@ -252,6 +242,106 @@ body {
 .contact-btn i {
   margin-right: 8px;
   font-size: 1rem;
+}
+
+.call-btn-corner {
+  position: absolute;
+  top: 15px;
+  right: 15px;
+  background-color: rgba(255, 255, 255, 0.9);
+  color: #333;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-decoration: none;
+  transition: all 0.3s ease;
+  z-index: 10;
+  backdrop-filter: blur(10px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.call-btn-corner:hover {
+  background-color: rgba(255, 255, 255, 1);
+  transform: scale(1.1);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.25);
+}
+
+.call-btn-corner i {
+  font-size: 18px;
+  color: #333;
+}
+
+.events-btn {
+  background: linear-gradient(45deg, #ff6b6b, #4ecdc4, #45b7d1, #96ceb4, #ffeaa7, #fd79a8);
+  background-size: 300% 300%;
+  animation: gradientShift 3s ease infinite;
+  color: white !important;
+  font-weight: 700;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2), 0 0 20px rgba(255, 255, 255, 0.1) inset;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  position: relative;
+  overflow: hidden;
+}
+
+.events-btn::before {
+  content: '';
+  position: absolute;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  background: linear-gradient(45deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+  transform: rotate(45deg);
+  animation: shine 2s infinite;
+}
+
+.events-btn:hover {
+  background: linear-gradient(45deg, #ff5252, #26a69a, #2196f3, #66bb6a, #ffcc02, #e91e63);
+  transform: scale(1.05) translateY(-2px);
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3), 0 0 30px rgba(255, 255, 255, 0.2) inset;
+}
+
+.events-btn i {
+  color: white !important;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+  animation: pulse 2s infinite;
+}
+
+@keyframes gradientShift {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+@keyframes shine {
+  0% {
+    transform: translateX(-100%) translateY(-100%) rotate(45deg);
+  }
+  50% {
+    transform: translateX(100%) translateY(100%) rotate(45deg);
+  }
+  100% {
+    transform: translateX(200%) translateY(200%) rotate(45deg);
+  }
+}
+
+@keyframes pulse {
+  0%, 100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.1);
+  }
 }
 
 footer {
@@ -778,6 +868,7 @@ footer {
 @media (max-width: 768px) {
   .restaurant-grid {
     grid-template-columns: 1fr;
+    padding-top: 40px;
   }
   .restaurant-card {
     height: 500px;
@@ -794,11 +885,21 @@ footer {
   .col {
     margin-bottom: 1rem;
   }
+  .call-btn-corner {
+    width: 44px;
+    height: 44px;
+    top: 12px;
+    right: 12px;
+  }
+  .call-btn-corner i {
+    font-size: 16px;
+  }
 }
 
 @media (max-width: 480px) {
   .restaurant-grid {
     padding: 10px;
+    padding-top: 30px;
   }
   .restaurant-card {
     height: auto;
@@ -834,5 +935,202 @@ footer {
   .contact-btn i {
     margin-right: 5px;
     font-size: 0.9rem;
+  }
+  .call-btn-corner {
+    width: 40px;
+    height: 40px;
+    top: 10px;
+    right: 10px;
+  }
+  .call-btn-corner i {
+    font-size: 14px;
+  }
+  .events-btn {
+    animation-duration: 4s;
+  }
+  .events-btn::before {
+    animation-duration: 3s;
+  }
+  .events-btn i {
+    animation-duration: 3s;
+  }
+}
+
+/* Footer Styles */
+.footer {
+  background: #f5f5f5;
+  color: #333;
+  padding: 3rem 0 2rem;
+  margin-top: auto;
+}
+
+.footer-content {
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 0 2rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 2rem;
+}
+
+.footer-social {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+}
+
+.footer-social h3 {
+  font-size: 1rem;
+  font-weight: 500;
+  margin-bottom: 0;
+  color: #333;
+}
+
+.social-links {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.social-link {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  background: rgba(0, 0, 0, 0.05);
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  border-radius: 50%;
+  color: #555;
+  text-decoration: none;
+  transition: all 0.3s ease;
+}
+
+.social-link:hover {
+  background: rgba(0, 0, 0, 0.1);
+  border-color: rgba(0, 0, 0, 0.2);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  color: #333;
+}
+
+.social-link svg {
+  width: 20px;
+  height: 20px;
+  fill: currentColor;
+}
+
+.footer-legal {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  text-align: center;
+}
+
+.legal-links {
+  display: flex;
+  gap: 0.75rem;
+  font-size: 0.8rem;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.legal-link {
+  color: #666;
+  text-decoration: none;
+  transition: color 0.3s ease;
+  white-space: nowrap;
+}
+
+.legal-link:hover {
+  color: #333;
+  text-decoration: underline;
+}
+
+.footer-copyright {
+  grid-column: 1 / -1;
+  text-align: center;
+  padding-top: 2rem;
+  margin-top: 2rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.footer-motto {
+  font-style: italic;
+  font-size: 0.95rem;
+  color: #555;
+  margin-bottom: 0.25rem;
+  font-weight: 300;
+}
+
+.footer-copyright p:last-child {
+  color: #666;
+  font-size: 0.8rem;
+  margin: 0;
+}
+
+/* Footer Responsive Styles */
+@media (max-width: 768px) {
+  .footer {
+    padding: 2rem 0 1.5rem;
+  }
+
+  .footer-content {
+    gap: 1.5rem;
+    padding: 0 1rem;
+  }
+
+  .social-link {
+    width: 36px;
+    height: 36px;
+  }
+
+  .social-link svg {
+    width: 18px;
+    height: 18px;
+  }
+
+  .footer-social h3 {
+    font-size: 0.9rem;
+  }
+
+  .footer-motto {
+    font-size: 0.85rem;
+  }
+
+  .legal-links {
+    font-size: 0.75rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .footer {
+    padding: 1.5rem 0 1rem;
+  }
+
+  .footer-content {
+    gap: 1.25rem;
+  }
+
+  .social-links {
+    gap: 0.5rem;
+  }
+
+  .legal-links {
+    gap: 0.5rem;
+    font-size: 0.7rem;
+  }
+
+  .footer-motto {
+    font-size: 0.8rem;
+  }
+
+  .footer-copyright p:last-child {
+    font-size: 0.75rem;
   }
 }
