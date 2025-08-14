@@ -239,8 +239,8 @@ export default function ManageDashboard() {
       <div className="flex-1 flex flex-col overflow-hidden">
         <ManageHeader user={user} toggleSidebar={toggleSidebar} />
 
-        <main className="flex-1 overflow-y-auto p-4 md:p-6">
-          <div className="max-w-7xl mx-auto">
+        <main className="flex-1 overflow-y-auto py-2 md:py-2">
+          <div className="max-w-5xl lg:max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="flex flex-col space-y-4 sm:flex-row sm:items-center sm:justify-between sm:space-y-0 mb-6">
               <h1 className="text-xl md:text-2xl font-semibold">{getTranslation("manage.dashboard.title")}</h1>
               
