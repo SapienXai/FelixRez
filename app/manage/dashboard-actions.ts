@@ -2,7 +2,7 @@
 
 import { createServiceRoleClient } from "@/lib/supabase"
 
-export async function getDashboardStats(restaurantId?: string) {
+export async function getDashboardStats(restaurantId?: string, selectedDate?: string) {
   try {
     const supabase = createServiceRoleClient()
 
@@ -13,6 +13,10 @@ export async function getDashboardStats(restaurantId?: string) {
     
     if (restaurantId) {
       totalQuery = totalQuery.eq("restaurant_id", restaurantId)
+    }
+    
+    if (selectedDate) {
+      totalQuery = totalQuery.eq("reservation_date", selectedDate)
     }
 
     const { count: total, error: totalError } = await totalQuery
@@ -31,6 +35,10 @@ export async function getDashboardStats(restaurantId?: string) {
     if (restaurantId) {
       pendingQuery = pendingQuery.eq("restaurant_id", restaurantId)
     }
+    
+    if (selectedDate) {
+      pendingQuery = pendingQuery.eq("reservation_date", selectedDate)
+    }
 
     const { count: pending, error: pendingError } = await pendingQuery
 
@@ -47,6 +55,10 @@ export async function getDashboardStats(restaurantId?: string) {
     
     if (restaurantId) {
       confirmedQuery = confirmedQuery.eq("restaurant_id", restaurantId)
+    }
+    
+    if (selectedDate) {
+      confirmedQuery = confirmedQuery.eq("reservation_date", selectedDate)
     }
 
     const { count: confirmed, error: confirmedError } = await confirmedQuery
@@ -65,6 +77,10 @@ export async function getDashboardStats(restaurantId?: string) {
     if (restaurantId) {
       cancelledQuery = cancelledQuery.eq("restaurant_id", restaurantId)
     }
+    
+    if (selectedDate) {
+      cancelledQuery = cancelledQuery.eq("reservation_date", selectedDate)
+    }
 
     const { count: cancelled, error: cancelledError } = await cancelledQuery
 
@@ -81,6 +97,10 @@ export async function getDashboardStats(restaurantId?: string) {
     
     if (restaurantId) {
       kuverQuery = kuverQuery.eq("restaurant_id", restaurantId)
+    }
+    
+    if (selectedDate) {
+      kuverQuery = kuverQuery.eq("reservation_date", selectedDate)
     }
 
     const { data: kuverData, error: kuverError } = await kuverQuery
@@ -101,6 +121,10 @@ export async function getDashboardStats(restaurantId?: string) {
     if (restaurantId) {
       mealQuery = mealQuery.eq("restaurant_id", restaurantId)
     }
+    
+    if (selectedDate) {
+      mealQuery = mealQuery.eq("reservation_date", selectedDate)
+    }
 
     const { count: totalMealReservations, error: mealError } = await mealQuery
 
@@ -114,6 +138,9 @@ export async function getDashboardStats(restaurantId?: string) {
     const todayStr = today.getFullYear() + '-' + 
       String(today.getMonth() + 1).padStart(2, '0') + '-' + 
       String(today.getDate()).padStart(2, '0')
+    
+    // Use selected date or today's date for deck/terrace queries
+    const dateForAreaQuery = selectedDate || todayStr
 
     // Get deck reservations
     let deckQuery = supabase
@@ -123,7 +150,7 @@ export async function getDashboardStats(restaurantId?: string) {
         reservation_areas!inner(name)
       `)
       .eq("status", "confirmed")
-      .eq("reservation_date", todayStr)
+      .eq("reservation_date", dateForAreaQuery)
       .ilike("reservation_areas.name", "%deck%")
     
     if (restaurantId) {
@@ -138,7 +165,7 @@ export async function getDashboardStats(restaurantId?: string) {
         reservation_areas!inner(name)
       `)
       .eq("status", "confirmed")
-      .eq("reservation_date", todayStr)
+      .eq("reservation_date", dateForAreaQuery)
       .ilike("reservation_areas.name", "%terrace%")
     
     if (restaurantId) {
@@ -231,17 +258,19 @@ export async function getDashboardStats(restaurantId?: string) {
   }
 }
 
-export async function getTodayReservations(restaurantId?: string) {
+export async function getTodayReservations(restaurantId?: string, selectedDate?: string) {
   try {
     const supabase = createServiceRoleClient()
 
-    // Use system date to avoid timezone issues
-    const today = new Date()
-    const todayStr = today.getFullYear() + '-' + 
-      String(today.getMonth() + 1).padStart(2, '0') + '-' + 
-      String(today.getDate()).padStart(2, '0')
+    // Use selected date or system date to avoid timezone issues
+    const dateToUse = selectedDate || (() => {
+      const today = new Date()
+      return today.getFullYear() + '-' + 
+        String(today.getMonth() + 1).padStart(2, '0') + '-' + 
+        String(today.getDate()).padStart(2, '0')
+    })()
 
-    console.log('getTodayReservations: Looking for date:', todayStr)
+    console.log('getTodayReservations: Looking for date:', dateToUse)
 
     let query = supabase
       .from("reservations")
@@ -250,7 +279,7 @@ export async function getTodayReservations(restaurantId?: string) {
         restaurants (id, name),
         reservation_areas (id, name)
       `)
-      .eq("reservation_date", todayStr)
+      .eq("reservation_date", dateToUse)
     
     if (restaurantId) {
       query = query.eq("restaurant_id", restaurantId)
@@ -302,25 +331,9 @@ export async function getNewReservations(restaurantId?: string) {
   }
 }
 
-export async function getUpcomingReservations(restaurantId?: string) {
+export async function getUpcomingReservations(restaurantId?: string, selectedDate?: string) {
   try {
     const supabase = createServiceRoleClient()
-
-    // Use system date to avoid timezone issues
-    const today = new Date()
-    const tomorrow = new Date(today)
-    tomorrow.setDate(tomorrow.getDate() + 1)
-    const nextWeek = new Date(today)
-    nextWeek.setDate(nextWeek.getDate() + 7)
-
-    const tomorrowStr = tomorrow.getFullYear() + '-' + 
-      String(tomorrow.getMonth() + 1).padStart(2, '0') + '-' + 
-      String(tomorrow.getDate()).padStart(2, '0')
-    const nextWeekStr = nextWeek.getFullYear() + '-' + 
-      String(nextWeek.getMonth() + 1).padStart(2, '0') + '-' + 
-      String(nextWeek.getDate()).padStart(2, '0')
-
-    console.log('getUpcomingReservations: Looking from', tomorrowStr, 'to', nextWeekStr)
 
     let query = supabase
       .from("reservations")
@@ -329,8 +342,31 @@ export async function getUpcomingReservations(restaurantId?: string) {
         restaurants (id, name),
         reservation_areas (id, name)
       `)
-      .gte("reservation_date", tomorrowStr)
-      .lt("reservation_date", nextWeekStr)
+    
+    if (selectedDate) {
+      // If a specific date is selected, get reservations for that date
+      query = query.eq("reservation_date", selectedDate)
+    } else {
+      // Use system date to avoid timezone issues for upcoming reservations
+      const today = new Date()
+      const tomorrow = new Date(today)
+      tomorrow.setDate(tomorrow.getDate() + 1)
+      const nextWeek = new Date(today)
+      nextWeek.setDate(nextWeek.getDate() + 7)
+
+      const tomorrowStr = tomorrow.getFullYear() + '-' + 
+        String(tomorrow.getMonth() + 1).padStart(2, '0') + '-' + 
+        String(tomorrow.getDate()).padStart(2, '0')
+      const nextWeekStr = nextWeek.getFullYear() + '-' + 
+        String(nextWeek.getMonth() + 1).padStart(2, '0') + '-' + 
+        String(nextWeek.getDate()).padStart(2, '0')
+
+      console.log('getUpcomingReservations: Looking from', tomorrowStr, 'to', nextWeekStr)
+      
+      query = query
+        .gte("reservation_date", tomorrowStr)
+        .lt("reservation_date", nextWeekStr)
+    }
     
     if (restaurantId) {
       query = query.eq("restaurant_id", restaurantId)
