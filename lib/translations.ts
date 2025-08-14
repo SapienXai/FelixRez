@@ -15,6 +15,7 @@ export const translations = {
       callButton: "Call",
       whatsappButton: "WhatsApp",
       locationButton: "Location",
+      eventsButton: "Events",
     },
     felixBeach: {
       description: "Dine with your toes in the sand and the sound of waves as your backdrop",
@@ -33,7 +34,7 @@ export const translations = {
       atmosphereValue: "Lively",
     },
     footer: {
-    copyright: "© 2024 Felix Restaurant. All rights reserved.",
+    copyright: "© 2025 Felix Restaurant. All rights reserved.",
     motto: "Where every meal becomes a cherished memory",
     website: "Website",
     followUs: "Follow Us",
@@ -325,6 +326,7 @@ export const translations = {
       callButton: "Ara",
       whatsappButton: "WhatsApp",
       locationButton: "Konum",
+      eventsButton: "Etkinlikler",
     },
     felixBeach: {
       description: "Ayaklarınız kumda, dalga sesleri eşliğinde yemek yiyin",
@@ -343,7 +345,7 @@ export const translations = {
       atmosphereValue: "Canlı",
     },
     footer: {
-    copyright: "© 2024 Felix Restaurant. Tüm hakları saklıdır.",
+    copyright: "© 2025 Felix Restaurant. Tüm hakları saklıdır.",
     motto: "Her yemeğin değerli bir anıya dönüştüğü yer",
     website: "Web Sitesi",
     followUs: "Bizi Takip Edin",

@@ -278,9 +278,8 @@ body {
   background: linear-gradient(45deg, #ff6b6b, #4ecdc4, #45b7d1, #96ceb4, #ffeaa7, #fd79a8);
   background-size: 300% 300%;
   animation: gradientShift 3s ease infinite;
-  color: white !important;
+  color: black !important;
   font-weight: 700;
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
   box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2), 0 0 20px rgba(255, 255, 255, 0.1) inset;
   border: 2px solid rgba(255, 255, 255, 0.3);
   position: relative;
@@ -306,8 +305,7 @@ body {
 }
 
 .events-btn i {
-  color: white !important;
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+  color: black !important;
   animation: pulse 2s infinite;
 }
 
@@ -1062,7 +1060,7 @@ footer {
 
 .footer-motto {
   font-style: italic;
-  font-size: 0.95rem;
+  font-size: 0.8rem;
   color: #555;
   margin-bottom: 0.25rem;
   font-weight: 300;
@@ -1070,7 +1068,7 @@ footer {
 
 .footer-copyright p:last-child {
   color: #666;
-  font-size: 0.8rem;
+  font-size: 0.7rem;
   margin: 0;
 }
 
@@ -1100,7 +1098,7 @@ footer {
   }
 
   .footer-motto {
-    font-size: 0.85rem;
+    font-size: 0.75rem;
   }
 
   .legal-links {
@@ -1127,10 +1125,10 @@ footer {
   }
 
   .footer-motto {
-    font-size: 0.8rem;
+    font-size: 0.7rem;
   }
 
   .footer-copyright p:last-child {
-    font-size: 0.75rem;
+    font-size: 0.65rem;
   }
 }

@@ -119,7 +119,7 @@ export function RestaurantCard({ restaurant }: RestaurantCardProps) {
                   rel="noreferrer"
                 >
                   <i className="fas fa-calendar-alt"></i>
-                  <span>Events</span>
+                  <span>{getTranslation("card.eventsButton")}</span>
                 </a>
               </div>
             </div>
