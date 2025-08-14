@@ -73,8 +73,98 @@ export async function getDashboardStats(restaurantId?: string) {
       return { success: false, message: cancelledError.message }
     }
 
-    // Get reservations from last month
+    // Get total kuver (customers served) - sum of party_size for confirmed reservations
+    let kuverQuery = supabase
+      .from("reservations")
+      .select("party_size")
+      .eq("status", "confirmed")
+    
+    if (restaurantId) {
+      kuverQuery = kuverQuery.eq("restaurant_id", restaurantId)
+    }
+
+    const { data: kuverData, error: kuverError } = await kuverQuery
+
+    if (kuverError) {
+      console.error("Error fetching kuver data:", kuverError)
+      return { success: false, message: kuverError.message }
+    }
+
+    const totalKuver = kuverData?.reduce((sum, reservation) => sum + reservation.party_size, 0) || 0
+
+    // Get total meal reservations
+    let mealQuery = supabase
+      .from("reservations")
+      .select("*", { count: "exact", head: true })
+      .eq("reservation_type", "meal")
+    
+    if (restaurantId) {
+      mealQuery = mealQuery.eq("restaurant_id", restaurantId)
+    }
+
+    const { count: totalMealReservations, error: mealError } = await mealQuery
+
+    if (mealError) {
+      console.error("Error fetching meal reservations:", mealError)
+      return { success: false, message: mealError.message }
+    }
+
+    // Get current kuvers on deck/terrace (today's confirmed reservations in deck/terrace areas)
     const today = new Date()
+    const todayStr = today.getFullYear() + '-' + 
+      String(today.getMonth() + 1).padStart(2, '0') + '-' + 
+      String(today.getDate()).padStart(2, '0')
+
+    // Get deck reservations
+    let deckQuery = supabase
+      .from("reservations")
+      .select(`
+        party_size,
+        reservation_areas!inner(name)
+      `)
+      .eq("status", "confirmed")
+      .eq("reservation_date", todayStr)
+      .ilike("reservation_areas.name", "%deck%")
+    
+    if (restaurantId) {
+      deckQuery = deckQuery.eq("restaurant_id", restaurantId)
+    }
+
+    // Get terrace reservations
+    let terraceQuery = supabase
+      .from("reservations")
+      .select(`
+        party_size,
+        reservation_areas!inner(name)
+      `)
+      .eq("status", "confirmed")
+      .eq("reservation_date", todayStr)
+      .ilike("reservation_areas.name", "%terrace%")
+    
+    if (restaurantId) {
+      terraceQuery = terraceQuery.eq("restaurant_id", restaurantId)
+    }
+
+    const [{ data: deckData, error: deckError }, { data: terraceData, error: terraceError }] = await Promise.all([
+      deckQuery,
+      terraceQuery
+    ])
+
+    if (deckError) {
+      console.error("Error fetching deck kuvers:", deckError)
+      return { success: false, message: deckError.message }
+    }
+
+    if (terraceError) {
+      console.error("Error fetching terrace kuvers:", terraceError)
+      return { success: false, message: terraceError.message }
+    }
+
+    const deckKuvers = deckData?.reduce((sum, reservation) => sum + reservation.party_size, 0) || 0
+    const terraceKuvers = terraceData?.reduce((sum, reservation) => sum + reservation.party_size, 0) || 0
+    const deckTerraceKuvers = deckKuvers + terraceKuvers
+
+    // Get reservations from last month
     const lastMonth = new Date(today)
     lastMonth.setMonth(lastMonth.getMonth() - 1)
 
@@ -130,6 +220,9 @@ export async function getDashboardStats(restaurantId?: string) {
         confirmed: confirmed || 0,
         cancelled: cancelled || 0,
         percentChange,
+        totalKuver: totalKuver,
+        totalMealReservations: totalMealReservations || 0,
+        deckTerraceKuvers: deckTerraceKuvers
       },
     }
   } catch (error) {

@@ -6,7 +6,7 @@ import { getSupabaseBrowserClient } from "@/lib/supabase"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { CalendarClock, Clock, CheckCircle, XCircle, TrendingUp } from "lucide-react"
+import { CalendarClock, Clock, CheckCircle, XCircle, TrendingUp, Users, UtensilsCrossed, MapPin, ChevronDown, ChevronUp } from "lucide-react"
 import { getDashboardStats, getTodayReservations, getUpcomingReservations, getNewReservations } from "./dashboard-actions"
 import { getRestaurants } from "./actions"
 import { ReservationList } from "@/components/manage/reservation-list"
@@ -26,14 +26,18 @@ export default function ManageDashboard() {
     confirmed: 0,
     cancelled: 0,
     percentChange: 0,
+    totalKuver: 0,
+    totalMealReservations: 0,
+    deckTerraceKuvers: 0,
   })
   const [newReservations, setNewReservations] = useState<any[]>([])
   const [todayReservations, setTodayReservations] = useState<any[]>([])
   const [upcomingReservations, setUpcomingReservations] = useState<any[]>([])
   const [restaurants, setRestaurants] = useState<any[]>([])
-  const [selectedRestaurant, setSelectedRestaurant] = useState<string>("all")
   const [statusFilter, setStatusFilter] = useState<string>("all")
+  const [selectedRestaurant, setSelectedRestaurant] = useState<string>("all")
   const [sidebarOpen, setSidebarOpen] = useState(false)
+  const [cardsExpanded, setCardsExpanded] = useState(false)
   const [user, setUser] = useState({ email: "", name: "Admin User" })
   const router = useRouter()
   const supabase = getSupabaseBrowserClient()
@@ -78,8 +82,17 @@ export default function ManageDashboard() {
       const restaurantFilter = selectedRestaurant === "all" || !selectedRestaurant ? undefined : selectedRestaurant
       const statsResult = await getDashboardStats(restaurantFilter)
       if (statsResult.success && statsResult.stats) {
-        setStats(statsResult.stats)
-      }
+         setStats({
+           total: statsResult.stats.total,
+           pending: statsResult.stats.pending,
+           confirmed: statsResult.stats.confirmed,
+           cancelled: statsResult.stats.cancelled,
+           percentChange: statsResult.stats.percentChange,
+           totalKuver: statsResult.stats.totalKuver,
+           totalMealReservations: statsResult.stats.totalMealReservations,
+           deckTerraceKuvers: statsResult.stats.deckTerraceKuvers,
+         })
+       }
       setIsStatsLoading(false)
     }
 
@@ -153,7 +166,16 @@ export default function ManageDashboard() {
           // Refresh stats to keep counters in sync
           const statsResult = await getDashboardStats(selectedRestaurant === 'all' ? undefined : selectedRestaurant)
           if (statsResult.success && statsResult.stats) {
-            setStats(statsResult.stats)
+            setStats({
+              total: statsResult.stats.total,
+              pending: statsResult.stats.pending,
+              confirmed: statsResult.stats.confirmed,
+              cancelled: statsResult.stats.cancelled,
+              percentChange: statsResult.stats.percentChange,
+              totalKuver: statsResult.stats.totalKuver,
+              totalMealReservations: statsResult.stats.totalMealReservations,
+              deckTerraceKuvers: statsResult.stats.deckTerraceKuvers,
+            })
           }
         }
       )
@@ -187,7 +209,16 @@ export default function ManageDashboard() {
       ])
 
       if (statsResult.success && statsResult.stats) {
-        setStats(statsResult.stats)
+        setStats({
+          total: statsResult.stats.total,
+          pending: statsResult.stats.pending,
+          confirmed: statsResult.stats.confirmed,
+          cancelled: statsResult.stats.cancelled,
+          percentChange: statsResult.stats.percentChange,
+          totalKuver: statsResult.stats.totalKuver,
+          totalMealReservations: statsResult.stats.totalMealReservations,
+          deckTerraceKuvers: statsResult.stats.deckTerraceKuvers,
+        })
       }
 
       if (newResult.success && newResult.data) {
@@ -285,70 +316,143 @@ export default function ManageDashboard() {
               </div>
             </div>
 
-            <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4 mb-6">
-              <Card className={`cursor-pointer transition-all hover:shadow-md ${statusFilter === "all" ? "ring-2 ring-blue-500" : ""}`} onClick={() => handleStatusFilter("all")}>
-                <CardContent className="p-4 md:p-6">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-xs md:text-sm font-medium text-muted-foreground">{getTranslation("manage.dashboard.stats.total")}</p>
-                      <p className="text-2xl md:text-3xl font-bold">{stats.total}</p>
+            <div className="mb-6">
+              <div className="mb-4">
+                <h2 className="text-lg font-semibold">Dashboard Overview</h2>
+              </div>
+              
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4 transition-all duration-300">
+                <Card className={`cursor-pointer transition-all hover:shadow-md ${statusFilter === "all" ? "ring-2 ring-blue-500" : ""}`} onClick={() => handleStatusFilter("all")}>
+                  <CardContent className="p-4 md:p-6">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-xs md:text-sm font-medium text-muted-foreground">{getTranslation("manage.dashboard.stats.total")}</p>
+                        <p className="text-2xl md:text-3xl font-bold">{stats.total}</p>
+                      </div>
+                      <div className="rounded-full bg-blue-100 p-2 md:p-3 text-blue-600">
+                        <CalendarClock className="h-4 w-4 md:h-6 md:w-6" />
+                      </div>
                     </div>
-                    <div className="rounded-full bg-blue-100 p-2 md:p-3 text-blue-600">
-                      <CalendarClock className="h-4 w-4 md:h-6 md:w-6" />
+                    <div className="mt-2 md:mt-4 flex items-center text-xs md:text-sm">
+                      <TrendingUp
+                        className={`mr-1 h-3 w-3 md:h-4 md:w-4 ${stats.percentChange >= 0 ? "text-green-500" : "text-red-500"}`}
+                      />
+                      <span className={stats.percentChange >= 0 ? "text-green-500" : "text-red-500"}>
+                        {getTranslation("manage.dashboard.stats.percentChange", { percent: String(stats.percentChange) })}
+                      </span>
                     </div>
-                  </div>
-                  <div className="mt-2 md:mt-4 flex items-center text-xs md:text-sm">
-                    <TrendingUp
-                      className={`mr-1 h-3 w-3 md:h-4 md:w-4 ${stats.percentChange >= 0 ? "text-green-500" : "text-red-500"}`}
-                    />
-                    <span className={stats.percentChange >= 0 ? "text-green-500" : "text-red-500"}>
-                      {getTranslation("manage.dashboard.stats.percentChange", { percent: String(stats.percentChange) })}
-                    </span>
-                  </div>
-                </CardContent>
-              </Card>
+                  </CardContent>
+                </Card>
 
-              <Card className={`cursor-pointer transition-all hover:shadow-md ${statusFilter === "pending" ? "ring-2 ring-yellow-500" : ""}`} onClick={() => handleStatusFilter("pending")}>
-                <CardContent className="p-4 md:p-6">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-xs md:text-sm font-medium text-muted-foreground">{getTranslation("manage.dashboard.stats.pending")}</p>
-                      <p className="text-2xl md:text-3xl font-bold">{stats.pending}</p>
+                <Card className={`cursor-pointer transition-all hover:shadow-md ${statusFilter === "pending" ? "ring-2 ring-yellow-500" : ""}`} onClick={() => handleStatusFilter("pending")}>
+                  <CardContent className="p-4 md:p-6">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-xs md:text-sm font-medium text-muted-foreground">{getTranslation("manage.dashboard.stats.pending")}</p>
+                        <p className="text-2xl md:text-3xl font-bold">{stats.pending}</p>
+                      </div>
+                      <div className="rounded-full bg-yellow-100 p-2 md:p-3 text-yellow-600">
+                        <Clock className="h-4 w-4 md:h-6 md:w-6" />
+                      </div>
                     </div>
-                    <div className="rounded-full bg-yellow-100 p-2 md:p-3 text-yellow-600">
-                      <Clock className="h-4 w-4 md:h-6 md:w-6" />
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
+                  </CardContent>
+                </Card>
 
-              <Card className={`cursor-pointer transition-all hover:shadow-md ${statusFilter === "confirmed" ? "ring-2 ring-green-500" : ""}`} onClick={() => handleStatusFilter("confirmed")}>
-                <CardContent className="p-4 md:p-6">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-xs md:text-sm font-medium text-muted-foreground">{getTranslation("manage.dashboard.stats.confirmed")}</p>
-                      <p className="text-2xl md:text-3xl font-bold">{stats.confirmed}</p>
+                <Card className={`cursor-pointer transition-all hover:shadow-md ${statusFilter === "confirmed" ? "ring-2 ring-green-500" : ""}`} onClick={() => handleStatusFilter("confirmed")}>
+                  <CardContent className="p-4 md:p-6">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-xs md:text-sm font-medium text-muted-foreground">{getTranslation("manage.dashboard.stats.confirmed")}</p>
+                        <p className="text-2xl md:text-3xl font-bold">{stats.confirmed}</p>
+                      </div>
+                      <div className="rounded-full bg-green-100 p-2 md:p-3 text-green-600">
+                        <CheckCircle className="h-4 w-4 md:h-6 md:w-6" />
+                      </div>
                     </div>
-                    <div className="rounded-full bg-green-100 p-2 md:p-3 text-green-600">
-                      <CheckCircle className="h-4 w-4 md:h-6 md:w-6" />
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
+                  </CardContent>
+                </Card>
 
-              <Card className={`cursor-pointer transition-all hover:shadow-md ${statusFilter === "cancelled" ? "ring-2 ring-red-500" : ""}`} onClick={() => handleStatusFilter("cancelled")}>
-                <CardContent className="p-4 md:p-6">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-xs md:text-sm font-medium text-muted-foreground">{getTranslation("manage.dashboard.stats.cancelled")}</p>
-                      <p className="text-2xl md:text-3xl font-bold">{stats.cancelled}</p>
+                <Card className={`cursor-pointer transition-all hover:shadow-md ${statusFilter === "cancelled" ? "ring-2 ring-red-500" : ""}`} onClick={() => handleStatusFilter("cancelled")}>
+                  <CardContent className="p-4 md:p-6">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-xs md:text-sm font-medium text-muted-foreground">{getTranslation("manage.dashboard.stats.cancelled")}</p>
+                        <p className="text-2xl md:text-3xl font-bold">{stats.cancelled}</p>
+                      </div>
+                      <div className="rounded-full bg-red-100 p-2 md:p-3 text-red-600">
+                        <XCircle className="h-4 w-4 md:h-6 md:w-6" />
+                      </div>
                     </div>
-                    <div className="rounded-full bg-red-100 p-2 md:p-3 text-red-600">
-                      <XCircle className="h-4 w-4 md:h-6 md:w-6" />
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
+                  </CardContent>
+                </Card>
+
+               </div>
+               
+               {/* Additional Metrics Cards - Only show when expanded */}
+               {cardsExpanded && (
+                 <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4 mt-3 md:mt-4 transition-all duration-300">
+                   <Card className="cursor-default transition-all hover:shadow-md">
+                     <CardContent className="p-4 md:p-6">
+                       <div className="flex items-center justify-between">
+                         <div>
+                           <p className="text-xs md:text-sm font-medium text-muted-foreground">Total Kuver</p>
+                           <p className="text-2xl md:text-3xl font-bold">{stats.totalKuver}</p>
+                         </div>
+                         <div className="rounded-full bg-purple-100 p-2 md:p-3 text-purple-600">
+                           <Users className="h-4 w-4 md:h-6 md:w-6" />
+                         </div>
+                       </div>
+                       <p className="text-xs text-muted-foreground mt-2">Customers served</p>
+                     </CardContent>
+                   </Card>
+
+                   <Card className="cursor-default transition-all hover:shadow-md">
+                     <CardContent className="p-4 md:p-6">
+                       <div className="flex items-center justify-between">
+                         <div>
+                           <p className="text-xs md:text-sm font-medium text-muted-foreground">Meal Reservations</p>
+                           <p className="text-2xl md:text-3xl font-bold">{stats.totalMealReservations}</p>
+                         </div>
+                         <div className="rounded-full bg-orange-100 p-2 md:p-3 text-orange-600">
+                           <UtensilsCrossed className="h-4 w-4 md:h-6 md:w-6" />
+                         </div>
+                       </div>
+                       <p className="text-xs text-muted-foreground mt-2">Food reservations</p>
+                     </CardContent>
+                   </Card>
+
+                   <Card className="cursor-default transition-all hover:shadow-md">
+                     <CardContent className="p-4 md:p-6">
+                       <div className="flex items-center justify-between">
+                         <div>
+                           <p className="text-xs md:text-sm font-medium text-muted-foreground">Deck/Terrace</p>
+                           <p className="text-2xl md:text-3xl font-bold">{stats.deckTerraceKuvers}</p>
+                         </div>
+                         <div className="rounded-full bg-teal-100 p-2 md:p-3 text-teal-600">
+                           <MapPin className="h-4 w-4 md:h-6 md:w-6" />
+                         </div>
+                       </div>
+                       <p className="text-xs text-muted-foreground mt-2">Kuvers today</p>
+                     </CardContent>
+                   </Card>
+                 </div>
+               )}
+               
+               {/* Minimal expand/collapse indicator */}
+               <div className="flex justify-center -mt-2">
+                 <Button
+                   variant="ghost"
+                   size="sm"
+                   onClick={() => setCardsExpanded(!cardsExpanded)}
+                   className="h-6 px-2 text-xs text-muted-foreground hover:text-foreground transition-colors"
+                 >
+                   {cardsExpanded ? (
+                      <ChevronUp className="h-4 w-4" />
+                    ) : (
+                      <ChevronDown className="h-4 w-4" />
+                    )}
+                 </Button>
+               </div>
             </div>
 
               <Tabs defaultValue="new" className="space-y-4">
