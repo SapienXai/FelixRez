@@ -17,12 +17,13 @@ import {
 import { Textarea } from "@/components/ui/textarea"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Label } from "@/components/ui/label"
-import { Loader2, MoreHorizontal, CheckCircle, XCircle, Clock, Calendar, Mail, Edit, Grid, List, Phone, User, Utensils, Coffee } from "lucide-react"
+import { Loader2, MoreHorizontal, CheckCircle, XCircle, Clock, Calendar, Mail, Edit, Grid, List, Phone, User, Utensils, Coffee, Copy } from "lucide-react"
 import type { Reservation } from "@/types/supabase"
 import { updateReservationStatus } from "@/app/manage/actions"
 import { ReservationForm } from "./reservation-form"
 import { usePagination } from "@/hooks/use-pagination"
 import { PaginationControls } from "@/components/ui/pagination-controls"
+import { toast } from "sonner"
 
 interface ReservationWithRestaurant extends Reservation {
   restaurants?: {
@@ -122,105 +123,160 @@ export function ReservationTable({ reservations, onRefresh, itemsPerPage = 10 }:
   const renderCardView = () => (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
       {paginatedData.map((reservation) => (
-        <Card key={reservation.id} className="hover:shadow-md transition-shadow">
-          <CardHeader className="pb-3">
-            <div className="flex items-center justify-between">
-              <CardTitle className="text-lg">{reservation.restaurants?.name || "Unknown Restaurant"}</CardTitle>
-              {getStatusBadge(reservation.status || "pending")}
+        <Card key={reservation.id} className="hover:shadow-md transition-shadow border-l-4 border-l-blue-500">
+          <CardHeader className="pb-4">
+            <div className="flex items-start justify-between">
+              <div className="space-y-1">
+                <CardTitle className="text-lg text-gray-900">{reservation.restaurants?.name || "Unknown Restaurant"}</CardTitle>
+                <div className="flex items-center gap-2">
+                  {getStatusBadge(reservation.status || "pending")}
+                </div>
+              </div>
+              <div className="flex items-center gap-1">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => {
+                    const reservationInfo = `${new Date(reservation.reservation_date).toLocaleDateString('tr-TR', {
+                      day: 'numeric',
+                      month: 'long',
+                      weekday: 'long'
+                    })} ${reservation.reservation_time}
+${reservation.customer_name} - ${reservation.party_size} kişi
+${reservation.reservation_areas?.name || ''} ${reservation.reservation_type === 'drinks' ? '(İçecek)' : '(Yemek)'}
+${reservation.customer_phone}
+${reservation.customer_email}${reservation.table_number ? `
+Masa: ${reservation.table_number}` : ''}${reservation.special_requests ? `
+Not: ${reservation.special_requests}` : ''}`;
+                    navigator.clipboard.writeText(reservationInfo);
+                     toast.success('Rezervasyon bilgileri kopyalandı!');
+                  }}
+                  className="h-8 w-8 p-0 text-gray-500 hover:text-gray-700"
+                  title="Rezervasyon bilgilerini kopyala"
+                >
+                  <Copy className="h-4 w-4" />
+                </Button>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-gray-500 hover:text-gray-700">
+                      <MoreHorizontal className="h-4 w-4" />
+                      <span className="sr-only">Open menu</span>
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuItem
+                      onClick={() => setEditingReservation(reservation)}
+                      className="text-blue-600"
+                    >
+                      <Edit className="mr-2 h-4 w-4" />
+                      Edit Reservation
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      onClick={() => {
+                        setSelectedReservation(reservation)
+                        setActionType("confirm")
+                      }}
+                      disabled={reservation.status === "confirmed" || reservation.status === "cancelled"}
+                      className="text-green-600"
+                    >
+                      <CheckCircle className="mr-2 h-4 w-4" />
+                      Confirm Reservation
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      onClick={() => {
+                        setSelectedReservation(reservation)
+                        setActionType("cancel")
+                      }}
+                      disabled={reservation.status === "cancelled"}
+                      className="text-red-600"
+                    >
+                      <XCircle className="mr-2 h-4 w-4" />
+                      Cancel Reservation
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
             </div>
           </CardHeader>
-          <CardContent className="space-y-3">
-            <div className="flex flex-wrap gap-2">
-              {reservation.reservation_areas?.name && (
-                <Badge variant="outline">Area: {reservation.reservation_areas.name}</Badge>
-              )}
-              <Badge variant={reservation.reservation_type === 'drinks' ? 'secondary' : 'default'} className="flex items-center gap-1">
-                {reservation.reservation_type === 'drinks' ? (
-                  <><Coffee className="h-3 w-3" /> Drinks Only</>
-                ) : (
-                  <><Utensils className="h-3 w-3" /> Dining</>
+          <CardContent className="space-y-4">
+            {/* Tarih ve Saat */}
+            <div className="bg-gray-50 rounded-lg p-3 space-y-2">
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center">
+                  <Calendar className="h-4 w-4 text-green-600" />
+                </div>
+                <div>
+                  <div className="font-medium text-gray-900">
+                    {new Date(reservation.reservation_date).toLocaleDateString('tr-TR', {
+                      day: 'numeric',
+                      month: 'long',
+                      year: 'numeric',
+                      weekday: 'long'
+                    })}
+                  </div>
+                  <div className="text-sm text-gray-600 flex items-center gap-1">
+                    <Clock className="h-3 w-3" />
+                    {reservation.reservation_time}
+                  </div>
+                </div>
+              </div>
+            </div>
+            
+            {/* Müşteri Bilgileri */}
+            <div className="bg-gray-50 rounded-lg p-3 space-y-2">
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
+                  <User className="h-4 w-4 text-blue-600" />
+                </div>
+                <div className="flex-1">
+                  <div className="font-semibold text-gray-900">{reservation.customer_name}</div>
+                  <div className="flex items-center gap-2 text-sm text-gray-600">
+                    <span>{reservation.party_size} Kişi</span>
+                    {reservation.reservation_areas?.name && (
+                      <Badge variant="outline" className="bg-white text-xs">{reservation.reservation_areas.name}</Badge>
+                    )}
+                    <Badge variant={reservation.reservation_type === 'drinks' ? 'secondary' : 'default'} className="flex items-center gap-1 text-xs">
+                      {reservation.reservation_type === 'drinks' ? (
+                        <><Coffee className="h-2 w-2" /> İçecek</>
+                      ) : (
+                        <><Utensils className="h-2 w-2" /> Yemek</>
+                      )}
+                    </Badge>
+                  </div>
+                </div>
+              </div>
+            </div>
+            
+            {/* İletişim */}
+            <div className="bg-gray-50 rounded-lg p-3 space-y-2">
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 bg-purple-100 rounded-full flex items-center justify-center">
+                  <Phone className="h-4 w-4 text-purple-600" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="text-sm font-medium text-gray-900">{reservation.customer_phone}</div>
+                  <div className="text-sm text-gray-600 truncate">{reservation.customer_email}</div>
+                </div>
+              </div>
+            </div>
+            
+            {/* Ek Bilgiler */}
+            {(reservation.table_number || reservation.special_requests) && (
+              <div className="border-t pt-3 space-y-2">
+                {reservation.table_number && (
+                  <div className="text-sm text-gray-600">
+                    <span className="font-medium">Masa:</span> {reservation.table_number}
+                  </div>
                 )}
-              </Badge>
-            </div>
-            <div className="flex items-center space-x-2">
-              <User className="h-4 w-4 text-muted-foreground" />
-              <span className="font-medium">{reservation.customer_name}</span>
-            </div>
-            
-            <div className="flex items-center space-x-2">
-              <Phone className="h-4 w-4 text-muted-foreground" />
-              <span className="text-sm">{reservation.customer_phone}</span>
-            </div>
-            
-            <div className="flex items-center space-x-2">
-              <Mail className="h-4 w-4 text-muted-foreground" />
-              <span className="text-sm truncate">{reservation.customer_email}</span>
-            </div>
-            
-            <div className="flex items-center space-x-2">
-              <Calendar className="h-4 w-4 text-muted-foreground" />
-              <span className="text-sm">{new Date(reservation.reservation_date).toLocaleDateString()}</span>
-            </div>
-            
-            <div className="flex items-center space-x-2">
-              <Clock className="h-4 w-4 text-muted-foreground" />
-              <span className="text-sm">{reservation.reservation_time}</span>
-            </div>
-            
-            {reservation.table_number && (
-              <div className="text-sm text-muted-foreground">
-                <span className="font-medium">Table:</span> {reservation.table_number}
+                {reservation.special_requests && (
+                  <div className="text-sm text-gray-600">
+                    <span className="font-medium">Not:</span> {reservation.special_requests}
+                  </div>
+                )}
               </div>
             )}
             
-            {reservation.special_requests && (
-              <div className="text-sm text-muted-foreground italic">
-                <span className="font-medium">Note:</span> {reservation.special_requests}
-              </div>
-            )}
-            
-            <div className="flex items-center justify-between pt-2">
-              <span className="text-sm font-medium">Party Size: {reservation.party_size}</span>
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" size="icon">
-                    <MoreHorizontal className="h-4 w-4" />
-                    <span className="sr-only">Open menu</span>
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                  <DropdownMenuItem
-                    onClick={() => setEditingReservation(reservation)}
-                    className="text-blue-600"
-                  >
-                    <Edit className="mr-2 h-4 w-4" />
-                    Edit Reservation
-                  </DropdownMenuItem>
-                  <DropdownMenuItem
-                    onClick={() => {
-                      setSelectedReservation(reservation)
-                      setActionType("confirm")
-                    }}
-                    disabled={reservation.status === "confirmed" || reservation.status === "cancelled"}
-                    className="text-green-600"
-                  >
-                    <CheckCircle className="mr-2 h-4 w-4" />
-                    Confirm Reservation
-                  </DropdownMenuItem>
-                  <DropdownMenuItem
-                    onClick={() => {
-                      setSelectedReservation(reservation)
-                      setActionType("cancel")
-                    }}
-                    disabled={reservation.status === "cancelled"}
-                    className="text-red-600"
-                  >
-                    <XCircle className="mr-2 h-4 w-4" />
-                    Cancel Reservation
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-            </div>
+
           </CardContent>
         </Card>
       ))}
