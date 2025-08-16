@@ -3,6 +3,22 @@ export const translations = {
     siteTitle: "Felix Restaurants",
     common: {
       close: "Close",
+      locale: "en-US",
+      status: {
+        pending: "Pending",
+        confirmed: "Confirmed",
+        cancelled: "Cancelled",
+        completed: "Completed",
+      },
+      weekdays: {
+        monday: "Monday",
+        tuesday: "Tuesday",
+        wednesday: "Wednesday",
+        thursday: "Thursday",
+        friday: "Friday",
+        saturday: "Saturday",
+        sunday: "Sunday",
+      },
     },
     header: {
       title: "Felix Restaurants",
@@ -260,6 +276,15 @@ export const translations = {
         cancel: "Cancel",
         deleting: "Deleting...",
         },
+        card: {
+          people: "people",
+          drinks: "Drinks",
+          dining: "Dining",
+          table: "Table",
+          note: "Note",
+          copyTooltip: "Copy reservation details",
+          copySuccess: "Reservation details copied!",
+        },
       },
       login: {
         title: "Sign in",
@@ -374,6 +399,22 @@ export const translations = {
     siteTitle: "Felix Restoranları",
     common: {
       close: "Kapat",
+      locale: "tr-TR",
+      status: {
+        pending: "Beklemede",
+        confirmed: "Onaylandı",
+        cancelled: "İptal Edildi",
+        completed: "Tamamlandı",
+      },
+      weekdays: {
+        monday: "Pazartesi",
+        tuesday: "Salı",
+        wednesday: "Çarşamba",
+        thursday: "Perşembe",
+        friday: "Cuma",
+        saturday: "Cumartesi",
+        sunday: "Pazar",
+      },
     },
     header: {
       title: "Felix Restoranları",
@@ -631,6 +672,15 @@ export const translations = {
         processing: "İşleniyor...",
         cancel: "İptal",
         deleting: "Siliniyor...",
+        },
+        card: {
+          people: "kişi",
+          drinks: "İçecek",
+          dining: "Yemek",
+          table: "Masa",
+          note: "Not",
+          copyTooltip: "Rezervasyon bilgilerini kopyala",
+          copySuccess: "Rezervasyon bilgileri kopyalandı!",
         },
       },
       login: {

@@ -24,6 +24,7 @@ import { ReservationForm } from "./reservation-form"
 import { usePagination } from "@/hooks/use-pagination"
 import { PaginationControls } from "@/components/ui/pagination-controls"
 import { toast } from "sonner"
+import { useLanguage } from "@/context/language-context"
 
 interface ReservationWithRestaurant extends Reservation {
   restaurants?: {
@@ -43,6 +44,7 @@ interface ReservationTableProps {
 }
 
 export function ReservationTable({ reservations, onRefresh, itemsPerPage = 10 }: ReservationTableProps) {
+  const { getTranslation } = useLanguage()
   const [selectedReservation, setSelectedReservation] = useState<ReservationWithRestaurant | null>(null)
   const [actionType, setActionType] = useState<"confirm" | "cancel" | null>(null)
   const [notes, setNotes] = useState("")
@@ -92,27 +94,27 @@ export function ReservationTable({ reservations, onRefresh, itemsPerPage = 10 }:
         return (
           <Badge variant="outline" className="bg-yellow-50 text-yellow-700 border-yellow-200">
             <Clock className="mr-1 h-3 w-3" />
-            Pending
+            {getTranslation('common.status.pending')}
           </Badge>
         )
       case "confirmed":
         return (
           <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
             <CheckCircle className="mr-1 h-3 w-3" />
-            Confirmed
+            {getTranslation('common.status.confirmed')}
           </Badge>
         )
       case "cancelled":
         return (
           <Badge variant="outline" className="bg-red-50 text-red-700 border-red-200">
             <XCircle className="mr-1 h-3 w-3" />
-            Cancelled
+            {getTranslation('common.status.cancelled')}
           </Badge>
         )
       case "completed":
         return (
           <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
-            Completed
+            {getTranslation('common.status.completed')}
           </Badge>
         )
       default:
@@ -137,22 +139,22 @@ export function ReservationTable({ reservations, onRefresh, itemsPerPage = 10 }:
                   variant="ghost"
                   size="sm"
                   onClick={() => {
-                    const reservationInfo = `${new Date(reservation.reservation_date).toLocaleDateString('tr-TR', {
+                    const reservationInfo = `${new Date(reservation.reservation_date).toLocaleDateString(getTranslation('common.locale') || 'tr-TR', {
                       day: 'numeric',
                       month: 'long',
                       weekday: 'long'
                     })} ${reservation.reservation_time}
-${reservation.customer_name} - ${reservation.party_size} kişi
-${reservation.reservation_areas?.name || ''} ${reservation.reservation_type === 'drinks' ? '(İçecek)' : '(Yemek)'}
+${reservation.customer_name} - ${reservation.party_size} ${getTranslation('manage.reservations.card.people')}
+${reservation.reservation_areas?.name || ''} ${reservation.reservation_type === 'drinks' ? `(${getTranslation('manage.reservations.card.drinks')})` : `(${getTranslation('manage.reservations.card.dining')})`}
 ${reservation.customer_phone}
 ${reservation.customer_email}${reservation.table_number ? `
-Masa: ${reservation.table_number}` : ''}${reservation.special_requests ? `
-Not: ${reservation.special_requests}` : ''}`;
+${getTranslation('manage.reservations.card.table')}: ${reservation.table_number}` : ''}${reservation.special_requests ? `
+${getTranslation('manage.reservations.card.note')}: ${reservation.special_requests}` : ''}`;
                     navigator.clipboard.writeText(reservationInfo);
-                     toast.success('Rezervasyon bilgileri kopyalandı!');
+                     toast.success(getTranslation('manage.reservations.card.copySuccess'));
                   }}
                   className="h-8 w-8 p-0 text-gray-500 hover:text-gray-700"
-                  title="Rezervasyon bilgilerini kopyala"
+                  title={getTranslation('manage.reservations.card.copyTooltip')}
                 >
                   <Copy className="h-4 w-4" />
                 </Button>
@@ -207,7 +209,7 @@ Not: ${reservation.special_requests}` : ''}`;
                 </div>
                 <div>
                   <div className="font-medium text-gray-900">
-                    {new Date(reservation.reservation_date).toLocaleDateString('tr-TR', {
+                    {new Date(reservation.reservation_date).toLocaleDateString(getTranslation('common.locale') || 'tr-TR', {
                       day: 'numeric',
                       month: 'long',
                       year: 'numeric',
@@ -237,9 +239,9 @@ Not: ${reservation.special_requests}` : ''}`;
                     )}
                     <Badge variant={reservation.reservation_type === 'drinks' ? 'secondary' : 'default'} className="flex items-center gap-1 text-xs">
                       {reservation.reservation_type === 'drinks' ? (
-                        <><Coffee className="h-2 w-2" /> İçecek</>
+                        <><Coffee className="h-2 w-2" /> {getTranslation('manage.reservations.card.drinks')}</>
                       ) : (
-                        <><Utensils className="h-2 w-2" /> Yemek</>
+                        <><Utensils className="h-2 w-2" /> {getTranslation('manage.reservations.card.dining')}</>
                       )}
                     </Badge>
                   </div>
@@ -265,12 +267,12 @@ Not: ${reservation.special_requests}` : ''}`;
               <div className="border-t pt-3 space-y-2">
                 {reservation.table_number && (
                   <div className="text-sm text-gray-600">
-                    <span className="font-medium">Masa:</span> {reservation.table_number}
+                    <span className="font-medium">{getTranslation('manage.reservations.card.table')}:</span> {reservation.table_number}
                   </div>
                 )}
                 {reservation.special_requests && (
                   <div className="text-sm text-gray-600">
-                    <span className="font-medium">Not:</span> {reservation.special_requests}
+                    <span className="font-medium">{getTranslation('manage.reservations.card.note')}:</span> {reservation.special_requests}
                   </div>
                 )}
               </div>
