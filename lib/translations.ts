@@ -104,8 +104,8 @@ export const translations = {
         homeButton: "Return to Home",
       },
       step1: {
-        areaLabel: "Area",
-        anyArea: "Restaurant",
+        areaLabel: "Main Hall",
+        anyArea: "Main Hall",
         partyLabel: "Party",
         dateLabel: "Date",
         timeLabel: "Time",
@@ -500,8 +500,8 @@ export const translations = {
         homeButton: "Ana sayfaya dön",
       },
       step1: {
-        areaLabel: "Alan",
-        anyArea: "Restoran",
+        areaLabel: "Ana Salon",
+        anyArea: "Ana Salon",
         partyLabel: "Kişi Sayısı",
         dateLabel: "Tarih",
         timeLabel: "Saat",

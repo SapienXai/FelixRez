@@ -135,21 +135,29 @@ export function ReservationTable({ reservations, onRefresh, itemsPerPage = 10 }:
                 </div>
               </div>
               <div className="flex items-center gap-1">
+                <div className="text-xs text-gray-500 mr-2">
+                  {new Date(reservation.created_at).toLocaleDateString('tr-TR', {
+                    day: '2-digit',
+                    month: '2-digit',
+                    year: 'numeric'
+                  })} {new Date(reservation.created_at).toLocaleTimeString('tr-TR', {
+                    hour: '2-digit',
+                    minute: '2-digit'
+                  })}
+                </div>
                 <Button
                   variant="ghost"
                   size="sm"
                   onClick={() => {
-                    const reservationInfo = `${new Date(reservation.reservation_date).toLocaleDateString(getTranslation('common.locale') || 'tr-TR', {
-                      day: 'numeric',
-                      month: 'long',
-                      weekday: 'long'
-                    })} ${reservation.reservation_time}
-${reservation.customer_name} - ${reservation.party_size} ${getTranslation('manage.reservations.card.people')}
-${reservation.reservation_areas?.name || ''} ${reservation.reservation_type === 'drinks' ? `(${getTranslation('manage.reservations.card.drinks')})` : `(${getTranslation('manage.reservations.card.dining')})`}
-${reservation.customer_phone}
-${reservation.customer_email}${reservation.table_number ? `
-${getTranslation('manage.reservations.card.table')}: ${reservation.table_number}` : ''}${reservation.special_requests ? `
-${getTranslation('manage.reservations.card.note')}: ${reservation.special_requests}` : ''}`;
+                    const reservationInfo = `${new Date(reservation.reservation_date).toLocaleDateString('en-US', {
+                       weekday: 'long',
+                       month: 'long',
+                       day: 'numeric'
+                     })}
+${reservation.customer_name}
+${reservation.party_size} people - ${reservation.reservation_type === 'drinks' ? 'Drinks Only' : 'Dining'}
+${reservation.reservation_time.substring(0, 5)}
+${reservation.customer_phone}`;
                     navigator.clipboard.writeText(reservationInfo);
                      toast.success(getTranslation('manage.reservations.card.copySuccess'));
                   }}
@@ -217,9 +225,9 @@ ${getTranslation('manage.reservations.card.note')}: ${reservation.special_reques
                     })}
                   </div>
                   <div className="text-sm text-gray-600 flex items-center gap-1">
-                    <Clock className="h-3 w-3" />
-                    {reservation.reservation_time}
-                  </div>
+                     <Clock className="h-3 w-3" />
+                     {reservation.reservation_time.substring(0, 5)}
+                   </div>
                 </div>
               </div>
             </div>
@@ -368,7 +376,7 @@ ${getTranslation('manage.reservations.card.note')}: ${reservation.special_reques
                      </div>
                      <div className="flex items-center text-sm text-muted-foreground">
                        <Clock className="mr-2 h-4 w-4" />
-                       <span>{reservation.reservation_time}</span>
+                       <span>{reservation.reservation_time.substring(0, 5)}</span>
                      </div>
                      <div className="sm:hidden text-xs text-muted-foreground mt-1">
                        Party: {reservation.party_size}

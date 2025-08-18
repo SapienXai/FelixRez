@@ -317,7 +317,7 @@ export function ManageHeader({ user, toggleSidebar }: ManageHeaderProps) {
             <span className="sr-only">Toggle sidebar</span>
           </Button>
           <Link href="/manage" className="flex items-center">
-            <span className="text-xl font-bold">Felix Management</span>
+            <span className="text-xl font-bold">Felix</span>
           </Link>
         </div>
 

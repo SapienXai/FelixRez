@@ -149,6 +149,42 @@ export function generateReservationConfirmationEmail({
           color: #666;
           margin-top: 30px;
         }
+        .manage-button {
+          display: inline-block;
+          background-color: #0d6efd;
+          color: white;
+          padding: 12px 24px;
+          text-decoration: none;
+          border-radius: 5px;
+          font-weight: bold;
+          margin: 20px 0;
+          text-align: center;
+        }
+        .manage-button:hover {
+          background-color: #0b5ed7;
+        }
+        .button-container {
+          text-align: center;
+          margin: 30px 0;
+        }
+        .manage-button {
+          display: inline-block;
+          background-color: #0d6efd;
+          color: white;
+          padding: 12px 24px;
+          text-decoration: none;
+          border-radius: 5px;
+          font-weight: bold;
+          margin: 20px 0;
+          text-align: center;
+        }
+        .manage-button:hover {
+          background-color: #0b5ed7;
+        }
+        .button-container {
+          text-align: center;
+          margin: 30px 0;
+        }
       </style>
     </head>
     <body>
@@ -302,6 +338,24 @@ export function generateManagementNotificationEmail({
           color: #666;
           margin-top: 30px;
         }
+        .manage-button {
+          display: inline-block;
+          background-color: #0d6efd;
+          color: white;
+          padding: 12px 24px;
+          text-decoration: none;
+          border-radius: 5px;
+          font-weight: bold;
+          margin: 20px 0;
+          text-align: center;
+        }
+        .manage-button:hover {
+          background-color: #0b5ed7;
+        }
+        .button-container {
+          text-align: center;
+          margin: 30px 0;
+        }
       </style>
     </head>
     <body>
@@ -371,6 +425,12 @@ export function generateManagementNotificationEmail({
           <p>This reservation is currently <strong>pending</strong> and needs to be confirmed or declined. Please log in to the management dashboard to review and update the reservation status.</p>
         </div>
         ` : ''}
+        
+        <div class="button-container">
+          <a href="https://reserve.felixsmile.com/manage" class="manage-button">
+            Manage Reservations
+          </a>
+        </div>
         
         <p>Please log in to the management dashboard to review this reservation and take appropriate action.</p>
         
