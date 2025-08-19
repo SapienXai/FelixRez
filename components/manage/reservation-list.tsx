@@ -222,15 +222,18 @@ export function ReservationList({ reservations, onStatusChange, itemsPerPage = 5
                    variant="ghost"
                    size="sm"
                    onClick={() => {
-                     const reservationInfo = `${new Date(reservation.reservation_date).toLocaleDateString('en-US', {
-                       weekday: 'long',
-                       month: 'long',
-                       day: 'numeric'
-                     })}
+                     const areaFirstWord = reservation.reservation_areas?.name?.split(' ')[0];
+                      const isMainHall = !areaFirstWord || areaFirstWord.toLowerCase() === 'main';
+                      const areaText = isMainHall ? '' : `${areaFirstWord} - `;
+                      const reservationInfo = `${new Date(reservation.reservation_date).toLocaleDateString('en-US', {
+                        weekday: 'long',
+                        month: 'long',
+                        day: 'numeric'
+                      })}
 ${reservation.customer_name}
-${reservation.party_size} people - ${reservation.reservation_type === 'drinks' ? 'Drinks Only' : 'Dining'}
+${reservation.party_size} people - ${areaText}${reservation.reservation_type === 'drinks' ? 'Drinks Only' : 'Dining'}
 ${reservation.reservation_time.substring(0, 5)}
-${reservation.customer_phone}`;
+${reservation.customer_phone}${reservation.special_requests ? `\n${reservation.special_requests}` : ''}`;
                      navigator.clipboard.writeText(reservationInfo);
                       toast.success(getTranslation('manage.reservations.card.copySuccess'));
                    }}
