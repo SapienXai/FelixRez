@@ -1,18 +1,23 @@
 "use server"
 
 import { createServiceRoleClient } from "@/lib/supabase"
+import { coerceRestaurantFilter } from "@/lib/auth-utils"
 
 export async function getDashboardStats(restaurantId?: string, selectedDate?: string) {
   try {
     const supabase = createServiceRoleClient()
+    const scope = await coerceRestaurantFilter(restaurantId)
+    if (scope.type === "deny") {
+      return { success: true, stats: { total: 0, pending: 0, confirmed: 0, cancelled: 0, percentChange: 0, totalKuver: 0, totalMealReservations: 0, deckKuvers: 0, terraceKuvers: 0 } }
+    }
 
     // Get total reservations
     let totalQuery = supabase
       .from("reservations")
       .select("*", { count: "exact", head: true })
     
-    if (restaurantId) {
-      totalQuery = totalQuery.eq("restaurant_id", restaurantId)
+    if (scope.type === "one" && scope.id) {
+      totalQuery = totalQuery.eq("restaurant_id", scope.id)
     }
     
     if (selectedDate) {
@@ -32,8 +37,8 @@ export async function getDashboardStats(restaurantId?: string, selectedDate?: st
       .select("*", { count: "exact", head: true })
       .eq("status", "pending")
     
-    if (restaurantId) {
-      pendingQuery = pendingQuery.eq("restaurant_id", restaurantId)
+    if (scope.type === "one" && scope.id) {
+      pendingQuery = pendingQuery.eq("restaurant_id", scope.id)
     }
     
     if (selectedDate) {
@@ -53,8 +58,8 @@ export async function getDashboardStats(restaurantId?: string, selectedDate?: st
       .select("*", { count: "exact", head: true })
       .eq("status", "confirmed")
     
-    if (restaurantId) {
-      confirmedQuery = confirmedQuery.eq("restaurant_id", restaurantId)
+    if (scope.type === "one" && scope.id) {
+      confirmedQuery = confirmedQuery.eq("restaurant_id", scope.id)
     }
     
     if (selectedDate) {
@@ -74,8 +79,8 @@ export async function getDashboardStats(restaurantId?: string, selectedDate?: st
       .select("*", { count: "exact", head: true })
       .eq("status", "cancelled")
     
-    if (restaurantId) {
-      cancelledQuery = cancelledQuery.eq("restaurant_id", restaurantId)
+    if (scope.type === "one" && scope.id) {
+      cancelledQuery = cancelledQuery.eq("restaurant_id", scope.id)
     }
     
     if (selectedDate) {
@@ -95,8 +100,8 @@ export async function getDashboardStats(restaurantId?: string, selectedDate?: st
       .select("party_size")
       .eq("status", "confirmed")
     
-    if (restaurantId) {
-      kuverQuery = kuverQuery.eq("restaurant_id", restaurantId)
+    if (scope.type === "one" && scope.id) {
+      kuverQuery = kuverQuery.eq("restaurant_id", scope.id)
     }
     
     if (selectedDate) {
@@ -118,8 +123,8 @@ export async function getDashboardStats(restaurantId?: string, selectedDate?: st
       .select("*", { count: "exact", head: true })
       .eq("reservation_type", "meal")
     
-    if (restaurantId) {
-      mealQuery = mealQuery.eq("restaurant_id", restaurantId)
+    if (scope.type === "one" && scope.id) {
+      mealQuery = mealQuery.eq("restaurant_id", scope.id)
     }
     
     if (selectedDate) {
@@ -153,8 +158,8 @@ export async function getDashboardStats(restaurantId?: string, selectedDate?: st
       .eq("reservation_date", dateForAreaQuery)
       .ilike("reservation_areas.name", "%deck%")
     
-    if (restaurantId) {
-      deckQuery = deckQuery.eq("restaurant_id", restaurantId)
+    if (scope.type === "one" && scope.id) {
+      deckQuery = deckQuery.eq("restaurant_id", scope.id)
     }
 
     // Get terrace reservations
@@ -168,8 +173,8 @@ export async function getDashboardStats(restaurantId?: string, selectedDate?: st
       .eq("reservation_date", dateForAreaQuery)
       .ilike("reservation_areas.name", "%terrace%")
     
-    if (restaurantId) {
-      terraceQuery = terraceQuery.eq("restaurant_id", restaurantId)
+    if (scope.type === "one" && scope.id) {
+      terraceQuery = terraceQuery.eq("restaurant_id", scope.id)
     }
 
     const [{ data: deckData, error: deckError }, { data: terraceData, error: terraceError }] = await Promise.all([
@@ -261,6 +266,10 @@ export async function getDashboardStats(restaurantId?: string, selectedDate?: st
 export async function getTodayReservations(restaurantId?: string, selectedDate?: string) {
   try {
     const supabase = createServiceRoleClient()
+    const scope = await coerceRestaurantFilter(restaurantId)
+    if (scope.type === "deny") {
+      return { success: true, data: [] }
+    }
 
     // Use selected date or system date to avoid timezone issues
     const dateToUse = selectedDate || (() => {
@@ -281,8 +290,8 @@ export async function getTodayReservations(restaurantId?: string, selectedDate?:
       `)
       .eq("reservation_date", dateToUse)
     
-    if (restaurantId) {
-      query = query.eq("restaurant_id", restaurantId)
+    if (scope.type === "one" && scope.id) {
+      query = query.eq("restaurant_id", scope.id)
     }
 
     const { data, error } = await query.order("reservation_time", { ascending: true })
@@ -302,6 +311,10 @@ export async function getTodayReservations(restaurantId?: string, selectedDate?:
 export async function getNewReservations(restaurantId?: string) {
   try {
     const supabase = createServiceRoleClient()
+    const scope = await coerceRestaurantFilter(restaurantId)
+    if (scope.type === "deny") {
+      return { success: true, data: [] }
+    }
 
     let query = supabase
       .from("reservations")
@@ -311,8 +324,8 @@ export async function getNewReservations(restaurantId?: string) {
         reservation_areas (id, name)
       `)
     
-    if (restaurantId) {
-      query = query.eq("restaurant_id", restaurantId)
+    if (scope.type === "one" && scope.id) {
+      query = query.eq("restaurant_id", scope.id)
     }
 
     const { data, error } = await query
@@ -334,6 +347,10 @@ export async function getNewReservations(restaurantId?: string) {
 export async function getUpcomingReservations(restaurantId?: string, selectedDate?: string) {
   try {
     const supabase = createServiceRoleClient()
+    const scope = await coerceRestaurantFilter(restaurantId)
+    if (scope.type === "deny") {
+      return { success: true, data: [] }
+    }
 
     let query = supabase
       .from("reservations")
@@ -368,8 +385,8 @@ export async function getUpcomingReservations(restaurantId?: string, selectedDat
         .lt("reservation_date", nextWeekStr)
     }
     
-    if (restaurantId) {
-      query = query.eq("restaurant_id", restaurantId)
+    if (scope.type === "one" && scope.id) {
+      query = query.eq("restaurant_id", scope.id)
     }
 
     const { data, error } = await query

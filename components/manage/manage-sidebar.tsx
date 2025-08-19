@@ -7,6 +7,8 @@ import { ScrollArea } from "@/components/ui/scroll-area"
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet"
 import { LayoutDashboard, CalendarClock, Store, Users, X } from "lucide-react"
 import { useLanguage } from "@/context/language-context"
+import { useEffect, useState } from "react"
+import { getSupabaseBrowserClient } from "@/lib/supabase"
 
 interface ManageSidebarProps {
   isOpen: boolean
@@ -16,10 +18,28 @@ interface ManageSidebarProps {
 export function ManageSidebar({ isOpen, onClose }: ManageSidebarProps) {
   const pathname = usePathname()
   const { currentLang, getTranslation } = useLanguage()
+  const supabase = getSupabaseBrowserClient()
+  const [role, setRole] = useState<string | null>(null)
+  const isStaff = role === 'staff'
 
   const isActive = (path: string) => {
     return pathname === path || pathname.startsWith(`${path}/`)
   }
+
+  useEffect(() => {
+    let mounted = true
+    const loadRole = async () => {
+      try {
+        const res = await fetch('/api/me/role', { cache: 'no-store' })
+        const json = await res.json()
+        if (mounted) setRole(json?.role || null)
+      } catch {
+        if (mounted) setRole(null)
+      }
+    }
+    loadRole()
+    return () => { mounted = false }
+  }, [])
 
   const navigation = [
     {
@@ -27,24 +47,28 @@ export function ManageSidebar({ isOpen, onClose }: ManageSidebarProps) {
       href: "/manage",
       icon: LayoutDashboard,
       current: isActive("/manage") && !isActive("/manage/reservations") && !isActive("/manage/restaurants") && !isActive("/manage/users"),
+      disabled: false,
     },
     {
       name: getTranslation("manage.sidebar.reservations"),
       href: "/manage/reservations",
       icon: CalendarClock,
       current: isActive("/manage/reservations"),
+      disabled: false,
     },
     {
       name: getTranslation("manage.sidebar.restaurants"),
       href: "/manage/restaurants",
       icon: Store,
       current: isActive("/manage/restaurants"),
+      disabled: isStaff,
     },
     {
       name: getTranslation("manage.sidebar.users"),
       href: "/manage/users",
       icon: Users,
       current: isActive("/manage/users"),
+      disabled: isStaff,
     },
   ]
 
@@ -58,18 +82,25 @@ export function ManageSidebar({ isOpen, onClose }: ManageSidebarProps) {
       </div>
       <ScrollArea className="flex-1 px-2 py-4">
         <nav className="flex flex-col gap-1">
-          {navigation.map((item) => (
-            <Link
-              key={item.name}
-              href={`${item.href}?lang=${currentLang}`}
-              className={`flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors ${
-                item.current ? "bg-gray-100 text-gray-900" : "text-gray-700 hover:bg-gray-100 hover:text-gray-900"
-              }`}
-            >
-              <item.icon className="h-5 w-5 flex-shrink-0" />
-              {item.name}
-            </Link>
-          ))}
+          {navigation.map((item) => {
+            const className = `flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors ${
+              item.current ? "bg-gray-100 text-gray-900" : "text-gray-700 hover:bg-gray-100 hover:text-gray-900"
+            } ${item.disabled ? 'pointer-events-none opacity-50' : ''}`
+            if (item.disabled) {
+              return (
+                <div key={item.name} className={className} aria-disabled>
+                  <item.icon className="h-5 w-5 flex-shrink-0" />
+                  {item.name}
+                </div>
+              )
+            }
+            return (
+              <Link key={item.name} href={`${item.href}?lang=${currentLang}`} className={className}>
+                <item.icon className="h-5 w-5 flex-shrink-0" />
+                {item.name}
+              </Link>
+            )
+          })}
         </nav>
       </ScrollArea>
     </>
@@ -93,19 +124,30 @@ export function ManageSidebar({ isOpen, onClose }: ManageSidebarProps) {
           </div>
           <ScrollArea className="flex-1 px-2 py-4">
             <nav className="flex flex-col gap-1">
-              {navigation.map((item) => (
-                <Link
-                  key={item.name}
-                  href={`${item.href}?lang=${currentLang}`}
-                  className={`flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors ${
-                    item.current ? "bg-gray-100 text-gray-900" : "text-gray-700 hover:bg-gray-100 hover:text-gray-900"
-                  }`}
-                  onClick={onClose}
-                >
-                  <item.icon className="h-5 w-5 flex-shrink-0" />
-                  {item.name}
-                </Link>
-              ))}
+              {navigation.map((item) => {
+                const className = `flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors ${
+                  item.current ? "bg-gray-100 text-gray-900" : "text-gray-700 hover:bg-gray-100 hover:text-gray-900"
+                } ${item.disabled ? 'pointer-events-none opacity-50' : ''}`
+                if (item.disabled) {
+                  return (
+                    <div key={item.name} className={className} aria-disabled>
+                      <item.icon className="h-5 w-5 flex-shrink-0" />
+                      {item.name}
+                    </div>
+                  )
+                }
+                return (
+                  <Link
+                    key={item.name}
+                    href={`${item.href}?lang=${currentLang}`}
+                    className={className}
+                    onClick={onClose}
+                  >
+                    <item.icon className="h-5 w-5 flex-shrink-0" />
+                    {item.name}
+                  </Link>
+                )
+              })}
             </nav>
           </ScrollArea>
         </SheetContent>

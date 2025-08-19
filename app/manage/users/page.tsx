@@ -16,6 +16,7 @@ import { ManageSidebar } from "@/components/manage/manage-sidebar"
 import { getSupabaseBrowserClient } from "@/lib/supabase"
 import { toast } from "@/hooks/use-toast"
 import { getUsers, createUser, updateUser, deleteUser } from "./actions"
+import { getRestaurants } from "@/app/manage/actions"
 import { TriangleLoader } from "@/components/ui/triangle-loader";
 
 interface User {
@@ -32,6 +33,7 @@ interface UserFormData {
   password: string
   confirmPassword: string
   role: string
+  restaurantId?: string | null
 }
 
 export default function UsersPage() {
@@ -46,12 +48,15 @@ export default function UsersPage() {
     email: "",
     password: "",
     confirmPassword: "",
-    role: "staff"
+    role: "staff",
+    restaurantId: null,
   })
+  const [restaurants, setRestaurants] = useState<any[]>([])
   const [formErrors, setFormErrors] = useState<Record<string, string>>({})
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [deleteConfirmText, setDeleteConfirmText] = useState("")
   const [deletingUserId, setDeletingUserId] = useState<string | null>(null)
+  const [role, setRole] = useState<string | null>(null)
   
   const supabase = getSupabaseBrowserClient()
 
@@ -63,12 +68,28 @@ export default function UsersPage() {
           email: data.session.user.email || "",
           name: data.session.user.user_metadata?.full_name || "Admin User",
         })
+        try {
+          const res = await fetch('/api/me/role', { cache: 'no-store' })
+          const json = await res.json()
+          setRole(json?.role || null)
+          if (json?.role === 'staff') {
+            setIsLoading(false)
+            return
+          }
+        } catch {}
       }
-      fetchUsers()
+      await Promise.all([fetchUsers(), fetchRestaurantsList()])
     }
 
     checkSession()
   }, [])
+
+  useEffect(() => {
+    if (role === 'staff') {
+      // Redirect staff away from this page
+      window.location.replace('/manage')
+    }
+  }, [role])
 
   const fetchUsers = async () => {
     setIsLoading(true)
@@ -92,6 +113,19 @@ export default function UsersPage() {
       })
     } finally {
       setIsLoading(false)
+    }
+  }
+
+  if (role === 'staff') return null
+
+  const fetchRestaurantsList = async () => {
+    try {
+      const result = await getRestaurants()
+      if (result.success && result.data) {
+        setRestaurants(result.data)
+      }
+    } catch (e) {
+      console.error("Error fetching restaurants for user form:", e)
     }
   }
 
@@ -125,7 +159,8 @@ export default function UsersPage() {
         // Update user
         const result = await updateUser(editingUser.id, {
           email: formData.email,
-          role: formData.role
+          role: formData.role,
+          restaurantId: formData.role === 'admin' ? null : (formData.restaurantId || null),
         })
         
         if (result.success) {
@@ -147,7 +182,8 @@ export default function UsersPage() {
         const result = await createUser({
           email: formData.email,
           password: formData.password,
-          role: formData.role
+          role: formData.role,
+          restaurantId: formData.role === 'admin' ? null : (formData.restaurantId || null),
         })
         
         if (result.success) {
@@ -230,7 +266,8 @@ export default function UsersPage() {
       email: user.email,
       password: "",
       confirmPassword: "",
-      role: user.role
+      role: user.role,
+      restaurantId: user.restaurant_id || null,
     })
     setFormErrors({})
     setIsDialogOpen(true)
@@ -242,7 +279,8 @@ export default function UsersPage() {
       email: "",
       password: "",
       confirmPassword: "",
-      role: "staff"
+      role: "staff",
+      restaurantId: null,
     })
     setFormErrors({})
     setIsDialogOpen(true)
@@ -286,6 +324,7 @@ export default function UsersPage() {
           <div className="max-w-7xl mx-auto">
             <div className="flex justify-between items-center mb-6">
               <h1 className="text-2xl font-semibold">{getTranslation("manage.users.title")}</h1>
+              {role === 'admin' && (
               <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
                 <DialogTrigger asChild>
                   <Button onClick={handleAddUser}>
@@ -353,6 +392,21 @@ export default function UsersPage() {
                         </SelectContent>
                       </Select>
                     </div>
+                    {formData.role !== 'admin' && (
+                      <div className="grid gap-2">
+                        <Label htmlFor="restaurant">{getTranslation("manage.dashboard.filter.allRestaurants")}</Label>
+                        <Select value={formData.restaurantId ?? undefined} onValueChange={(value) => setFormData({ ...formData, restaurantId: value })}>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select restaurant" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {restaurants.map((r) => (
+                              <SelectItem key={r.id} value={r.id}>{r.name}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    )}
                   </div>
                   <DialogFooter>
                     <Button variant="outline" onClick={handleCloseDialog}>
@@ -364,6 +418,7 @@ export default function UsersPage() {
                   </DialogFooter>
                 </DialogContent>
               </Dialog>
+              )}
             </div>
 
             <Card>
@@ -401,52 +456,54 @@ export default function UsersPage() {
                             {new Date(user.created_at).toLocaleDateString()}
                           </TableCell>
                           <TableCell className="text-right">
-                            <div className="flex justify-end gap-2">
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => handleEditUser(user)}
-                              >
-                                <Edit className="h-4 w-4 mr-1" />
-                                {getTranslation("manage.users.table.edit")}
-                              </Button>
-                              <AlertDialog open={deletingUserId === user.id} onOpenChange={(open) => !open && handleCloseDeleteDialog()}>
-                                <AlertDialogTrigger asChild>
-                                  <Button variant="outline" size="sm" onClick={() => handleOpenDeleteDialog(user.id)}>
-                                    <Trash2 className="h-4 w-4 mr-1" />
-                                    {getTranslation("manage.users.table.delete")}
-                                  </Button>
-                                </AlertDialogTrigger>
-                                <AlertDialogContent>
-                                  <AlertDialogHeader>
-                                    <AlertDialogTitle>{getTranslation("manage.users.deleteUser")}</AlertDialogTitle>
-                                    <AlertDialogDescription>
-                                      {getTranslation("manage.users.confirmDelete")}
-                                      <br /><br />
-                                      <strong>Type "delete" to confirm:</strong>
-                                    </AlertDialogDescription>
-                                  </AlertDialogHeader>
-                                  <div className="py-4">
-                                    <Input
-                                      value={deleteConfirmText}
-                                      onChange={(e) => setDeleteConfirmText(e.target.value)}
-                                      placeholder="Type 'delete' to confirm"
-                                      className="w-full"
-                                    />
-                                  </div>
-                                  <AlertDialogFooter>
-                                    <AlertDialogCancel onClick={handleCloseDeleteDialog}>{getTranslation("manage.users.form.cancel")}</AlertDialogCancel>
-                                    <AlertDialogAction 
-                                      onClick={() => handleDeleteUser(user.id)}
-                                      disabled={deleteConfirmText !== "delete"}
-                                      className={deleteConfirmText !== "delete" ? "opacity-50 cursor-not-allowed" : ""}
-                                    >
+                            {role === 'admin' && (
+                              <div className="flex justify-end gap-2">
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => handleEditUser(user)}
+                                >
+                                  <Edit className="h-4 w-4 mr-1" />
+                                  {getTranslation("manage.users.table.edit")}
+                                </Button>
+                                <AlertDialog open={deletingUserId === user.id} onOpenChange={(open) => !open && handleCloseDeleteDialog()}>
+                                  <AlertDialogTrigger asChild>
+                                    <Button variant="outline" size="sm" onClick={() => handleOpenDeleteDialog(user.id)}>
+                                      <Trash2 className="h-4 w-4 mr-1" />
                                       {getTranslation("manage.users.table.delete")}
-                                    </AlertDialogAction>
-                                  </AlertDialogFooter>
-                                </AlertDialogContent>
-                              </AlertDialog>
-                            </div>
+                                    </Button>
+                                  </AlertDialogTrigger>
+                                  <AlertDialogContent>
+                                    <AlertDialogHeader>
+                                      <AlertDialogTitle>{getTranslation("manage.users.deleteUser")}</AlertDialogTitle>
+                                      <AlertDialogDescription>
+                                        {getTranslation("manage.users.confirmDelete")}
+                                        <br /><br />
+                                        <strong>Type "delete" to confirm:</strong>
+                                      </AlertDialogDescription>
+                                    </AlertDialogHeader>
+                                    <div className="py-4">
+                                      <Input
+                                        value={deleteConfirmText}
+                                        onChange={(e) => setDeleteConfirmText(e.target.value)}
+                                        placeholder="Type 'delete' to confirm"
+                                        className="w-full"
+                                      />
+                                    </div>
+                                    <AlertDialogFooter>
+                                      <AlertDialogCancel onClick={handleCloseDeleteDialog}>{getTranslation("manage.users.form.cancel")}</AlertDialogCancel>
+                                      <AlertDialogAction 
+                                        onClick={() => handleDeleteUser(user.id)}
+                                        disabled={deleteConfirmText !== "delete"}
+                                        className={deleteConfirmText !== "delete" ? "opacity-50 cursor-not-allowed" : ""}
+                                      >
+                                        {getTranslation("manage.users.table.delete")}
+                                      </AlertDialogAction>
+                                    </AlertDialogFooter>
+                                  </AlertDialogContent>
+                                </AlertDialog>
+                              </div>
+                            )}
                           </TableCell>
                         </TableRow>
                       ))}

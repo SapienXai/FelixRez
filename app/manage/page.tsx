@@ -47,6 +47,7 @@ export default function ManageDashboard() {
   const [datePopoverOpen, setDatePopoverOpen] = useState(false)
   const [cardsExpanded, setCardsExpanded] = useState(false)
   const [user, setUser] = useState({ email: "", name: "Admin User" })
+  const [isSuperAdmin, setIsSuperAdmin] = useState(false)
   const router = useRouter()
   const supabase = getSupabaseBrowserClient()
   const isInitialMount = useRef(true);
@@ -59,6 +60,11 @@ export default function ManageDashboard() {
           email: data.session.user.email || "",
           name: data.session.user.user_metadata?.full_name || "Admin User",
         })
+        try {
+          const res = await fetch('/api/me/role', { cache: 'no-store' })
+          const json = await res.json()
+          setIsSuperAdmin(Boolean(json?.isSuperAdmin))
+        } catch {}
       }
       await fetchRestaurants()
       fetchDashboardData()
@@ -230,6 +236,9 @@ export default function ManageDashboard() {
       const result = await getRestaurants()
       if (result.success && result.data) {
         setRestaurants(result.data)
+        if (!isSuperAdmin && result.data.length > 0) {
+          setSelectedRestaurant(result.data[0].id)
+        }
       }
     } catch (error) {
       console.error("Error fetching restaurants:", error)
@@ -355,7 +364,9 @@ export default function ManageDashboard() {
                       <SelectValue placeholder={getTranslation("manage.dashboard.filter.allRestaurants")} />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="all">{getTranslation("manage.dashboard.filter.allRestaurants")}</SelectItem>
+                      {isSuperAdmin && (
+                        <SelectItem value="all">{getTranslation("manage.dashboard.filter.allRestaurants")}</SelectItem>
+                      )}
                       {restaurants.map((restaurant) => (
                         <SelectItem key={restaurant.id} value={restaurant.id}>
                           {restaurant.name}

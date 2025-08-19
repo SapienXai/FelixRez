@@ -1,21 +1,28 @@
 "use server"
 
 import { createServerClient, createServiceRoleClient } from "@/lib/supabase"
+import { getCurrentUserAccess } from "@/lib/auth-utils"
 import { revalidatePath } from "next/cache"
 
 export interface CreateUserData {
   email: string
   password: string
   role: string
+  restaurantId?: string | null
 }
 
 export interface UpdateUserData {
   email: string
   role: string
+  restaurantId?: string | null
 }
 
 export async function getUsers() {
   try {
+    const access = await getCurrentUserAccess()
+    if (!access || !access.isSuperAdmin) {
+      return { success: false, error: "Forbidden" }
+    }
     const supabase = createServiceRoleClient()
     
     // Get admin profiles with their auth user data
@@ -76,6 +83,10 @@ export async function getUsers() {
 
 export async function createUser(userData: CreateUserData) {
   try {
+    const access = await getCurrentUserAccess()
+    if (!access || !access.isSuperAdmin) {
+      return { success: false, error: "Forbidden" }
+    }
     const supabase = createServiceRoleClient()
     
     // Create user in Supabase Auth
@@ -106,6 +117,7 @@ export async function createUser(userData: CreateUserData) {
       .insert({
         id: authData.user.id,
         role: userData.role,
+        restaurant_id: userData.role === 'admin' ? null : (userData.restaurantId ?? null),
         full_name: null // Can be updated later
       })
     
@@ -128,7 +140,7 @@ export async function createUser(userData: CreateUserData) {
       email: authData.user.email || userData.email,
       role: userData.role,
       full_name: null,
-      restaurant_id: null,
+      restaurant_id: userData.role === 'admin' ? null : (userData.restaurantId ?? null),
       created_at: authData.user.created_at
     }
 
@@ -149,6 +161,10 @@ export async function createUser(userData: CreateUserData) {
 
 export async function updateUser(userId: string, userData: UpdateUserData) {
   try {
+    const access = await getCurrentUserAccess()
+    if (!access || !access.isSuperAdmin) {
+      return { success: false, error: "Forbidden" }
+    }
     const supabase = createServiceRoleClient()
     
     // Update user email in Supabase Auth
@@ -168,7 +184,8 @@ export async function updateUser(userId: string, userData: UpdateUserData) {
     const { data: profileData, error: profileError } = await supabase
       .from('admin_profiles')
       .update({
-        role: userData.role
+        role: userData.role,
+        restaurant_id: userData.role === 'admin' ? null : (userData.restaurantId ?? null)
       })
       .eq('id', userId)
       .select()
@@ -208,6 +225,10 @@ export async function updateUser(userId: string, userData: UpdateUserData) {
 
 export async function deleteUser(userId: string) {
   try {
+    const access = await getCurrentUserAccess()
+    if (!access || !access.isSuperAdmin) {
+      return { success: false, error: "Forbidden" }
+    }
     const supabase = createServiceRoleClient()
     
     // First delete the admin profile

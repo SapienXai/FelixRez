@@ -1,6 +1,7 @@
 "use server"
 
 import { createServiceRoleClient } from "@/lib/supabase"
+import { coerceRestaurantFilter, getUserRestaurantIds, getCurrentUserAccess } from "@/lib/auth-utils"
 import { revalidatePath } from "next/cache"
 import { sendEmail, generateStatusUpdateEmail } from "@/lib/email-service"
 import { generateICSFile } from "@/lib/calendar-invite"
@@ -14,8 +15,11 @@ export async function getReservations(filters: {
   try {
     const supabase = createServiceRoleClient()
 
-    // Log the filters to help with debugging
-    console.log("Fetching reservations with filters:", filters)
+    // Enforce restaurant scope
+    const scope = await coerceRestaurantFilter(filters.restaurantId)
+    if (scope.type === "deny") {
+      return { success: true, data: [] }
+    }
 
     // Start with a basic query
     let query = supabase.from("reservations").select(`
@@ -29,8 +33,8 @@ export async function getReservations(filters: {
       query = query.eq("status", filters.status)
     }
 
-    if (filters.restaurantId && filters.restaurantId !== "all") {
-      query = query.eq("restaurant_id", filters.restaurantId)
+    if (scope.type === "one" && scope.id) {
+      query = query.eq("restaurant_id", scope.id)
     }
 
     // Handle date range filtering
@@ -97,7 +101,6 @@ export async function getReservations(filters: {
       console.log('Filtered results:', filteredData.length, 'out of', allData.length)
     }
 
-    console.log("Fetched reservations:", filteredData)
     return { success: true, data: filteredData }
   } catch (error) {
     console.error("Error in getReservations:", error)
@@ -133,6 +136,15 @@ export async function updateReservationStatus(id: string, status: string, notes?
     }
 
     console.log("Retrieved reservation:", reservation)
+
+    // Authorization: ensure user can update this reservation (restaurant scoped)
+    const scope = await coerceRestaurantFilter(reservation?.restaurant_id)
+    if (scope.type === "deny") {
+      return { success: false, message: "Forbidden" }
+    }
+    if (scope.type === "one" && scope.id && reservation?.restaurant_id !== scope.id) {
+      return { success: false, message: "Forbidden" }
+    }
 
     // Update the reservation status
     const { error } = await supabase.from("reservations").update(updateData).eq("id", id)
@@ -367,6 +379,24 @@ export async function deleteReservation(id: string) {
   try {
     const supabase = createServiceRoleClient()
 
+    // Fetch to check scope
+    const { data: reservation, error: fetchError } = await supabase
+      .from("reservations")
+      .select("id, restaurant_id")
+      .eq("id", id)
+      .single()
+    if (fetchError) {
+      console.error("Error fetching reservation for delete:", fetchError)
+      return { success: false, message: fetchError.message }
+    }
+    const scope = await coerceRestaurantFilter(reservation?.restaurant_id)
+    if (scope.type === "deny") {
+      return { success: false, message: "Forbidden" }
+    }
+    if (scope.type === "one" && scope.id && reservation?.restaurant_id !== scope.id) {
+      return { success: false, message: "Forbidden" }
+    }
+
     const { error } = await supabase
       .from("reservations")
       .delete()
@@ -390,13 +420,26 @@ export async function getRestaurants() {
   try {
     const supabase = createServiceRoleClient()
 
-    const { data, error } = await supabase
+    // Enforce restaurant scope
+    const allowed = await getUserRestaurantIds()
+
+    if (Array.isArray(allowed) && allowed.length === 0) {
+      return { success: true, data: [] }
+    }
+
+    let query = supabase
       .from("restaurants")
       .select(`
         *,
         media:restaurant_media(*)
       `)
       .order("name", { ascending: true })
+
+    if (Array.isArray(allowed) && allowed.length === 1) {
+      query = query.eq("id", allowed[0])
+    }
+
+    const { data, error } = await query
 
     if (error) {
       console.error("Error fetching restaurants:", error)
@@ -434,6 +477,10 @@ export async function createRestaurant(data: {
 }) {
   try {
     const supabase = createServiceRoleClient()
+    const access = await getCurrentUserAccess()
+    if (!access || !access.isSuperAdmin) {
+      return { success: false, message: "Forbidden" }
+    }
 
     const { data: restaurant, error } = await supabase
       .from("restaurants")
@@ -513,6 +560,10 @@ export async function updateRestaurant(id: string, data: {
 }) {
   try {
     const supabase = createServiceRoleClient()
+    const access = await getCurrentUserAccess()
+    if (!access || !access.isSuperAdmin) {
+      return { success: false, message: "Forbidden" }
+    }
 
     const { error } = await supabase
       .from("restaurants")
@@ -582,6 +633,10 @@ export async function updateRestaurant(id: string, data: {
 export async function deleteRestaurant(id: string) {
   try {
     const supabase = createServiceRoleClient()
+    const access = await getCurrentUserAccess()
+    if (!access || !access.isSuperAdmin) {
+      return { success: false, message: "Forbidden" }
+    }
 
     const { error } = await supabase
       .from("restaurants")

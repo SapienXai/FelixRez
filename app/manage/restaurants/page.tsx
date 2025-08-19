@@ -38,6 +38,8 @@ export default function RestaurantsPage() {
   const { getTranslation } = useLanguage();
   const { showConfirmation, ConfirmationDialogComponent } = useConfirmationDialog();
   const supabase = getSupabaseBrowserClient();
+  const [role, setRole] = useState<string | null>(null);
+  const isStaff = role === 'staff';
 
   const fetchRestaurants = async () => {
     try {
@@ -60,12 +62,27 @@ export default function RestaurantsPage() {
           email: data.session.user.email || '',
           name: data.session.user.user_metadata?.full_name || 'Admin User',
         });
+        try {
+          const res = await fetch('/api/me/role', { cache: 'no-store' })
+          const json = await res.json()
+          setRole(json?.role || null)
+          if (json?.role === 'staff') {
+            setLoading(false);
+            return;
+          }
+        } catch {}
       }
       fetchRestaurants();
     };
 
     checkSession();
   }, [supabase]);
+
+  useEffect(() => {
+    if (role === 'staff') {
+      window.location.replace('/manage')
+    }
+  }, [role])
 
   const handleEdit = (restaurant: RestaurantWithMedia) => {
     setEditingRestaurant(restaurant);
@@ -119,6 +136,8 @@ export default function RestaurantsPage() {
     );
   }
 
+  if (isStaff) return null
+
   return (
     <div className="flex h-screen bg-gray-100">
       <ManageSidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
@@ -130,10 +149,12 @@ export default function RestaurantsPage() {
               <div>
                 <h1 className="text-2xl font-semibold">{getTranslation('manage.restaurants.title')}</h1>
               </div>
+              {role === 'admin' && (
               <Button onClick={() => setShowForm(true)} className="flex items-center gap-2">
                 <Plus className="h-4 w-4" />
                 Add Restaurant
               </Button>
+              )}
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -171,14 +192,18 @@ export default function RestaurantsPage() {
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
-                          <DropdownMenuItem onClick={() => handleEdit(restaurant)} className="text-blue-600">
-                            <Edit className="mr-2 h-4 w-4" />
-                            Edit
-                          </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => handleDelete(restaurant.id, restaurant.name)} className="text-red-600">
-                            <Trash2 className="mr-2 h-4 w-4" />
-                            Delete
-                          </DropdownMenuItem>
+                          {role === 'admin' && (
+                            <>
+                              <DropdownMenuItem onClick={() => handleEdit(restaurant)} className="text-blue-600">
+                                <Edit className="mr-2 h-4 w-4" />
+                                Edit
+                              </DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => handleDelete(restaurant.id, restaurant.name)} className="text-red-600">
+                                <Trash2 className="mr-2 h-4 w-4" />
+                                Delete
+                              </DropdownMenuItem>
+                            </>
+                          )}
                         </DropdownMenuContent>
                       </DropdownMenu>
                     </div>

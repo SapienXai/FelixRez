@@ -1,7 +1,7 @@
 "use server"
 
+import { cookies } from "next/headers"
 import { createServiceRoleClient } from "../lib/supabase"
-import { createClient } from '@supabase/supabase-js'
 
 export interface UserAccess {
   userId: string
@@ -10,84 +10,93 @@ export interface UserAccess {
   isSuperAdmin: boolean
 }
 
+function getProjectCookieName(): string {
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL
+  let projectRef = "supabase"
+  if (supabaseUrl) {
+    try {
+      projectRef = new URL(supabaseUrl).host.split(".")[0]
+    } catch {}
+  }
+  return `sb-${projectRef}-auth-token`
+}
+
 /**
- * Get the current user's restaurant access information
- * Returns null if user is not authenticated or doesn't have admin profile
+ * Read the current user from the Supabase auth cookie and return restaurant-scoped access.
+ * Returns null if unauthenticated or profile missing.
  */
 export async function getCurrentUserAccess(): Promise<UserAccess | null> {
   try {
-    const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!)
-    
-    // Get current session
-    const { data: { session }, error: sessionError } = await supabase.auth.getSession()
-    
-    if (sessionError || !session?.user) {
-      return null
+    const cookieName = getProjectCookieName()
+    const store = await cookies()
+    const raw = store.get(cookieName)?.value
+    if (!raw) return null
+
+    let userId: string | null = null
+    try {
+      const parsed = JSON.parse(raw)
+      userId = parsed?.currentSession?.user?.id || parsed?.user?.id || null
+    } catch {
+      userId = null
     }
-    
-    // Get user's admin profile
-    const { data: profile, error: profileError } = await supabase
-      .from('admin_profiles')
-      .select('restaurant_id, role')
-      .eq('id', session.user.id)
+    if (!userId) return null
+
+    const supabase = createServiceRoleClient()
+    const { data: profile, error } = await supabase
+      .from("admin_profiles")
+      .select("restaurant_id, role")
+      .eq("id", userId)
       .single()
-    
-    if (profileError || !profile) {
-      return null
-    }
-    
-    return {
-      userId: session.user.id,
+
+    if (error || !profile) return null
+
+    const access: UserAccess = {
+      userId,
       restaurantId: profile.restaurant_id,
-      role: profile.role,
-      isSuperAdmin: profile.restaurant_id === null && profile.role === 'admin'
+      role: profile.role || "staff",
+      // Treat any 'admin' as super admin regardless of restaurant_id
+      isSuperAdmin: profile.role === "admin",
     }
+    return access
   } catch (error) {
-    console.error('Error getting user access:', error)
+    console.error("Error resolving user access:", error)
     return null
   }
 }
 
-/**
- * Check if user has access to a specific restaurant
- */
+/** Check if current user may access a restaurant id. */
 export async function hasRestaurantAccess(restaurantId: string): Promise<boolean> {
-  const userAccess = await getCurrentUserAccess()
-  
-  if (!userAccess) {
-    return false
-  }
-  
-  // Super admins have access to all restaurants
-  if (userAccess.isSuperAdmin) {
-    return true
-  }
-  
-  // Restaurant-specific users can only access their assigned restaurant
-  return userAccess.restaurantId === restaurantId
+  const access = await getCurrentUserAccess()
+  if (!access) return false
+  if (access.isSuperAdmin) return true
+  return access.restaurantId === restaurantId
 }
 
 /**
- * Get the restaurant IDs that the current user has access to
- * Returns null for super admins (meaning access to all)
- * Returns array of restaurant IDs for restaurant-specific users
+ * Get restaurant scope for current user.
+ * - null => super-admin (all restaurants)
+ * - [id] => scoped to that single restaurant
+ * - [] => no access
  */
 export async function getUserRestaurantIds(): Promise<string[] | null> {
-  const userAccess = await getCurrentUserAccess()
-  
-  if (!userAccess) {
-    return []
+  const access = await getCurrentUserAccess()
+  if (!access) return []
+  if (access.isSuperAdmin) return null
+  return access.restaurantId ? [access.restaurantId] : []
+}
+
+/**
+ * Given an optional requested restaurantId, coerce it to the allowed scope.
+ * - If super-admin: returns requested id (or undefined to mean all)
+ * - If scoped: returns the only allowed id regardless of requested
+ * - If no access: returns "DENY"
+ */
+export async function coerceRestaurantFilter(requested?: string): Promise<{ type: "all" | "one" | "deny"; id?: string }> {
+  const allowed = await getUserRestaurantIds()
+  if (allowed === null) {
+    // super admin
+    return requested ? { type: "one", id: requested } : { type: "all" }
   }
-  
-  // Super admins have access to all restaurants
-  if (userAccess.isSuperAdmin) {
-    return null
-  }
-  
-  // Restaurant-specific users can only access their assigned restaurant
-  if (userAccess.restaurantId) {
-    return [userAccess.restaurantId]
-  }
-  
-  return []
+  if (!allowed || allowed.length === 0) return { type: "deny" }
+  return { type: "one", id: allowed[0] }
 }
