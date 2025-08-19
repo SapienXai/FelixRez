@@ -370,6 +370,8 @@ export function ReservationApp({ initialRestaurant, initialLang }: ReservationAp
               mealOnlyReservations={restaurantData?.meal_only_reservations || false}
               getDisplayDate={getDisplayDate}
               attemptedSubmit={showStep2Errors}
+              selectedAreaId={selectedAreaId}
+              areas={reservationAreas}
             />
           )}
 

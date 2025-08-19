@@ -4,6 +4,28 @@ import { useLanguage } from "@/context/language-context"
 import { useEffect, useMemo, useState } from "react"
 import { Users, Calendar } from "lucide-react"
 
+interface ReservationArea {
+  id: string
+  restaurant_id: string
+  name: string
+  description: string | null
+  is_active: boolean
+  display_order: number
+  opening_time: string | null
+  closing_time: string | null
+  time_slot_duration: number | null
+  max_party_size: number | null
+  min_party_size: number | null
+  advance_booking_days: number | null
+  min_advance_hours: number | null
+  allowed_days_of_week: number[] | null
+  blocked_dates: string[] | null
+  special_hours: any | null
+  max_concurrent_reservations: number | null
+  created_at: string
+  updated_at: string
+}
+
 interface ReservationStep2Props {
   restaurantName: string
   partySize: string
@@ -22,6 +44,8 @@ interface ReservationStep2Props {
   mealOnlyReservations: boolean
   getDisplayDate: (date: Date, lang: string, includeDayName?: boolean) => string
   attemptedSubmit?: boolean
+  selectedAreaId?: string | null
+  areas?: ReservationArea[]
 }
 
 export function ReservationStep2({
@@ -42,6 +66,8 @@ export function ReservationStep2({
   mealOnlyReservations,
   getDisplayDate,
   attemptedSubmit = false,
+  selectedAreaId,
+  areas,
 }: ReservationStep2Props) {
   const { getTranslation, currentLang } = useLanguage()
   const [showContactFields, setShowContactFields] = useState(false)
@@ -50,6 +76,18 @@ export function ReservationStep2({
     email: false,
     phone: false,
   })
+
+  // Check if selected area is Terrace or Deck (dining only areas)
+  const selectedArea = areas?.find(area => area.id === selectedAreaId)
+  const isDiningOnlyArea = selectedArea && (selectedArea.name.toLowerCase().includes('terrace') || selectedArea.name.toLowerCase().includes('deck'))
+  const effectiveMealOnlyReservations = mealOnlyReservations || isDiningOnlyArea
+
+  // Force meal reservation type for dining-only areas
+  useEffect(() => {
+    if (isDiningOnlyArea && reservationType !== 'meal') {
+      setReservationType('meal')
+    }
+  }, [isDiningOnlyArea, reservationType, setReservationType])
 
   // Basic validators
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
@@ -213,7 +251,7 @@ export function ReservationStep2({
                   />
                   <span className="text-sm font-medium text-blue-900">{getTranslation("reserve.step2.reservationTypeMeal")}</span>
                 </label>
-                {!mealOnlyReservations && (
+                {!effectiveMealOnlyReservations && (
                   <label className="flex items-center gap-2 cursor-pointer p-1.5 rounded hover:bg-blue-100 transition-colors">
                     <input
                       type="radio"
@@ -228,7 +266,7 @@ export function ReservationStep2({
                 )}
               </div>
               
-              {mealOnlyReservations && (
+              {effectiveMealOnlyReservations && (
                 <div className="mt-3 p-2 bg-amber-50 border border-amber-200 rounded flex items-start gap-2">
                   <div className="flex-shrink-0 mt-0.5">
                     <svg className="w-3.5 h-3.5 text-amber-600" fill="currentColor" viewBox="0 0 20 20">
@@ -236,7 +274,7 @@ export function ReservationStep2({
                     </svg>
                   </div>
                   <p className="text-xs text-amber-800 font-medium">
-                    {getTranslation("reserve.step2.mealOnlyNotice")}
+                    {isDiningOnlyArea ? "This area only accepts dining reservations." : getTranslation("reserve.step2.mealOnlyNotice")}
                   </p>
                 </div>
               )}
