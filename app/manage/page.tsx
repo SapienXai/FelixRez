@@ -40,7 +40,7 @@ export default function ManageDashboard() {
   const [selectedDateReservations, setSelectedDateReservations] = useState<any[]>([])
   const [restaurants, setRestaurants] = useState<any[]>([])
   const [statusFilter, setStatusFilter] = useState<string>("all")
-  const [selectedRestaurant, setSelectedRestaurant] = useState<string>("all")
+  const [selectedRestaurant, setSelectedRestaurant] = useState<string>("")
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(undefined)
   const [timePeriod, setTimePeriod] = useState<string>("monthly")
   const [activeTab, setActiveTab] = useState<string>("new")
@@ -64,10 +64,15 @@ export default function ManageDashboard() {
         try {
           const res = await fetch('/api/me/role', { cache: 'no-store' })
           const json = await res.json()
-          setIsSuperAdmin(Boolean(json?.isSuperAdmin))
-        } catch {}
+          const isSuperAdminValue = Boolean(json?.isSuperAdmin)
+          setIsSuperAdmin(isSuperAdminValue)
+          await fetchRestaurants(isSuperAdminValue)
+        } catch {
+          await fetchRestaurants(false)
+        }
+      } else {
+        await fetchRestaurants(false)
       }
-      await fetchRestaurants()
       fetchDashboardData()
     }
 
@@ -232,12 +237,18 @@ export default function ManageDashboard() {
     }
   }, [selectedRestaurant])
 
-  const fetchRestaurants = async () => {
+  const fetchRestaurants = async (isSuperAdminValue?: boolean) => {
     try {
       const result = await getRestaurants()
       if (result.success && result.data) {
         setRestaurants(result.data)
-        // Keep default "all" filter for all admin users
+        // Set initial restaurant selection based on user role
+        const isSuper = isSuperAdminValue !== undefined ? isSuperAdminValue : isSuperAdmin
+        if (isSuper) {
+          setSelectedRestaurant("all")
+        } else if (result.data.length > 0) {
+          setSelectedRestaurant(result.data[0].id)
+        }
       }
     } catch (error) {
       console.error("Error fetching restaurants:", error)
