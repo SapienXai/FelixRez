@@ -152,6 +152,7 @@ export const translations = {
         reservationTypeMeal: "Dining (with food)",
         reservationTypeDrinks: "Drinks only",
         mealOnlyNotice: "This restaurant only accepts dining reservations.",
+        areaOnlyDiningNotice: "This area only accepts dining reservations.",
         termsNoticeSuffix: "of Felix Smile Company.",
       },
       footer: {
@@ -549,6 +550,7 @@ export const translations = {
         reservationTypeMeal: "Yemekli (yemek ile)",
         reservationTypeDrinks: "Sadece içecek",
         mealOnlyNotice: "Bu restoran sadece yemekli rezervasyon kabul etmektedir.",
+        areaOnlyDiningNotice: "Bu alan sadece yemekli rezervasyon kabul etmektedir.",
       },
       footer: {
         continueButton: "Devam Et",

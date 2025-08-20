@@ -236,9 +236,7 @@ export default function ManageDashboard() {
       const result = await getRestaurants()
       if (result.success && result.data) {
         setRestaurants(result.data)
-        if (!isSuperAdmin && result.data.length > 0) {
-          setSelectedRestaurant(result.data[0].id)
-        }
+        // Keep default "all" filter for all admin users
       }
     } catch (error) {
       console.error("Error fetching restaurants:", error)

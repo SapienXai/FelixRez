@@ -184,9 +184,18 @@ export function ReservationForm({
       const newData = { ...prev, [field]: value }
       
       // If area is changed and it's Terrace or Deck, force reservation type to meal
+      // Exception: Felix Marina's Terrace area accepts drinks reservations
       if (field === 'reservation_area_id') {
         const selectedArea = areas.find(area => area.id === value)
-        if (selectedArea && (selectedArea.name.toLowerCase().includes('terrace') || selectedArea.name.toLowerCase().includes('deck'))) {
+        const selectedRestaurant = restaurants.find(r => r.id === formData.restaurant_id)
+        const isFelixMarinaTerraceArea = selectedArea && selectedRestaurant &&
+          selectedRestaurant.name.toLowerCase().includes('felix') && 
+          selectedRestaurant.name.toLowerCase().includes('marina') && 
+          selectedArea.name.toLowerCase().includes('terrace')
+        
+        if (selectedArea && 
+            (selectedArea.name.toLowerCase().includes('terrace') || selectedArea.name.toLowerCase().includes('deck')) &&
+            !isFelixMarinaTerraceArea) {
           newData.reservation_type = 'meal'
         }
       }
@@ -283,8 +292,15 @@ export function ReservationForm({
                     <SelectItem value="meal">{getTranslation("manage.reservationForm.reservationTypeDining")}</SelectItem>
                     {(() => {
                       const selectedArea = areas.find(area => area.id === formData.reservation_area_id)
-                      const isTerraceOrDeck = selectedArea && (selectedArea.name.toLowerCase().includes('terrace') || selectedArea.name.toLowerCase().includes('deck'))
-                      const restaurantMealOnly = restaurants.find(r => r.id === formData.restaurant_id)?.meal_only_reservations
+                      const selectedRestaurant = restaurants.find(r => r.id === formData.restaurant_id)
+                      const isFelixMarinaTerraceArea = selectedArea && selectedRestaurant &&
+                        selectedRestaurant.name.toLowerCase().includes('felix') && 
+                        selectedRestaurant.name.toLowerCase().includes('marina') && 
+                        selectedArea.name.toLowerCase().includes('terrace')
+                      const isTerraceOrDeck = selectedArea && 
+                        (selectedArea.name.toLowerCase().includes('terrace') || selectedArea.name.toLowerCase().includes('deck')) &&
+                        !isFelixMarinaTerraceArea
+                      const restaurantMealOnly = selectedRestaurant?.meal_only_reservations
                       
                       return !restaurantMealOnly && !isTerraceOrDeck && (
                         <SelectItem value="drinks">{getTranslation("manage.reservationForm.reservationTypeDrinks")}</SelectItem>
@@ -294,7 +310,14 @@ export function ReservationForm({
                 </Select>
                 {(() => {
                   const selectedArea = areas.find(area => area.id === formData.reservation_area_id)
-                  const isTerraceOrDeck = selectedArea && (selectedArea.name.toLowerCase().includes('terrace') || selectedArea.name.toLowerCase().includes('deck'))
+                  const selectedRestaurant = restaurants.find(r => r.id === formData.restaurant_id)
+                  const isFelixMarinaTerraceArea = selectedArea && selectedRestaurant &&
+                    selectedRestaurant.name.toLowerCase().includes('felix') && 
+                    selectedRestaurant.name.toLowerCase().includes('marina') && 
+                    selectedArea.name.toLowerCase().includes('terrace')
+                  const isTerraceOrDeck = selectedArea && 
+                    (selectedArea.name.toLowerCase().includes('terrace') || selectedArea.name.toLowerCase().includes('deck')) &&
+                    !isFelixMarinaTerraceArea
                   
                   return isTerraceOrDeck && (
                     <div className="mt-2 p-2 bg-amber-50 border border-amber-200 rounded flex items-start gap-2">
@@ -304,7 +327,7 @@ export function ReservationForm({
                         </svg>
                       </div>
                       <p className="text-xs text-amber-800 font-medium">
-                        This area only accepts dining reservations.
+                        {getTranslation("reserve.step2.areaOnlyDiningNotice")}
                       </p>
                     </div>
                   )

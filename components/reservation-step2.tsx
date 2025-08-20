@@ -78,8 +78,15 @@ export function ReservationStep2({
   })
 
   // Check if selected area is Terrace or Deck (dining only areas)
+  // Exception: Felix Marina's Terrace area accepts drinks reservations
   const selectedArea = areas?.find(area => area.id === selectedAreaId)
-  const isDiningOnlyArea = selectedArea && (selectedArea.name.toLowerCase().includes('terrace') || selectedArea.name.toLowerCase().includes('deck'))
+  const isFelixMarinaTerraceArea = selectedArea && 
+    restaurantName.toLowerCase().includes('felix') && 
+    restaurantName.toLowerCase().includes('marina') && 
+    selectedArea.name.toLowerCase().includes('terrace')
+  const isDiningOnlyArea = selectedArea && 
+    (selectedArea.name.toLowerCase().includes('terrace') || selectedArea.name.toLowerCase().includes('deck')) &&
+    !isFelixMarinaTerraceArea
   const effectiveMealOnlyReservations = mealOnlyReservations || isDiningOnlyArea
 
   // Force meal reservation type for dining-only areas
@@ -274,7 +281,7 @@ export function ReservationStep2({
                     </svg>
                   </div>
                   <p className="text-xs text-amber-800 font-medium">
-                    {isDiningOnlyArea ? "This area only accepts dining reservations." : getTranslation("reserve.step2.mealOnlyNotice")}
+                    {isDiningOnlyArea ? getTranslation("reserve.step2.areaOnlyDiningNotice") : getTranslation("reserve.step2.mealOnlyNotice")}
                   </p>
                 </div>
               )}
