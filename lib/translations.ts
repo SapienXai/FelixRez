@@ -223,6 +223,10 @@ export const translations = {
         },
         filter: {
           allRestaurants: "All Restaurants",
+          timePeriod: "Time Period",
+          weekly: "Weekly",
+          monthly: "Monthly",
+          yearly: "Yearly",
         },
         tabs: { new: "New", today: "Today", upcoming: "Upcoming", selectDate: "Select Date" },
         clearDate: "Clear date",
@@ -621,6 +625,10 @@ export const translations = {
         },
         filter: {
           allRestaurants: "Tüm Restoranlar",
+          timePeriod: "Zaman Periyodu",
+          weekly: "Haftalık",
+          monthly: "Aylık",
+          yearly: "Yıllık",
         },
         tabs: { new: "Yeni", today: "Bugün", upcoming: "Yaklaşan", selectDate: "Tarih Seç" },
         clearDate: "Tarihi temizle",

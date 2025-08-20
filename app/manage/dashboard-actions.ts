@@ -3,12 +3,50 @@
 import { createServiceRoleClient } from "@/lib/supabase"
 import { coerceRestaurantFilter } from "@/lib/auth-utils"
 
-export async function getDashboardStats(restaurantId?: string, selectedDate?: string) {
+export async function getDashboardStats(restaurantId?: string, selectedDate?: string, timePeriod?: string) {
   try {
     const supabase = createServiceRoleClient()
     const scope = await coerceRestaurantFilter(restaurantId)
     if (scope.type === "deny") {
       return { success: true, stats: { total: 0, pending: 0, confirmed: 0, cancelled: 0, percentChange: 0, totalKuver: 0, totalMealReservations: 0, deckKuvers: 0, terraceKuvers: 0 } }
+    }
+
+    // Calculate date range based on time period
+    let startDate: string | undefined
+    let endDate: string | undefined
+    
+    if (timePeriod && !selectedDate) {
+      const now = new Date()
+      const currentYear = now.getFullYear()
+      const currentMonth = now.getMonth()
+      const currentDate = now.getDate()
+      
+      if (timePeriod === 'weekly') {
+        // Current week (Monday to Sunday)
+        const dayOfWeek = now.getDay()
+        const mondayOffset = dayOfWeek === 0 ? -6 : 1 - dayOfWeek
+        const monday = new Date(now)
+        monday.setDate(currentDate + mondayOffset)
+        const sunday = new Date(monday)
+        sunday.setDate(monday.getDate() + 6)
+        
+        startDate = monday.toISOString().split('T')[0]
+        endDate = sunday.toISOString().split('T')[0]
+      } else if (timePeriod === 'monthly') {
+        // Current month
+        const firstDay = new Date(currentYear, currentMonth, 1)
+        const lastDay = new Date(currentYear, currentMonth + 1, 0)
+        
+        startDate = firstDay.toISOString().split('T')[0]
+        endDate = lastDay.toISOString().split('T')[0]
+      } else if (timePeriod === 'yearly') {
+        // Current year
+        const firstDay = new Date(currentYear, 0, 1)
+        const lastDay = new Date(currentYear, 11, 31)
+        
+        startDate = firstDay.toISOString().split('T')[0]
+        endDate = lastDay.toISOString().split('T')[0]
+      }
     }
 
     // Get total reservations
@@ -22,6 +60,8 @@ export async function getDashboardStats(restaurantId?: string, selectedDate?: st
     
     if (selectedDate) {
       totalQuery = totalQuery.eq("reservation_date", selectedDate)
+    } else if (startDate && endDate) {
+      totalQuery = totalQuery.gte("reservation_date", startDate).lte("reservation_date", endDate)
     }
 
     const { count: total, error: totalError } = await totalQuery
@@ -43,6 +83,8 @@ export async function getDashboardStats(restaurantId?: string, selectedDate?: st
     
     if (selectedDate) {
       pendingQuery = pendingQuery.eq("reservation_date", selectedDate)
+    } else if (startDate && endDate) {
+      pendingQuery = pendingQuery.gte("reservation_date", startDate).lte("reservation_date", endDate)
     }
 
     const { count: pending, error: pendingError } = await pendingQuery
@@ -64,6 +106,8 @@ export async function getDashboardStats(restaurantId?: string, selectedDate?: st
     
     if (selectedDate) {
       confirmedQuery = confirmedQuery.eq("reservation_date", selectedDate)
+    } else if (startDate && endDate) {
+      confirmedQuery = confirmedQuery.gte("reservation_date", startDate).lte("reservation_date", endDate)
     }
 
     const { count: confirmed, error: confirmedError } = await confirmedQuery
@@ -85,6 +129,8 @@ export async function getDashboardStats(restaurantId?: string, selectedDate?: st
     
     if (selectedDate) {
       cancelledQuery = cancelledQuery.eq("reservation_date", selectedDate)
+    } else if (startDate && endDate) {
+      cancelledQuery = cancelledQuery.gte("reservation_date", startDate).lte("reservation_date", endDate)
     }
 
     const { count: cancelled, error: cancelledError } = await cancelledQuery
@@ -106,6 +152,8 @@ export async function getDashboardStats(restaurantId?: string, selectedDate?: st
     
     if (selectedDate) {
       kuverQuery = kuverQuery.eq("reservation_date", selectedDate)
+    } else if (startDate && endDate) {
+      kuverQuery = kuverQuery.gte("reservation_date", startDate).lte("reservation_date", endDate)
     }
 
     const { data: kuverData, error: kuverError } = await kuverQuery
@@ -129,6 +177,8 @@ export async function getDashboardStats(restaurantId?: string, selectedDate?: st
     
     if (selectedDate) {
       mealQuery = mealQuery.eq("reservation_date", selectedDate)
+    } else if (startDate && endDate) {
+      mealQuery = mealQuery.gte("reservation_date", startDate).lte("reservation_date", endDate)
     }
 
     const { count: totalMealReservations, error: mealError } = await mealQuery
@@ -138,14 +188,11 @@ export async function getDashboardStats(restaurantId?: string, selectedDate?: st
       return { success: false, message: mealError.message }
     }
 
-    // Get current kuvers on deck/terrace (today's confirmed reservations in deck/terrace areas)
+    // Get current kuvers on deck/terrace (confirmed reservations in deck/terrace areas)
     const today = new Date()
     const todayStr = today.getFullYear() + '-' + 
       String(today.getMonth() + 1).padStart(2, '0') + '-' + 
       String(today.getDate()).padStart(2, '0')
-    
-    // Use selected date or today's date for deck/terrace queries
-    const dateForAreaQuery = selectedDate || todayStr
 
     // Get deck reservations
     let deckQuery = supabase
@@ -155,11 +202,18 @@ export async function getDashboardStats(restaurantId?: string, selectedDate?: st
         reservation_areas!inner(name)
       `)
       .eq("status", "confirmed")
-      .eq("reservation_date", dateForAreaQuery)
       .ilike("reservation_areas.name", "%deck%")
     
     if (scope.type === "one" && scope.id) {
       deckQuery = deckQuery.eq("restaurant_id", scope.id)
+    }
+    
+    if (selectedDate) {
+      deckQuery = deckQuery.eq("reservation_date", selectedDate)
+    } else if (startDate && endDate) {
+      deckQuery = deckQuery.gte("reservation_date", startDate).lte("reservation_date", endDate)
+    } else {
+      deckQuery = deckQuery.eq("reservation_date", todayStr)
     }
 
     // Get terrace reservations
@@ -170,11 +224,18 @@ export async function getDashboardStats(restaurantId?: string, selectedDate?: st
         reservation_areas!inner(name)
       `)
       .eq("status", "confirmed")
-      .eq("reservation_date", dateForAreaQuery)
       .ilike("reservation_areas.name", "%terrace%")
     
     if (scope.type === "one" && scope.id) {
       terraceQuery = terraceQuery.eq("restaurant_id", scope.id)
+    }
+    
+    if (selectedDate) {
+      terraceQuery = terraceQuery.eq("reservation_date", selectedDate)
+    } else if (startDate && endDate) {
+      terraceQuery = terraceQuery.gte("reservation_date", startDate).lte("reservation_date", endDate)
+    } else {
+      terraceQuery = terraceQuery.eq("reservation_date", todayStr)
     }
 
     const [{ data: deckData, error: deckError }, { data: terraceData, error: terraceError }] = await Promise.all([

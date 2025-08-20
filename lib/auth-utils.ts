@@ -95,7 +95,7 @@ export async function coerceRestaurantFilter(requested?: string): Promise<{ type
   const allowed = await getUserRestaurantIds()
   if (allowed === null) {
     // super admin
-    return requested ? { type: "one", id: requested } : { type: "all" }
+    return (requested && requested !== "all") ? { type: "one", id: requested } : { type: "all" }
   }
   if (!allowed || allowed.length === 0) return { type: "deny" }
   return { type: "one", id: allowed[0] }

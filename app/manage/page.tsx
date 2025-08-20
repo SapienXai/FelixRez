@@ -42,6 +42,7 @@ export default function ManageDashboard() {
   const [statusFilter, setStatusFilter] = useState<string>("all")
   const [selectedRestaurant, setSelectedRestaurant] = useState<string>("all")
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(undefined)
+  const [timePeriod, setTimePeriod] = useState<string>("monthly")
   const [activeTab, setActiveTab] = useState<string>("new")
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [datePopoverOpen, setDatePopoverOpen] = useState(false)
@@ -89,7 +90,7 @@ export default function ManageDashboard() {
     return () => subscription?.subscription?.unsubscribe?.()
   }, [router, supabase])
 
-  // Fetch stats when restaurant filter or date changes
+  // Fetch stats when restaurant filter, date, or time period changes
   useEffect(() => {
     const fetchStatsOnly = async () => {
       setIsStatsLoading(true)
@@ -97,7 +98,7 @@ export default function ManageDashboard() {
       const dateFilter = selectedDate ? format(selectedDate, 'yyyy-MM-dd') : undefined
       
       const [statsResult, todayResult] = await Promise.all([
-        getDashboardStats(restaurantFilter, dateFilter),
+        getDashboardStats(restaurantFilter, dateFilter, timePeriod),
         getTodayReservations(restaurantFilter, dateFilter)
       ])
       
@@ -138,7 +139,7 @@ export default function ManageDashboard() {
         fetchStatsOnly()
       }
     }
-  }, [selectedRestaurant, selectedDate])
+  }, [selectedRestaurant, selectedDate, timePeriod])
 
   // Handle tab switching when date is cleared
   useEffect(() => {
@@ -250,7 +251,7 @@ export default function ManageDashboard() {
       const dateFilter = selectedDate ? format(selectedDate, 'yyyy-MM-dd') : undefined
       
       const [statsResult, newResult, todayResult, upcomingResult] = await Promise.all([
-        getDashboardStats(restaurantFilter, dateFilter),
+        getDashboardStats(restaurantFilter, dateFilter, timePeriod),
         getNewReservations(restaurantFilter),
         getTodayReservations(restaurantFilter, dateFilter),
         getUpcomingReservations(restaurantFilter, dateFilter),
@@ -346,16 +347,45 @@ export default function ManageDashboard() {
         <main className="flex-1 overflow-y-auto py-2 md:py-2">
           <div className="max-w-5xl lg:max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="flex flex-col space-y-4 sm:flex-row sm:items-center sm:justify-between sm:space-y-0 mb-6">
-              <h1 className="text-xl md:text-2xl font-semibold">{getTranslation("manage.dashboard.title")}</h1>
-              
-              <div className="flex items-center space-x-4">
+              <div className="flex items-center space-x-3">
+                <h1 className="text-xl md:text-2xl font-semibold">{getTranslation("manage.dashboard.title")}</h1>
                 <Button 
                   onClick={() => router.push('/manage/reservations?action=new')}
-                  className="bg-black hover:bg-gray-800 text-white"
+                  className="bg-black hover:bg-gray-800 text-white text-xs px-2 py-1 h-7"
                   size="sm"
                 >
                   + {getTranslation("manage.reservations.list.addReservation")}
                 </Button>
+              </div>
+              
+              <div className="flex items-center space-x-4">
+                <div className="w-full sm:min-w-[180px]">
+                  <Select value={timePeriod} onValueChange={setTimePeriod}>
+                    <SelectTrigger className="text-sm">
+                      <SelectValue placeholder={getTranslation("manage.dashboard.filter.timePeriod")} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="weekly">
+                        <div className="flex items-center justify-between w-full">
+                          <span>{getTranslation("manage.dashboard.filter.weekly")}</span>
+                          <span className="text-xs text-muted-foreground ml-2">(Mon-Sun)</span>
+                        </div>
+                      </SelectItem>
+                      <SelectItem value="monthly">
+                        <div className="flex items-center justify-between w-full">
+                          <span>{getTranslation("manage.dashboard.filter.monthly")}</span>
+                          <span className="text-xs text-muted-foreground ml-2">({new Date().toLocaleDateString('en', { month: 'short' })})</span>
+                        </div>
+                      </SelectItem>
+                      <SelectItem value="yearly">
+                        <div className="flex items-center justify-between w-full">
+                          <span>{getTranslation("manage.dashboard.filter.yearly")}</span>
+                          <span className="text-xs text-muted-foreground ml-2">({new Date().getFullYear()})</span>
+                        </div>
+                      </SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
                 <div className="w-full sm:min-w-[200px]">
                   <Select value={selectedRestaurant} onValueChange={handleRestaurantChange}>
                     <SelectTrigger className="text-sm">
