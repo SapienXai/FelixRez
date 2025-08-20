@@ -453,6 +453,32 @@ export async function getRestaurants() {
   }
 }
 
+// Public function to get all restaurants for the main page (no authentication required)
+export async function getPublicRestaurants() {
+  try {
+    const supabase = createServiceRoleClient()
+
+    const { data, error } = await supabase
+      .from("restaurants")
+      .select(`
+        *,
+        media:restaurant_media(*)
+      `)
+      .eq("reservation_enabled", true)
+      .order("name", { ascending: true })
+
+    if (error) {
+      console.error("Error fetching public restaurants:", error)
+      return { success: false, message: error.message, data: [] }
+    }
+
+    return { success: true, data: data || [] }
+  } catch (error) {
+    console.error("Error in getPublicRestaurants:", error)
+    return { success: false, message: "An unexpected error occurred", data: [] }
+  }
+}
+
 export async function createRestaurant(data: {
   name: string;
   description?: string;

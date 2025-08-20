@@ -3,7 +3,7 @@
 import { useLanguage } from "@/context/language-context"
 import { RestaurantCard } from "./restaurant-card"
 import { useEffect, useState } from "react"
-import { getRestaurants } from "@/app/manage/actions"
+import { getPublicRestaurants } from "@/app/manage/actions"
 import { TriangleLoader } from "@/components/ui/triangle-loader"
 
 interface RestaurantWithMedia {
@@ -27,7 +27,7 @@ export function RestaurantGrid() {
   useEffect(() => {
     const fetchRestaurants = async () => {
       try {
-        const result = await getRestaurants()
+        const result = await getPublicRestaurants()
         if (result.success && result.data) {
           // Transform the data to match the expected format
            const transformedRestaurants = result.data.map((restaurant: any) => ({
