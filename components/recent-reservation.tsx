@@ -158,7 +158,8 @@ export function RecentReservation() {
         // Update the reservation state
         const updatedReservation = {
           ...reservation,
-          ...editForm
+          ...editForm,
+          status: 'pending' as const
         }
         setReservation(updatedReservation)
         
@@ -280,15 +281,15 @@ export function RecentReservation() {
 
   return (
     <>
-      <div className="w-full max-w-4xl mx-auto mb-6">
+      <div className="w-full max-w-4xl mx-auto mb-6 px-3 sm:px-0">
         <Card className={`bg-gradient-to-r ${cfg.card} ${cfg.border}`}>
           <CardHeader className="pb-3">
-            <div className="flex items-center justify-between">
-              <CardTitle className="text-lg text-blue-900">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <CardTitle className="text-base sm:text-lg text-gray-900 truncate">
                 {getTranslation('recentReservation.title')}
               </CardTitle>
-              <div className="flex gap-2">
-                <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${cfg.badge}`}>
+              <div className="flex gap-2 flex-wrap items-center justify-end">
+                <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium shrink-0 ${cfg.badge}`}>
                   {cfg.icon}
                   {status === 'pending' && getTranslation('common.status.pending')}
                   {status === 'confirmed' && getTranslation('common.status.confirmed')}
@@ -317,51 +318,53 @@ export function RecentReservation() {
             </div>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div className="flex items-center gap-3">
-                <div className="bg-blue-100 p-2 rounded-full">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3 sm:gap-4">
+              <div className="flex items-center gap-3 min-w-0">
+                <div className="bg-blue-100 p-2 rounded-full shrink-0">
                   <Calendar className="h-4 w-4 text-blue-600" />
                 </div>
-                <div>
-                  <p className="text-sm text-gray-600">{getTranslation('recentReservation.date')}</p>
-                  <p className="font-medium text-gray-900">{formatDate(reservation.reservation_date)}</p>
+                <div className="min-w-0">
+                  <p className="text-xs sm:text-sm text-gray-600">{getTranslation('recentReservation.date')}</p>
+                  <p className="font-medium text-gray-900 truncate">{formatDate(reservation.reservation_date)}</p>
                 </div>
               </div>
-              <div className="flex items-center gap-3">
-                <div className="bg-blue-100 p-2 rounded-full">
+              <div className="flex items-center gap-3 min-w-0">
+                <div className="bg-blue-100 p-2 rounded-full shrink-0">
                   <Clock className="h-4 w-4 text-blue-600" />
                 </div>
-                <div>
-                  <p className="text-sm text-gray-600">{getTranslation('recentReservation.time')}</p>
-                  <p className="font-medium text-gray-900">{formatTime(reservation.reservation_time)}</p>
+                <div className="min-w-0">
+                  <p className="text-xs sm:text-sm text-gray-600">{getTranslation('recentReservation.time')}</p>
+                  <p className="font-medium text-gray-900 truncate">{formatTime(reservation.reservation_time)}</p>
                 </div>
               </div>
-              <div className="flex items-center gap-3">
-                <div className="bg-blue-100 p-2 rounded-full">
+              <div className="flex items-center gap-3 min-w-0">
+                <div className="bg-blue-100 p-2 rounded-full shrink-0">
                   <Users className="h-4 w-4 text-blue-600" />
                 </div>
-                <div>
-                  <p className="text-sm text-gray-600">{getTranslation('recentReservation.party')}</p>
-                  <p className="font-medium text-gray-900">{reservation.party_size} {getTranslation('recentReservation.guestsSuffix')}</p>
+                <div className="min-w-0">
+                  <p className="text-xs sm:text-sm text-gray-600">{getTranslation('recentReservation.party')}</p>
+                  <p className="font-medium text-gray-900 truncate">{reservation.party_size} {getTranslation('recentReservation.guestsSuffix')}</p>
                 </div>
               </div>
             </div>
             <div className={`mt-4 pt-4 border-t ${cfg.border}`}>
-              <p className="text-sm text-gray-600">
-                <span className="font-medium">{reservation.restaurant_name}</span> • {reservation.customer_name}
+              <p className="text-sm text-gray-600 flex flex-wrap gap-x-1 min-w-0">
+                <span className="font-medium truncate max-w-full sm:max-w-[50%]">{reservation.restaurant_name}</span>
+                <span className="hidden sm:inline">•</span>
+                <span className="truncate max-w-full sm:max-w-[40%]">{reservation.customer_name}</span>
               </p>
               {reservation.special_requests && (
-                <p className="text-sm text-gray-500 mt-1">
+                <p className="text-sm text-gray-500 mt-1 break-words whitespace-pre-line">
                   {getTranslation('recentReservation.specialRequestsPrefix')} {reservation.special_requests}
                 </p>
               )}
               {(status === 'confirmed' || status === 'cancelled') && reservation.notes && (
-                <div className="mt-3 p-3 rounded-md border text-sm"
-                  style={{
-                    borderColor: status === 'confirmed' ? '#86efac' : '#fca5a5',
-                    background: status === 'confirmed' ? '#f0fdf4' : '#fef2f2',
-                    color: status === 'confirmed' ? '#166534' : '#7f1d1d',
-                  }}
+                <div
+                  className={`mt-3 p-3 rounded-md border text-sm break-words whitespace-pre-line ${
+                    status === 'confirmed'
+                      ? 'border-green-300 bg-green-50 text-green-800'
+                      : 'border-red-300 bg-red-50 text-red-800'
+                  }`}
                 >
                   {reservation.notes}
                 </div>

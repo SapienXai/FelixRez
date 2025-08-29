@@ -253,6 +253,8 @@ export async function updateReservation(params: UpdateReservationParams) {
         reservation_time: params.reservation_time,
         special_requests: params.special_requests || null,
         table_number: params.table_number || null,
+        // Any customer-initiated edits should put reservation back to pending
+        status: 'pending',
       })
       .eq("id", params.id)
       .select(`

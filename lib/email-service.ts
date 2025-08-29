@@ -419,12 +419,21 @@ export function generateManagementNotificationEmail({
           ` : ''}
         </div>
         
-        ${action === 'created' ? `
+        ${
+          action === 'created'
+            ? `
         <div class="action-required">
           <h4>⚠️ Action Required</h4>
           <p>This reservation is currently <strong>pending</strong> and needs to be confirmed or declined. Please log in to the management dashboard to review and update the reservation status.</p>
         </div>
-        ` : ''}
+        `
+            : `
+        <div class="action-required">
+          <h4>⚠️ Action Required</h4>
+          <p>This reservation was <strong>updated by the customer</strong> and has been set to <strong>pending</strong> again. Please review the changes and confirm or decline.</p>
+        </div>
+        `
+        }
         
         <div class="button-container">
           <a href="https://reserve.felixsmile.com/manage" class="manage-button">
