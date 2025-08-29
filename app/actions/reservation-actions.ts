@@ -318,3 +318,32 @@ export async function updateReservation(params: UpdateReservationParams) {
     return { success: false, message: "An unexpected error occurred" }
   }
 }
+
+/**
+ * Fetch reservation status and notes by ID for customer display
+ */
+export async function getReservationStatus(id: string) {
+  try {
+    const supabase = createServiceRoleClient()
+
+    const { data, error } = await supabase
+      .from("reservations")
+      .select("id, status, notes")
+      .eq("id", id)
+      .maybeSingle()
+
+    if (error) {
+      console.error("Error fetching reservation status:", error)
+      return { success: false, message: "Failed to fetch reservation status" }
+    }
+
+    if (!data) {
+      return { success: false, message: "Reservation not found" }
+    }
+
+    return { success: true, data }
+  } catch (error) {
+    console.error("Error in getReservationStatus:", error)
+    return { success: false, message: "An unexpected error occurred" }
+  }
+}

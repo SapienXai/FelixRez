@@ -226,6 +226,17 @@ export function ReservationApp({ initialRestaurant, initialLang }: ReservationAp
         
         // Save reservation to cookie for 3 hours
         if (result.data) {
+          const parseReservationDateTime = (dateStr: string, timeStr: string) => {
+            const [y, m, d] = dateStr.split("-").map(Number)
+            const [hh, mm] = timeStr.split(":").map(Number)
+            const dt = new Date()
+            dt.setFullYear(y)
+            dt.setMonth((m || 1) - 1)
+            dt.setDate(d || 1)
+            dt.setHours(hh || 0, mm || 0, 0, 0)
+            return dt
+          }
+
           const reservationData = {
             id: result.data.id,
             restaurant_name: restaurantName,
@@ -236,12 +247,17 @@ export function ReservationApp({ initialRestaurant, initialLang }: ReservationAp
             reservation_date: formattedDate,
             reservation_time: selectedTime,
             special_requests: specialRequests || undefined,
+            status: "pending" as const,
+            notes: null as string | null,
             created_at: new Date().toISOString()
           }
           
           const cookieValue = encodeURIComponent(JSON.stringify(reservationData))
-          const expiryDate = new Date()
-          expiryDate.setHours(expiryDate.getHours() + 3)
+          const expiryDate = parseReservationDateTime(formattedDate, selectedTime)
+          // Safety: if computed expiry already passed (edge cases), keep for 3 hours
+          if (expiryDate.getTime() <= Date.now()) {
+            expiryDate.setHours(new Date().getHours() + 3)
+          }
           document.cookie = `recent_reservation=${cookieValue}; expires=${expiryDate.toUTCString()}; path=/`
         }
       } else {

@@ -4,12 +4,12 @@ import { useLanguage } from "@/context/language-context"
 import { useEffect, useState } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Calendar, Clock, Users, Edit, X } from "lucide-react"
+import { Calendar, Clock, Users, Edit, X, CheckCircle, XCircle } from "lucide-react"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
-import { updateReservation } from "@/app/actions/reservation-actions"
+import { updateReservation, getReservationStatus } from "@/app/actions/reservation-actions"
 import { toast } from "@/hooks/use-toast"
 
 interface ReservationData {
@@ -22,12 +22,15 @@ interface ReservationData {
   reservation_date: string
   reservation_time: string
   special_requests?: string
+  status?: string | null
+  notes?: string | null
   created_at: string
 }
 
 export function RecentReservation() {
   const { getTranslation, currentLang } = useLanguage()
   const [reservation, setReservation] = useState<ReservationData | null>(null)
+  const [showPanel, setShowPanel] = useState(true)
   const [showEditDialog, setShowEditDialog] = useState(false)
   const [isEditing, setIsEditing] = useState(false)
   const [editForm, setEditForm] = useState({
@@ -54,13 +57,33 @@ export function RecentReservation() {
           const decodedValue = decodeURIComponent(cookieValue)
           const reservationData = JSON.parse(decodedValue)
           
-          // Check if reservation is within 3 hours
-          const createdAt = new Date(reservationData.created_at)
+          // Keep cookie until reservation time; remove if past
+          const [hours, minutes] = String(reservationData.reservation_time || '00:00').split(':').map((n: string) => parseInt(n, 10) || 0)
+          const [y, m, d] = String(reservationData.reservation_date || '').split('-').map((n: string) => parseInt(n, 10) || 0)
+          const resDT = new Date()
+          resDT.setFullYear(y)
+          resDT.setMonth((m || 1) - 1)
+          resDT.setDate(d || 1)
+          resDT.setHours(hours, minutes, 0, 0)
           const now = new Date()
-          const threeHoursInMs = 3 * 60 * 60 * 1000
-          
-          if (now.getTime() - createdAt.getTime() < threeHoursInMs) {
+
+          if (now.getTime() < resDT.getTime()) {
             setReservation(reservationData)
+            // Respect previous hide choice
+            try {
+              const hidden = localStorage.getItem('recent_reservation_hidden') === '1'
+              if (hidden) setShowPanel(false)
+            } catch {}
+            // Fetch latest status/notes from server by id
+            if (reservationData?.id) {
+              getReservationStatus(reservationData.id)
+                .then((res) => {
+                  if (res?.success && res.data) {
+                    setReservation((prev) => prev ? { ...prev, status: res.data.status, notes: res.data.notes } : prev)
+                  }
+                })
+                .catch((e) => console.error('Error fetching reservation status:', e))
+            }
           } else {
             // Remove expired cookie
             document.cookie = 'recent_reservation=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;'
@@ -141,8 +164,16 @@ export function RecentReservation() {
         
         // Update the cookie with new data
         const cookieValue = encodeURIComponent(JSON.stringify(updatedReservation))
+        const [y, m, d] = updatedReservation.reservation_date.split('-').map((n: string) => parseInt(n, 10) || 0)
+        const [hh, mm] = updatedReservation.reservation_time.split(':').map((n: string) => parseInt(n, 10) || 0)
         const expiryDate = new Date()
-        expiryDate.setHours(expiryDate.getHours() + 3)
+        expiryDate.setFullYear(y)
+        expiryDate.setMonth((m || 1) - 1)
+        expiryDate.setDate(d || 1)
+        expiryDate.setHours(hh || 0, mm || 0, 0, 0)
+        if (expiryDate.getTime() <= Date.now()) {
+          expiryDate.setHours(new Date().getHours() + 3)
+        }
         document.cookie = `recent_reservation=${cookieValue}; expires=${expiryDate.toUTCString()}; path=/`
         
         setShowEditDialog(false)
@@ -170,30 +201,92 @@ export function RecentReservation() {
   }
 
   const handleDismiss = () => {
-    // Remove the cookie
-    document.cookie = 'recent_reservation=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;'
-    setReservation(null)
+    // Hide panel but keep cookie so user can bring it back
+    try {
+      localStorage.setItem('recent_reservation_hidden', '1')
+    } catch {}
+    setShowPanel(false)
+  }
+
+  const handleShowPanel = () => {
+    try {
+      localStorage.removeItem('recent_reservation_hidden')
+    } catch {}
+    setShowPanel(true)
   }
 
   if (!reservation) {
     return null
   }
 
+  if (!showPanel) {
+    return (
+      <div className="fixed bottom-4 right-4 z-40">
+        <Button onClick={handleShowPanel} className="shadow-lg rounded-full px-4">
+          <Calendar className="h-4 w-4 mr-2" />
+          View reservation
+        </Button>
+      </div>
+    )
+  }
+
+  const status = (reservation.status || 'pending') as 'pending' | 'confirmed' | 'cancelled' | string
+  // Allow editing until reservation time, and not if cancelled
+  const canEdit = (() => {
+    const [y, m, d] = reservation.reservation_date.split('-').map((n) => parseInt(n, 10) || 0)
+    const [hh, mm] = reservation.reservation_time.split(':').map((n) => parseInt(n, 10) || 0)
+    const resDT = new Date()
+    resDT.setFullYear(y)
+    resDT.setMonth((m || 1) - 1)
+    resDT.setDate(d || 1)
+    resDT.setHours(hh || 0, mm || 0, 0, 0)
+    return new Date().getTime() < resDT.getTime() && status !== 'cancelled'
+  })()
+  const statusConfig: Record<string, { card: string; border: string; badge: string; icon: JSX.Element }> = {
+    pending: {
+      card: 'from-yellow-50 to-amber-50',
+      border: 'border-yellow-200',
+      badge: 'bg-yellow-100 text-yellow-800',
+      icon: <Clock className="h-3.5 w-3.5 mr-1 text-yellow-600" />,
+    },
+    confirmed: {
+      card: 'from-green-50 to-emerald-50',
+      border: 'border-green-200',
+      badge: 'bg-green-100 text-green-800',
+      icon: <CheckCircle className="h-3.5 w-3.5 mr-1 text-green-600" />,
+    },
+    cancelled: {
+      card: 'from-red-50 to-rose-50',
+      border: 'border-red-200',
+      badge: 'bg-red-100 text-red-800',
+      icon: <XCircle className="h-3.5 w-3.5 mr-1 text-red-600" />,
+    },
+  }
+  const cfg = statusConfig[status] || { card: 'from-blue-50 to-indigo-50', border: 'border-blue-200', badge: 'bg-blue-100 text-blue-800', icon: <Clock className="h-3.5 w-3.5 mr-1 text-blue-600" /> }
+
   return (
     <>
       <div className="w-full max-w-4xl mx-auto mb-6">
-        <Card className="bg-gradient-to-r from-blue-50 to-indigo-50 border-blue-200">
+        <Card className={`bg-gradient-to-r ${cfg.card} ${cfg.border}`}>
           <CardHeader className="pb-3">
             <div className="flex items-center justify-between">
               <CardTitle className="text-lg text-blue-900">
                 {getTranslation('recentReservation.title')}
               </CardTitle>
               <div className="flex gap-2">
+                <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${cfg.badge}`}>
+                  {cfg.icon}
+                  {status === 'pending' && getTranslation('common.status.pending')}
+                  {status === 'confirmed' && getTranslation('common.status.confirmed')}
+                  {status === 'cancelled' && getTranslation('common.status.cancelled')}
+                  {status !== 'pending' && status !== 'confirmed' && status !== 'cancelled' && String(status)}
+                </span>
                 <Button
                   variant="outline"
                   size="sm"
                   onClick={handleEditClick}
-                  className="text-blue-700 border-blue-300 hover:bg-blue-100"
+                  disabled={!canEdit}
+                  className={`text-blue-700 border-blue-300 hover:bg-blue-100 ${!canEdit ? 'opacity-50 cursor-not-allowed' : ''}`}
                 >
                   <Edit className="h-4 w-4 mr-1" />
                   {getTranslation('recentReservation.edit')}
@@ -239,7 +332,7 @@ export function RecentReservation() {
                 </div>
               </div>
             </div>
-            <div className="mt-4 pt-4 border-t border-blue-200">
+            <div className={`mt-4 pt-4 border-t ${cfg.border}`}>
               <p className="text-sm text-gray-600">
                 <span className="font-medium">{reservation.restaurant_name}</span> • {reservation.customer_name}
               </p>
@@ -248,13 +341,24 @@ export function RecentReservation() {
                   {getTranslation('recentReservation.specialRequestsPrefix')} {reservation.special_requests}
                 </p>
               )}
+              {(status === 'confirmed' || status === 'cancelled') && reservation.notes && (
+                <div className="mt-3 p-3 rounded-md border text-sm"
+                  style={{
+                    borderColor: status === 'confirmed' ? '#86efac' : '#fca5a5',
+                    background: status === 'confirmed' ? '#f0fdf4' : '#fef2f2',
+                    color: status === 'confirmed' ? '#166534' : '#7f1d1d',
+                  }}
+                >
+                  {reservation.notes}
+                </div>
+              )}
             </div>
           </CardContent>
         </Card>
       </div>
 
       <Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="sm:max-w-md w-[calc(100vw-1rem)] sm:w-auto p-4 sm:p-6 overflow-y-auto max-h-[85vh]">
           <DialogHeader>
             <DialogTitle>{getTranslation('recentReservation.dialogTitle')}</DialogTitle>
           </DialogHeader>
@@ -322,11 +426,11 @@ export function RecentReservation() {
                 rows={3}
               />
             </div>
-            <div className="flex gap-2 pt-4">
+            <div className="flex gap-2 pt-4 sm:flex-row flex-col">
               <Button
                 onClick={handleSaveEdit}
                 disabled={isEditing}
-                className="flex-1"
+                className="flex-1 w-full sm:w-auto"
               >
                 {isEditing ? getTranslation('recentReservation.actions.saving') : getTranslation('recentReservation.actions.save')}
               </Button>
@@ -334,6 +438,7 @@ export function RecentReservation() {
                 variant="outline"
                 onClick={() => setShowEditDialog(false)}
                 disabled={isEditing}
+                className="w-full sm:w-auto"
               >
                 {getTranslation('recentReservation.actions.cancel')}
               </Button>
