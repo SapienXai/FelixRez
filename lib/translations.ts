@@ -153,6 +153,7 @@ export const translations = {
         reservationTypeDrinks: "Drinks only",
         mealOnlyNotice: "This restaurant only accepts dining reservations.",
         areaOnlyDiningNotice: "This area only accepts dining reservations.",
+        marinaDiningNotice: "At our Marina branch, dining menu includes only burgers and crispy items.",
         termsNoticeSuffix: "of Felix Smile Company.",
       },
       footer: {
@@ -556,6 +557,7 @@ export const translations = {
         reservationTypeDrinks: "Sadece içecek",
         mealOnlyNotice: "Bu restoran sadece yemekli rezervasyon kabul etmektedir.",
         areaOnlyDiningNotice: "Bu alan sadece yemekli rezervasyon kabul etmektedir.",
+        marinaDiningNotice: "Marina şubemizde yemek olarak sadece burger ve çıtır ürünler var.",
       },
       footer: {
         continueButton: "Devam Et",

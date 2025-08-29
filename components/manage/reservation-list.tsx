@@ -225,7 +225,7 @@ export function ReservationList({ reservations, onStatusChange, itemsPerPage = 5
                      const areaFirstWord = reservation.reservation_areas?.name?.split(' ')[0];
                       const isMainHall = !areaFirstWord || areaFirstWord.toLowerCase() === 'main';
                       const areaText = isMainHall ? '' : `${areaFirstWord} - `;
-                      const reservationInfo = `${new Date(reservation.reservation_date).toLocaleDateString('en-US', {
+                      const reservationInfo = `${reservation.restaurants?.name || 'Restaurant'}\n${new Date(reservation.reservation_date).toLocaleDateString('en-US', {
                         weekday: 'long',
                         month: 'long',
                         day: 'numeric'
