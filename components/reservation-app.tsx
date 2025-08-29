@@ -252,13 +252,58 @@ export function ReservationApp({ initialRestaurant, initialLang }: ReservationAp
             created_at: new Date().toISOString()
           }
           
-          const cookieValue = encodeURIComponent(JSON.stringify(reservationData))
-          const expiryDate = parseReservationDateTime(formattedDate, selectedTime)
-          // Safety: if computed expiry already passed (edge cases), keep for 3 hours
-          if (expiryDate.getTime() <= Date.now()) {
-            expiryDate.setHours(new Date().getHours() + 3)
+          // Merge into recent_reservations list cookie (array)
+          const parseDT = (d: string, t: string) => {
+            const [yy, mm, dd] = d.split('-').map((n) => parseInt(n, 10) || 0)
+            const [hh, mi] = t.split(':').map((n) => parseInt(n, 10) || 0)
+            const x = new Date()
+            x.setFullYear(yy)
+            x.setMonth((mm || 1) - 1)
+            x.setDate(dd || 1)
+            x.setHours(hh || 0, mi || 0, 0, 0)
+            return x
           }
-          document.cookie = `recent_reservation=${cookieValue}; expires=${expiryDate.toUTCString()}; path=/`
+
+          const cookies = document.cookie.split(';')
+          const listCookie = cookies.find((c) => c.trim().startsWith('recent_reservations='))
+          let items: any[] = []
+          if (listCookie) {
+            try {
+              items = JSON.parse(decodeURIComponent(listCookie.split('=')[1])) || []
+            } catch {}
+          } else {
+            // migrate from single cookie if present
+            const single = cookies.find((c) => c.trim().startsWith('recent_reservation='))
+            if (single) {
+              try {
+                const one = JSON.parse(decodeURIComponent(single.split('=')[1]))
+                if (one && one.id) items = [one]
+                // clear old single cookie
+                document.cookie = 'recent_reservation=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/'
+              } catch {}
+            }
+          }
+
+          // add/replace by id
+          const without = items.filter((it) => it.id !== reservationData.id)
+          const nextItems = [...without, reservationData]
+
+          // remove expired entries and compute max expiry
+          const now = Date.now()
+          const validItems = nextItems.filter((it) => {
+            const dt = parseDT(it.reservation_date, it.reservation_time)
+            return dt.getTime() > now
+          })
+          const maxExpiry = validItems.reduce((acc: number, it: any) => {
+            const dt = parseDT(it.reservation_date, it.reservation_time).getTime()
+            return Math.max(acc, dt)
+          }, 0)
+
+          // safety fallback
+          const expiryDate = maxExpiry > now ? new Date(maxExpiry) : (() => { const e = new Date(); e.setHours(e.getHours() + 3); return e })()
+
+          const cookieValue = encodeURIComponent(JSON.stringify(validItems))
+          document.cookie = `recent_reservations=${cookieValue}; expires=${expiryDate.toUTCString()}; path=/`
         }
       } else {
         setMessage(result.message)

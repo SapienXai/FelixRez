@@ -29,10 +29,11 @@ interface ReservationData {
 
 export function RecentReservation() {
   const { getTranslation, currentLang } = useLanguage()
-  const [reservation, setReservation] = useState<ReservationData | null>(null)
+  const [reservations, setReservations] = useState<ReservationData[]>([])
   const [showPanel, setShowPanel] = useState(true)
   const [showEditDialog, setShowEditDialog] = useState(false)
   const [isEditing, setIsEditing] = useState(false)
+  const [selectedReservation, setSelectedReservation] = useState<ReservationData | null>(null)
   const [editForm, setEditForm] = useState({
     customer_name: "",
     customer_email: "",
@@ -44,59 +45,74 @@ export function RecentReservation() {
   })
 
   useEffect(() => {
-    // Check for recent reservation in cookies
-    const checkRecentReservation = () => {
-      const cookies = document.cookie.split(';')
-      const recentReservationCookie = cookies.find(cookie => 
-        cookie.trim().startsWith('recent_reservation=')
-      )
-      
-      if (recentReservationCookie) {
-        try {
-          const cookieValue = recentReservationCookie.split('=')[1]
-          const decodedValue = decodeURIComponent(cookieValue)
-          const reservationData = JSON.parse(decodedValue)
-          
-          // Keep cookie until reservation time; remove if past
-          const [hours, minutes] = String(reservationData.reservation_time || '00:00').split(':').map((n: string) => parseInt(n, 10) || 0)
-          const [y, m, d] = String(reservationData.reservation_date || '').split('-').map((n: string) => parseInt(n, 10) || 0)
-          const resDT = new Date()
-          resDT.setFullYear(y)
-          resDT.setMonth((m || 1) - 1)
-          resDT.setDate(d || 1)
-          resDT.setHours(hours, minutes, 0, 0)
-          const now = new Date()
+    const parseDT = (d?: string, t?: string) => {
+      const [yy, mm, dd] = String(d || '').split('-').map((n) => parseInt(n, 10) || 0)
+      const [hh, mi] = String(t || '00:00').split(':').map((n) => parseInt(n, 10) || 0)
+      const x = new Date()
+      x.setFullYear(yy)
+      x.setMonth((mm || 1) - 1)
+      x.setDate(dd || 1)
+      x.setHours(hh || 0, mi || 0, 0, 0)
+      return x
+    }
 
-          if (now.getTime() < resDT.getTime()) {
-            setReservation(reservationData)
-            // Respect previous hide choice
-            try {
-              const hidden = localStorage.getItem('recent_reservation_hidden') === '1'
-              if (hidden) setShowPanel(false)
-            } catch {}
-            // Fetch latest status/notes from server by id
-            if (reservationData?.id) {
-              getReservationStatus(reservationData.id)
-                .then((res) => {
-                  if (res?.success && res.data) {
-                    setReservation((prev) => prev ? { ...prev, status: res.data.status, notes: res.data.notes } : prev)
-                  }
-                })
-                .catch((e) => console.error('Error fetching reservation status:', e))
-            }
-          } else {
-            // Remove expired cookie
-            document.cookie = 'recent_reservation=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;'
-          }
-        } catch (error) {
-          console.error('Error parsing reservation cookie:', error)
-          // Remove invalid cookie
-          document.cookie = 'recent_reservation=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;'
+    const loadRecentReservations = () => {
+      const cookies = document.cookie.split(';')
+      const listCookie = cookies.find((c) => c.trim().startsWith('recent_reservations='))
+      let items: ReservationData[] = []
+
+      if (listCookie) {
+        try {
+          items = JSON.parse(decodeURIComponent(listCookie.split('=')[1])) || []
+        } catch (e) {
+          console.error('Error parsing recent_reservations cookie:', e)
         }
+      } else {
+        // fallback: old single cookie
+        const single = cookies.find((c) => c.trim().startsWith('recent_reservation='))
+        if (single) {
+          try {
+            const one = JSON.parse(decodeURIComponent(single.split('=')[1]))
+            if (one && one.id) items = [one]
+            // clear old cookie
+            document.cookie = 'recent_reservation=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/'
+          } catch {}
+        }
+      }
+
+      // Filter out expired
+      const now = Date.now()
+      const valid = (items || []).filter((it) => parseDT(it.reservation_date, it.reservation_time).getTime() > now)
+
+      if (valid.length) {
+        setReservations(valid)
+        // Respect previous hide choice
+        try {
+          const hidden = localStorage.getItem('recent_reservation_hidden') === '1'
+          if (hidden) setShowPanel(false)
+        } catch {}
+        // fetch statuses
+        valid.forEach((it) => {
+          getReservationStatus(it.id)
+            .then((res) => {
+              if (res?.success && res.data) {
+                setReservations((prev) => prev.map((p) => (p.id === it.id ? { ...p, status: res.data.status, notes: res.data.notes } : p)))
+              }
+            })
+            .catch((e) => console.error('Error fetching reservation status:', e))
+        })
+
+        // persist filtered list and expiry as max
+        const maxExpiry = valid.reduce((acc, it) => Math.max(acc, parseDT(it.reservation_date, it.reservation_time).getTime()), 0)
+        const expiryDate = maxExpiry > now ? new Date(maxExpiry) : (() => { const e = new Date(); e.setHours(e.getHours() + 3); return e })()
+        document.cookie = `recent_reservations=${encodeURIComponent(JSON.stringify(valid))}; expires=${expiryDate.toUTCString()}; path=/`
+      } else {
+        // clear cookie if empty
+        document.cookie = 'recent_reservations=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/'
       }
     }
 
-    checkRecentReservation()
+    loadRecentReservations()
   }, [])
 
   const formatDate = (dateString: string) => {
@@ -123,28 +139,29 @@ export function RecentReservation() {
     })
   }
 
-  const handleEditClick = () => {
-    if (reservation) {
+  const handleEditClick = (res: ReservationData) => {
+    if (res) {
+      setSelectedReservation(res)
       setEditForm({
-        customer_name: reservation.customer_name,
-        customer_email: reservation.customer_email,
-        customer_phone: reservation.customer_phone,
-        party_size: reservation.party_size,
-        reservation_date: reservation.reservation_date,
-        reservation_time: reservation.reservation_time,
-        special_requests: reservation.special_requests || ""
+        customer_name: res.customer_name,
+        customer_email: res.customer_email,
+        customer_phone: res.customer_phone,
+        party_size: res.party_size,
+        reservation_date: res.reservation_date,
+        reservation_time: res.reservation_time,
+        special_requests: res.special_requests || ""
       })
       setShowEditDialog(true)
     }
   }
 
   const handleSaveEdit = async () => {
-    if (!reservation) return
+    if (!selectedReservation) return
     
     setIsEditing(true)
     try {
       const result = await updateReservation({
-        id: reservation.id,
+        id: selectedReservation.id,
         customer_name: editForm.customer_name,
         customer_email: editForm.customer_email,
         customer_phone: editForm.customer_phone,
@@ -155,27 +172,30 @@ export function RecentReservation() {
       })
 
       if (result.success) {
-        // Update the reservation state
-        const updatedReservation = {
-          ...reservation,
+        // Update the selected reservation in state and cookie
+        const updatedReservation: ReservationData = {
+          ...selectedReservation,
           ...editForm,
-          status: 'pending' as const
+          status: 'pending',
         }
-        setReservation(updatedReservation)
-        
-        // Update the cookie with new data
-        const cookieValue = encodeURIComponent(JSON.stringify(updatedReservation))
-        const [y, m, d] = updatedReservation.reservation_date.split('-').map((n: string) => parseInt(n, 10) || 0)
-        const [hh, mm] = updatedReservation.reservation_time.split(':').map((n: string) => parseInt(n, 10) || 0)
-        const expiryDate = new Date()
-        expiryDate.setFullYear(y)
-        expiryDate.setMonth((m || 1) - 1)
-        expiryDate.setDate(d || 1)
-        expiryDate.setHours(hh || 0, mm || 0, 0, 0)
-        if (expiryDate.getTime() <= Date.now()) {
-          expiryDate.setHours(new Date().getHours() + 3)
+        setReservations((prev) => prev.map((r) => (r.id === selectedReservation.id ? updatedReservation : r)))
+
+        // Update list cookie with all active reservations and expiry at latest reservation time
+        const parseDT = (d: string, t: string) => {
+          const [yy, mm, dd] = d.split('-').map((n) => parseInt(n, 10) || 0)
+          const [hh, mi] = t.split(':').map((n) => parseInt(n, 10) || 0)
+          const x = new Date()
+          x.setFullYear(yy)
+          x.setMonth((mm || 1) - 1)
+          x.setDate(dd || 1)
+          x.setHours(hh || 0, mi || 0, 0, 0)
+          return x
         }
-        document.cookie = `recent_reservation=${cookieValue}; expires=${expiryDate.toUTCString()}; path=/`
+        const active = reservations.map((r) => (r.id === selectedReservation.id ? updatedReservation : r))
+          .filter((r) => parseDT(r.reservation_date, r.reservation_time).getTime() > Date.now())
+        const maxExpiry = active.reduce((acc, it) => Math.max(acc, parseDT(it.reservation_date, it.reservation_time).getTime()), 0)
+        const expiryDate = maxExpiry > Date.now() ? new Date(maxExpiry) : (() => { const e = new Date(); e.setHours(e.getHours() + 3); return e })()
+        document.cookie = `recent_reservations=${encodeURIComponent(JSON.stringify(active))}; expires=${expiryDate.toUTCString()}; path=/`
         
         setShowEditDialog(false)
         toast({
@@ -216,7 +236,7 @@ export function RecentReservation() {
     setShowPanel(true)
   }
 
-  if (!reservation) {
+  if (!reservations.length) {
     return null
   }
 
@@ -236,7 +256,7 @@ export function RecentReservation() {
                 className="text-blue-700 border-blue-300 hover:bg-blue-100"
               >
                 <Calendar className="h-4 w-4 mr-1" />
-                View reservation
+                View reservations ({reservations.length})
               </Button>
             </div>
           </CardHeader>
@@ -244,19 +264,6 @@ export function RecentReservation() {
       </div>
     )
   }
-
-  const status = (reservation.status || 'pending') as 'pending' | 'confirmed' | 'cancelled' | string
-  // Allow editing until reservation time, and not if cancelled
-  const canEdit = (() => {
-    const [y, m, d] = reservation.reservation_date.split('-').map((n) => parseInt(n, 10) || 0)
-    const [hh, mm] = reservation.reservation_time.split(':').map((n) => parseInt(n, 10) || 0)
-    const resDT = new Date()
-    resDT.setFullYear(y)
-    resDT.setMonth((m || 1) - 1)
-    resDT.setDate(d || 1)
-    resDT.setHours(hh || 0, mm || 0, 0, 0)
-    return new Date().getTime() < resDT.getTime() && status !== 'cancelled'
-  })()
   const statusConfig: Record<string, { card: string; border: string; badge: string; icon: JSX.Element }> = {
     pending: {
       card: 'from-yellow-50 to-amber-50',
@@ -282,96 +289,112 @@ export function RecentReservation() {
   return (
     <>
       <div className="w-full max-w-4xl mx-auto mb-6 px-3 sm:px-0">
-        <Card className={`bg-gradient-to-r ${cfg.card} ${cfg.border}`}>
-          <CardHeader className="pb-3">
-            <div className="flex flex-wrap items-center justify-between gap-2">
-              <CardTitle className="text-base sm:text-lg text-gray-900 truncate">
-                {getTranslation('recentReservation.title')}
-              </CardTitle>
-              <div className="flex gap-2 flex-wrap items-center justify-end">
-                <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium shrink-0 ${cfg.badge}`}>
-                  {cfg.icon}
-                  {status === 'pending' && getTranslation('common.status.pending')}
-                  {status === 'confirmed' && getTranslation('common.status.confirmed')}
-                  {status === 'cancelled' && getTranslation('common.status.cancelled')}
-                  {status !== 'pending' && status !== 'confirmed' && status !== 'cancelled' && String(status)}
-                </span>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={handleEditClick}
-                  disabled={!canEdit}
-                  className={`text-blue-700 border-blue-300 hover:bg-blue-100 ${!canEdit ? 'opacity-50 cursor-not-allowed' : ''}`}
-                >
-                  <Edit className="h-4 w-4 mr-1" />
-                  {getTranslation('recentReservation.edit')}
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={handleDismiss}
-                  className="text-gray-500 hover:text-gray-700"
-                >
-                  <X className="h-4 w-4" />
-                </Button>
-              </div>
-            </div>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-3 sm:gap-4">
-              <div className="flex items-center gap-3 min-w-0">
-                <div className="bg-blue-100 p-2 rounded-full shrink-0">
-                  <Calendar className="h-4 w-4 text-blue-600" />
+        {reservations.map((reservation) => {
+          const status = (reservation.status || 'pending') as 'pending' | 'confirmed' | 'cancelled' | string
+          const cfg = statusConfig[status] || { card: 'from-blue-50 to-indigo-50', border: 'border-blue-200', badge: 'bg-blue-100 text-blue-800', icon: <Clock className="h-3.5 w-3.5 mr-1 text-blue-600" /> }
+          const [y, m, d] = reservation.reservation_date.split('-').map((n) => parseInt(n, 10) || 0)
+          const [hh, mm] = reservation.reservation_time.split(':').map((n) => parseInt(n, 10) || 0)
+          const resDT = new Date()
+          resDT.setFullYear(y)
+          resDT.setMonth((m || 1) - 1)
+          resDT.setDate(d || 1)
+          resDT.setHours(hh || 0, mm || 0, 0, 0)
+          const canEdit = new Date().getTime() < resDT.getTime() && status !== 'cancelled'
+
+          return (
+            <Card key={reservation.id} className={`mb-4 bg-gradient-to-r ${cfg.card} ${cfg.border}`}>
+              <CardHeader className="pb-3">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <CardTitle className="text-base sm:text-lg text-gray-900 truncate">
+                    {getTranslation('recentReservation.title')}
+                  </CardTitle>
+                  <div className="flex gap-2 flex-wrap items-center justify-end">
+                    <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium shrink-0 ${cfg.badge}`}>
+                      {cfg.icon}
+                      {status === 'pending' && getTranslation('common.status.pending')}
+                      {status === 'confirmed' && getTranslation('common.status.confirmed')}
+                      {status === 'cancelled' && getTranslation('common.status.cancelled')}
+                      {status !== 'pending' && status !== 'confirmed' && status !== 'cancelled' && String(status)}
+                    </span>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleEditClick(reservation)}
+                      disabled={!canEdit}
+                      className={`text-blue-700 border-blue-300 hover:bg-blue-100 ${!canEdit ? 'opacity-50 cursor-not-allowed' : ''}`}
+                    >
+                      <Edit className="h-4 w-4 mr-1" />
+                      {getTranslation('recentReservation.edit')}
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={handleDismiss}
+                      className="text-gray-500 hover:text-gray-700"
+                      title="Hide panel"
+                    >
+                      <X className="h-4 w-4" />
+                    </Button>
+                  </div>
                 </div>
-                <div className="min-w-0">
-                  <p className="text-xs sm:text-sm text-gray-600">{getTranslation('recentReservation.date')}</p>
-                  <p className="font-medium text-gray-900 truncate">{formatDate(reservation.reservation_date)}</p>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3 sm:gap-4">
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div className="bg-blue-100 p-2 rounded-full shrink-0">
+                      <Calendar className="h-4 w-4 text-blue-600" />
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-xs sm:text-sm text-gray-600">{getTranslation('recentReservation.date')}</p>
+                      <p className="font-medium text-gray-900 truncate">{formatDate(reservation.reservation_date)}</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div className="bg-blue-100 p-2 rounded-full shrink-0">
+                      <Clock className="h-4 w-4 text-blue-600" />
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-xs sm:text-sm text-gray-600">{getTranslation('recentReservation.time')}</p>
+                      <p className="font-medium text-gray-900 truncate">{formatTime(reservation.reservation_time)}</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div className="bg-blue-100 p-2 rounded-full shrink-0">
+                      <Users className="h-4 w-4 text-blue-600" />
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-xs sm:text-sm text-gray-600">{getTranslation('recentReservation.party')}</p>
+                      <p className="font-medium text-gray-900 truncate">{reservation.party_size} {getTranslation('recentReservation.guestsSuffix')}</p>
+                    </div>
+                  </div>
                 </div>
-              </div>
-              <div className="flex items-center gap-3 min-w-0">
-                <div className="bg-blue-100 p-2 rounded-full shrink-0">
-                  <Clock className="h-4 w-4 text-blue-600" />
+                <div className={`mt-4 pt-4 border-t ${cfg.border}`}>
+                  <p className="text-sm text-gray-600 flex flex-wrap gap-x-1 min-w-0">
+                    <span className="font-medium truncate max-w-full sm:max-w-[50%]">{reservation.restaurant_name}</span>
+                    <span className="hidden sm:inline">•</span>
+                    <span className="truncate max-w-full sm:max-w-[40%]">{reservation.customer_name}</span>
+                  </p>
+                  {reservation.special_requests && (
+                    <p className="text-sm text-gray-500 mt-1 break-words whitespace-pre-line">
+                      {getTranslation('recentReservation.specialRequestsPrefix')} {reservation.special_requests}
+                    </p>
+                  )}
+                  {(status === 'confirmed' || status === 'cancelled') && reservation.notes && (
+                    <div
+                      className={`mt-3 p-3 rounded-md border text-sm break-words whitespace-pre-line ${
+                        status === 'confirmed'
+                          ? 'border-green-300 bg-green-50 text-green-800'
+                          : 'border-red-300 bg-red-50 text-red-800'
+                      }`}
+                    >
+                      {reservation.notes}
+                    </div>
+                  )}
                 </div>
-                <div className="min-w-0">
-                  <p className="text-xs sm:text-sm text-gray-600">{getTranslation('recentReservation.time')}</p>
-                  <p className="font-medium text-gray-900 truncate">{formatTime(reservation.reservation_time)}</p>
-                </div>
-              </div>
-              <div className="flex items-center gap-3 min-w-0">
-                <div className="bg-blue-100 p-2 rounded-full shrink-0">
-                  <Users className="h-4 w-4 text-blue-600" />
-                </div>
-                <div className="min-w-0">
-                  <p className="text-xs sm:text-sm text-gray-600">{getTranslation('recentReservation.party')}</p>
-                  <p className="font-medium text-gray-900 truncate">{reservation.party_size} {getTranslation('recentReservation.guestsSuffix')}</p>
-                </div>
-              </div>
-            </div>
-            <div className={`mt-4 pt-4 border-t ${cfg.border}`}>
-              <p className="text-sm text-gray-600 flex flex-wrap gap-x-1 min-w-0">
-                <span className="font-medium truncate max-w-full sm:max-w-[50%]">{reservation.restaurant_name}</span>
-                <span className="hidden sm:inline">•</span>
-                <span className="truncate max-w-full sm:max-w-[40%]">{reservation.customer_name}</span>
-              </p>
-              {reservation.special_requests && (
-                <p className="text-sm text-gray-500 mt-1 break-words whitespace-pre-line">
-                  {getTranslation('recentReservation.specialRequestsPrefix')} {reservation.special_requests}
-                </p>
-              )}
-              {(status === 'confirmed' || status === 'cancelled') && reservation.notes && (
-                <div
-                  className={`mt-3 p-3 rounded-md border text-sm break-words whitespace-pre-line ${
-                    status === 'confirmed'
-                      ? 'border-green-300 bg-green-50 text-green-800'
-                      : 'border-red-300 bg-red-50 text-red-800'
-                  }`}
-                >
-                  {reservation.notes}
-                </div>
-              )}
-            </div>
-          </CardContent>
-        </Card>
+              </CardContent>
+            </Card>
+          )
+        })}
       </div>
 
       <Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>
