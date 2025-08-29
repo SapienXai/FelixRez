@@ -221,11 +221,25 @@ export function RecentReservation() {
 
   if (!showPanel) {
     return (
-      <div className="fixed bottom-4 right-4 z-40">
-        <Button onClick={handleShowPanel} className="shadow-lg rounded-full px-4">
-          <Calendar className="h-4 w-4 mr-2" />
-          View reservation
-        </Button>
+      <div className="w-full max-w-4xl mx-auto mb-6">
+        <Card className="bg-white border-blue-200">
+          <CardHeader className="pb-3">
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-lg text-blue-900">
+                {getTranslation('recentReservation.title')}
+              </CardTitle>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleShowPanel}
+                className="text-blue-700 border-blue-300 hover:bg-blue-100"
+              >
+                <Calendar className="h-4 w-4 mr-1" />
+                View reservation
+              </Button>
+            </div>
+          </CardHeader>
+        </Card>
       </div>
     )
   }
