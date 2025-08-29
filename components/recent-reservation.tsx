@@ -2,6 +2,7 @@
 
 import { useLanguage } from "@/context/language-context"
 import { useEffect, useState } from "react"
+import type { ReactNode } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Calendar, Clock, Users, Edit, X, CheckCircle, XCircle } from "lucide-react"
@@ -264,7 +265,7 @@ export function RecentReservation() {
       </div>
     )
   }
-  const statusConfig: Record<string, { card: string; border: string; badge: string; icon: JSX.Element }> = {
+  const statusConfig: Record<string, { card: string; border: string; badge: string; icon: ReactNode }> = {
     pending: {
       card: 'from-yellow-50 to-amber-50',
       border: 'border-yellow-200',
@@ -284,7 +285,6 @@ export function RecentReservation() {
       icon: <XCircle className="h-3.5 w-3.5 mr-1 text-red-600" />,
     },
   }
-  const cfg = statusConfig[status] || { card: 'from-blue-50 to-indigo-50', border: 'border-blue-200', badge: 'bg-blue-100 text-blue-800', icon: <Clock className="h-3.5 w-3.5 mr-1 text-blue-600" /> }
 
   return (
     <>

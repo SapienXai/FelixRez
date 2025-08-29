@@ -21,7 +21,12 @@ export async function getDashboardStats(restaurantId?: string, selectedDate?: st
       const currentMonth = now.getMonth()
       const currentDate = now.getDate()
       
-      if (timePeriod === 'weekly') {
+      if (timePeriod === 'daily') {
+        // Today only
+        const todayStr = now.toISOString().split('T')[0]
+        startDate = todayStr
+        endDate = todayStr
+      } else if (timePeriod === 'weekly') {
         // Current week (Monday to Sunday)
         const dayOfWeek = now.getDay()
         const mondayOffset = dayOfWeek === 0 ? -6 : 1 - dayOfWeek

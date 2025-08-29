@@ -224,6 +224,7 @@ export const translations = {
         filter: {
           allRestaurants: "All Restaurants",
           timePeriod: "Time Period",
+          daily: "Daily",
           weekly: "Weekly",
           monthly: "Monthly",
           yearly: "Yearly",
@@ -626,6 +627,7 @@ export const translations = {
         filter: {
           allRestaurants: "Tüm Restoranlar",
           timePeriod: "Zaman Periyodu",
+          daily: "Günlük",
           weekly: "Haftalık",
           monthly: "Aylık",
           yearly: "Yıllık",

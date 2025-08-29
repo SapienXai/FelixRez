@@ -42,7 +42,7 @@ export default function ManageDashboard() {
   const [statusFilter, setStatusFilter] = useState<string>("all")
   const [selectedRestaurant, setSelectedRestaurant] = useState<string>("")
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(undefined)
-  const [timePeriod, setTimePeriod] = useState<string>("monthly")
+  const [timePeriod, setTimePeriod] = useState<string>("daily")
   const [activeTab, setActiveTab] = useState<string>("new")
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [datePopoverOpen, setDatePopoverOpen] = useState(false)
@@ -376,6 +376,14 @@ export default function ManageDashboard() {
                       <SelectValue placeholder={getTranslation("manage.dashboard.filter.timePeriod")} />
                     </SelectTrigger>
                     <SelectContent>
+                      <SelectItem value="daily">
+                        <div className="flex items-center justify-between w-full">
+                          <span>{getTranslation("manage.dashboard.filter.daily")}</span>
+                          <span className="text-xs text-muted-foreground ml-2">
+                            ({new Date().toLocaleDateString(getTranslation('common.locale'), { weekday: 'long' })})
+                          </span>
+                        </div>
+                      </SelectItem>
                       <SelectItem value="weekly">
                         <div className="flex items-center justify-between w-full">
                           <span>{getTranslation("manage.dashboard.filter.weekly")}</span>
