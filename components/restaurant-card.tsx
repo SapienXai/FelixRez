@@ -3,6 +3,7 @@
 import { useLanguage } from "@/context/language-context"
 import Link from "next/link"
 import { useEffect, useRef, useState } from "react"
+import { Dialog, DialogContent, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 
 interface Restaurant {
   id: string
@@ -112,15 +113,24 @@ export function RestaurantCard({ restaurant }: RestaurantCardProps) {
                   <i className="fas fa-map-marker-alt"></i>
                   <span>{getTranslation("card.locationButton")}</span>
                 </a>
-                <a
-                  href="https://www.instagram.com/stories/highlights/18081008554710474/"
-                  target="_blank"
-                  className="contact-btn events-btn"
-                  rel="noreferrer"
-                >
-                  <i className="fas fa-calendar-alt"></i>
-                  <span>{getTranslation("card.eventsButton")}</span>
-                </a>
+                <Dialog>
+                  <DialogTrigger asChild>
+                    <button type="button" className="contact-btn events-btn">
+                      <i className="fas fa-calendar-alt"></i>
+                      <span>{getTranslation("card.eventsButton")}</span>
+                    </button>
+                  </DialogTrigger>
+                  <DialogContent className="max-w-[95vw] sm:max-w-3xl p-0 overflow-hidden bg-transparent border-none shadow-none">
+                    <DialogTitle className="sr-only">
+                      {restaurant.name} events
+                    </DialogTitle>
+                    <img
+                      src="/assets/events.jpeg"
+                      alt={`${restaurant.name} events`}
+                      className="block w-full h-auto max-h-[85vh] object-contain"
+                    />
+                  </DialogContent>
+                </Dialog>
               </div>
             </div>
           </div>
