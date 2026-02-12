@@ -19,7 +19,7 @@ export function ManageShell({ children }: { children: React.ReactNode }) {
       <ManageSidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
       <div className="flex-1 flex flex-col overflow-hidden">
         <ManageHeader user={user} toggleSidebar={toggleSidebar} />
-        <main className="flex-1 overflow-y-auto p-4 md:p-6">{children}</main>
+        <main className="flex-1 overflow-y-auto px-2 pt-3 pb-5 md:p-6">{children}</main>
       </div>
     </div>
   )

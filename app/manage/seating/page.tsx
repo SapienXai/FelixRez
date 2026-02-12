@@ -66,6 +66,7 @@ export default function SeatingPage() {
   const [notes, setNotes] = useState("")
   const [bookedByText, setBookedByText] = useState("")
   const [showMobileFilters, setShowMobileFilters] = useState(false)
+  const [expandedMobileCards, setExpandedMobileCards] = useState<Record<string, boolean>>({})
 
   const loadRestaurants = useCallback(async () => {
     const result = await getRestaurants()
@@ -166,8 +167,12 @@ export default function SeatingPage() {
     window.open(`/manage/seating/print?${params.toString()}`, "_blank", "noopener,noreferrer")
   }
 
+  const toggleMobileCardDetails = (id: string) => {
+    setExpandedMobileCards((prev) => ({ ...prev, [id]: !prev[id] }))
+  }
+
   return (
-    <div className="max-w-7xl mx-auto">
+    <div className="w-full">
       <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <h1 className="text-xl font-semibold sm:text-2xl">{getTranslation("manage.seating.title")}</h1>
         <div className="grid grid-cols-1 gap-2 sm:flex sm:items-center">
@@ -183,20 +188,7 @@ export default function SeatingPage() {
 
       <Card className="mb-6">
         <CardHeader>
-          <div className="flex items-center justify-between gap-2">
-            <CardTitle>{getTranslation("manage.seating.filtersTitle")}</CardTitle>
-            {isMobile && (
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={() => setShowMobileFilters((prev) => !prev)}
-                className="h-8 px-2"
-              >
-                {showMobileFilters ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-              </Button>
-            )}
-          </div>
+          <CardTitle>{getTranslation("manage.seating.filtersTitle")}</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
@@ -258,6 +250,24 @@ export default function SeatingPage() {
               />
             </div>
           </div>
+
+          {isMobile && (
+            <div className="mt-2 flex justify-center border-t pt-1">
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={() => setShowMobileFilters((prev) => !prev)}
+                className="h-5 w-5 rounded-full p-0 text-slate-500"
+              >
+                {showMobileFilters ? (
+                  <ChevronUp className="h-4 w-4 scale-[1.45]" />
+                ) : (
+                  <ChevronDown className="h-4 w-4 scale-[1.45]" />
+                )}
+              </Button>
+            </div>
+          )}
         </CardContent>
       </Card>
 
@@ -280,19 +290,30 @@ export default function SeatingPage() {
               {isMobile ? (
               <div className="space-y-3">
                 {reservations.map((reservation) => (
-                  <div key={reservation.id} className="rounded-lg border p-3">
+                  <div
+                    key={reservation.id}
+                    role="button"
+                    tabIndex={0}
+                    onClick={() => toggleMobileCardDetails(reservation.id)}
+                    onKeyDown={(event) => {
+                      if (event.key === "Enter" || event.key === " ") {
+                        event.preventDefault()
+                        toggleMobileCardDetails(reservation.id)
+                      }
+                    }}
+                    className="rounded-xl border border-slate-200 bg-slate-50 p-3 shadow-sm ring-1 ring-slate-100 cursor-pointer"
+                  >
                     <div className="flex items-start justify-between gap-3">
                       <div className="min-w-0">
-                        <div className="font-medium">{reservation.customer_name}</div>
+                        <div className="font-semibold text-slate-900">{reservation.customer_name}</div>
                         <div className="text-xs text-muted-foreground">{reservation.restaurants?.name || "-"}</div>
                       </div>
-                      <div className="text-sm font-medium">{reservation.reservation_time.slice(0, 5)}</div>
-                    </div>
-                    <div className="mt-3 grid grid-cols-2 gap-2 text-sm">
-                      <div>
-                        <span className="text-muted-foreground">{getTranslation("manage.seating.colPhone")}:</span>{" "}
-                        {reservation.customer_phone || "-"}
+                      <div className="rounded-md bg-white px-2 py-1 text-sm font-semibold text-slate-700 shadow-sm">
+                        {reservation.reservation_time.slice(0, 5)}
                       </div>
+                    </div>
+                    <div className="mt-2 border-t border-slate-200" />
+                    <div className="mt-2 grid grid-cols-2 gap-2 text-sm">
                       <div>
                         <span className="text-muted-foreground">{getTranslation("manage.seating.colPax")}:</span>{" "}
                         {reservation.party_size}
@@ -301,16 +322,41 @@ export default function SeatingPage() {
                         <span className="text-muted-foreground">{getTranslation("manage.seating.colTable")}:</span>{" "}
                         {reservation.table_number || "-"}
                       </div>
-                      <div>
-                        <span className="text-muted-foreground">{getTranslation("manage.seating.colBookedBy")}:</span>{" "}
-                        {reservation.booked_by_name || "-"}
+                    </div>
+                    <div className="mt-2">
+                      <div className="flex h-8 items-center justify-center text-slate-500">
+                        <ChevronDown
+                          className={`h-4 w-4 transition-transform duration-300 ease-out ${
+                            expandedMobileCards[reservation.id] ? "rotate-180" : "rotate-0"
+                          }`}
+                        />
                       </div>
                     </div>
-                    <div className="mt-2 text-sm break-words">
-                      <span className="text-muted-foreground">{getTranslation("manage.seating.colNote")}:</span>{" "}
-                      {reservation.notes || "-"}
-                    </div>
-                    <Button className="mt-3 w-full" variant="outline" size="sm" onClick={() => openEdit(reservation)}>
+                    {expandedMobileCards[reservation.id] && (
+                      <div className="mt-1 space-y-1 text-sm">
+                        <div>
+                          <span className="text-muted-foreground">{getTranslation("manage.seating.colBookedBy")}:</span>{" "}
+                          {reservation.booked_by_name || "-"}
+                        </div>
+                        <div>
+                          <span className="text-muted-foreground">{getTranslation("manage.seating.colPhone")}:</span>{" "}
+                          {reservation.customer_phone || "-"}
+                        </div>
+                        <div className="break-words">
+                          <span className="text-muted-foreground">{getTranslation("manage.seating.colNote")}:</span>{" "}
+                          {reservation.notes || "-"}
+                        </div>
+                      </div>
+                    )}
+                    <Button
+                      className="mt-3 w-full"
+                      variant="outline"
+                      size="sm"
+                      onClick={(event) => {
+                        event.stopPropagation()
+                        openEdit(reservation)
+                      }}
+                    >
                       {getTranslation("manage.seating.assignButton")}
                     </Button>
                   </div>
