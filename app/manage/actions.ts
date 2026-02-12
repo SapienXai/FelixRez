@@ -305,6 +305,7 @@ export async function createReservation(reservationData: {
 }) {
   try {
     const supabase = createServiceRoleClient()
+    const access = await getCurrentUserAccess()
     const scope = await coerceRestaurantFilter(reservationData.restaurant_id)
     if (scope.type === "deny") {
       return { success: false, message: "Forbidden" }
@@ -318,7 +319,8 @@ export async function createReservation(reservationData: {
       .insert({
         ...reservationData,
         reservation_area_id: reservationData.reservation_area_id ? reservationData.reservation_area_id : null,
-        status: reservationData.status || "pending"
+        status: reservationData.status || "pending",
+        booked_by_user_id: access?.userId ?? null,
       })
       .select(`
         *,

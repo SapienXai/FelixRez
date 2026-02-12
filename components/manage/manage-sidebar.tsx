@@ -5,7 +5,7 @@ import { usePathname } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet"
-import { LayoutDashboard, CalendarClock, Store, Users, X } from "lucide-react"
+import { Armchair, LayoutDashboard, CalendarClock, Store, Users, X } from "lucide-react"
 import { useLanguage } from "@/context/language-context"
 import { useManageContext } from "@/context/manage-context"
 
@@ -29,7 +29,12 @@ export function ManageSidebar({ isOpen, onClose }: ManageSidebarProps) {
       name: getTranslation("manage.sidebar.dashboard"),
       href: "/manage",
       icon: LayoutDashboard,
-      current: isActive("/manage") && !isActive("/manage/reservations") && !isActive("/manage/restaurants") && !isActive("/manage/users"),
+      current:
+        isActive("/manage") &&
+        !isActive("/manage/reservations") &&
+        !isActive("/manage/seating") &&
+        !isActive("/manage/restaurants") &&
+        !isActive("/manage/users"),
       disabled: false,
     },
     {
@@ -37,6 +42,13 @@ export function ManageSidebar({ isOpen, onClose }: ManageSidebarProps) {
       href: "/manage/reservations",
       icon: CalendarClock,
       current: isActive("/manage/reservations"),
+      disabled: false,
+    },
+    {
+      name: getTranslation("manage.sidebar.seating"),
+      href: "/manage/seating",
+      icon: Armchair,
+      current: isActive("/manage/seating"),
       disabled: false,
     },
     {

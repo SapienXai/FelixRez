@@ -182,6 +182,8 @@ export interface Database {
           status: string | null
           notes: string | null
           table_number: string | null
+          booked_by_user_id: string | null
+          booked_by_label: string | null
           reservation_area_id: string | null
           reservation_type: string | null
           created_at: string
@@ -200,6 +202,8 @@ export interface Database {
           status?: string | null
           notes?: string | null
           table_number?: string | null
+          booked_by_user_id?: string | null
+          booked_by_label?: string | null
           reservation_area_id?: string | null
           reservation_type?: string | null
           created_at?: string
@@ -218,6 +222,8 @@ export interface Database {
           status?: string | null
           notes?: string | null
           table_number?: string | null
+          booked_by_user_id?: string | null
+          booked_by_label?: string | null
           reservation_area_id?: string | null
           reservation_type?: string | null
           created_at?: string

@@ -11,9 +11,11 @@ export default function ManageLayout({
   children: React.ReactNode
 }) {
   const pathname = usePathname()
-  const isLoginPage = pathname === '/manage/login' || pathname === '/manage/reset-password' || pathname === '/manage/update-password'
+  const isLoginPage =
+    pathname === "/manage/login" || pathname === "/manage/reset-password" || pathname === "/manage/update-password"
+  const isPrintPage = pathname.startsWith("/manage/seating/print")
   
-  if (isLoginPage) {
+  if (isLoginPage || isPrintPage) {
     return <>{children}</>
   }
 
