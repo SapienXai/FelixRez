@@ -1,7 +1,7 @@
 "use server"
 
 import { createServiceRoleClient } from "@/lib/supabase"
-import { coerceRestaurantFilter, getUserRestaurantIds, getCurrentUserAccess } from "@/lib/auth-utils"
+import { canWrite, coerceRestaurantFilter, getUserRestaurantIds, getCurrentUserAccess } from "@/lib/auth-utils"
 import { revalidatePath } from "next/cache"
 import { sendEmail, generateStatusUpdateEmail } from "@/lib/email-service"
 import { generateICSFile } from "@/lib/calendar-invite"
@@ -114,6 +114,10 @@ export async function updateReservationStatus(id: string, status: string, notes?
     console.log(`Updating reservation ${id} to status: ${status}, sendNotification: ${sendNotification}`)
 
     const supabase = createServiceRoleClient()
+    const access = await getCurrentUserAccess()
+    if (!canWrite(access)) {
+      return { success: false, message: "Forbidden" }
+    }
 
     const updateData: any = { status }
     if (notes !== undefined) {
@@ -306,6 +310,9 @@ export async function createReservation(reservationData: {
   try {
     const supabase = createServiceRoleClient()
     const access = await getCurrentUserAccess()
+    if (!canWrite(access)) {
+      return { success: false, message: "Forbidden" }
+    }
     const normalizedSpecialRequests = reservationData.special_requests?.trim() || null
     const scope = await coerceRestaurantFilter(reservationData.restaurant_id)
     if (scope.type === "deny") {
@@ -361,6 +368,10 @@ export async function updateReservation(id: string, reservationData: {
 }) {
   try {
     const supabase = createServiceRoleClient()
+    const access = await getCurrentUserAccess()
+    if (!canWrite(access)) {
+      return { success: false, message: "Forbidden" }
+    }
     const shouldSyncNotes = reservationData.special_requests !== undefined
     const normalizedSpecialRequests = reservationData.special_requests?.trim() || null
     const { data: existingReservation, error: existingReservationError } = await supabase
@@ -424,6 +435,10 @@ export async function updateReservation(id: string, reservationData: {
 export async function deleteReservation(id: string) {
   try {
     const supabase = createServiceRoleClient()
+    const access = await getCurrentUserAccess()
+    if (!canWrite(access)) {
+      return { success: false, message: "Forbidden" }
+    }
 
     // Fetch to check scope
     const { data: reservation, error: fetchError } = await supabase

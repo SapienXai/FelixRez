@@ -1,5 +1,3 @@
-"use server"
-
 import { cookies } from "next/headers"
 import { createServiceRoleClient } from "../lib/supabase"
 import { extractAccessToken, verifyAccessToken } from "../lib/auth-token"
@@ -9,6 +7,15 @@ export interface UserAccess {
   restaurantId: string | null
   role: string
   isSuperAdmin: boolean
+}
+
+export function isReadonlyRole(role?: string | null): boolean {
+  return role === "readonly"
+}
+
+export function canWrite(access: UserAccess | null): boolean {
+  if (!access) return false
+  return !isReadonlyRole(access.role)
 }
 
 function getProjectCookieName(): string {

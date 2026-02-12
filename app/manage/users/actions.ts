@@ -18,19 +18,36 @@ export interface UpdateUserData {
   password?: string | null
 }
 
+const VALID_ROLES = new Set(["admin", "manager", "staff", "readonly"])
+
+function canManageUsers(role?: string | null): boolean {
+  return role === "admin" || role === "manager"
+}
+
 export async function getUsers() {
   try {
     const access = await getCurrentUserAccess()
-    if (!access || !access.isSuperAdmin) {
+    if (!access || !canManageUsers(access.role)) {
       return { success: false, error: "Forbidden" }
     }
     const supabase = createServiceRoleClient()
     
     // Get admin profiles with their auth user data
-    const { data: adminProfiles, error: profileError } = await supabase
-      .from('admin_profiles')
-      .select('*')
-      .order('created_at', { ascending: false })
+    let profileQuery = supabase
+      .from("admin_profiles")
+      .select("*")
+      .order("created_at", { ascending: false })
+
+    if (!access.isSuperAdmin) {
+      if (!access.restaurantId) {
+        return { success: true, data: [] }
+      }
+      profileQuery = profileQuery
+        .eq("restaurant_id", access.restaurantId)
+        .eq("role", "staff")
+    }
+
+    const { data: adminProfiles, error: profileError } = await profileQuery
     
     if (profileError) {
       console.error("Error fetching admin profiles:", profileError)
@@ -85,9 +102,26 @@ export async function getUsers() {
 export async function createUser(userData: CreateUserData) {
   try {
     const access = await getCurrentUserAccess()
-    if (!access || !access.isSuperAdmin) {
+    if (!access || !canManageUsers(access.role)) {
       return { success: false, error: "Forbidden" }
     }
+    if (!VALID_ROLES.has(userData.role)) {
+      return { success: false, error: "Invalid role" }
+    }
+
+    const isManager = access.role === "manager" && !access.isSuperAdmin
+    if (isManager && userData.role !== "staff") {
+      return { success: false, error: "Managers can only create staff users" }
+    }
+
+    const targetRestaurantId = isManager
+      ? (access.restaurantId || null)
+      : (userData.role === "admin" ? null : (userData.restaurantId ?? null))
+
+    if (isManager && !targetRestaurantId) {
+      return { success: false, error: "Manager must be assigned to a restaurant" }
+    }
+
     const supabase = createServiceRoleClient()
     
     // Create user in Supabase Auth
@@ -118,7 +152,7 @@ export async function createUser(userData: CreateUserData) {
       .insert({
         id: authData.user.id,
         role: userData.role,
-        restaurant_id: userData.role === 'admin' ? null : (userData.restaurantId ?? null),
+        restaurant_id: targetRestaurantId,
         full_name: null // Can be updated later
       })
     
@@ -141,7 +175,7 @@ export async function createUser(userData: CreateUserData) {
       email: authData.user.email || userData.email,
       role: userData.role,
       full_name: null,
-      restaurant_id: userData.role === 'admin' ? null : (userData.restaurantId ?? null),
+      restaurant_id: targetRestaurantId,
       created_at: authData.user.created_at
     }
 
@@ -163,10 +197,43 @@ export async function createUser(userData: CreateUserData) {
 export async function updateUser(userId: string, userData: UpdateUserData) {
   try {
     const access = await getCurrentUserAccess()
-    if (!access || !access.isSuperAdmin) {
+    if (!access || !canManageUsers(access.role)) {
       return { success: false, error: "Forbidden" }
     }
+    if (!VALID_ROLES.has(userData.role)) {
+      return { success: false, error: "Invalid role" }
+    }
+
     const supabase = createServiceRoleClient()
+    const { data: targetProfile, error: targetProfileError } = await supabase
+      .from("admin_profiles")
+      .select("id, role, restaurant_id")
+      .eq("id", userId)
+      .single()
+
+    if (targetProfileError || !targetProfile) {
+      return { success: false, error: targetProfileError?.message || "User not found" }
+    }
+
+    const isManager = access.role === "manager" && !access.isSuperAdmin
+    if (isManager) {
+      const sameRestaurant = targetProfile.restaurant_id === access.restaurantId
+      const isStaffTarget = targetProfile.role === "staff"
+      if (!sameRestaurant || !isStaffTarget) {
+        return { success: false, error: "Managers can only edit staff in their restaurant" }
+      }
+      if (userData.role !== "staff") {
+        return { success: false, error: "Managers cannot change role to non-staff" }
+      }
+    }
+
+    const targetRestaurantId = isManager
+      ? (access.restaurantId || null)
+      : (userData.role === "admin" ? null : (userData.restaurantId ?? null))
+
+    if (isManager && !targetRestaurantId) {
+      return { success: false, error: "Manager must be assigned to a restaurant" }
+    }
     
     const authUpdates: { email: string; password?: string } = {
       email: userData.email
@@ -192,7 +259,7 @@ export async function updateUser(userId: string, userData: UpdateUserData) {
       .from('admin_profiles')
       .update({
         role: userData.role,
-        restaurant_id: userData.role === 'admin' ? null : (userData.restaurantId ?? null)
+        restaurant_id: targetRestaurantId
       })
       .eq('id', userId)
       .select()
@@ -233,10 +300,32 @@ export async function updateUser(userId: string, userData: UpdateUserData) {
 export async function deleteUser(userId: string) {
   try {
     const access = await getCurrentUserAccess()
-    if (!access || !access.isSuperAdmin) {
+    if (!access || !canManageUsers(access.role)) {
       return { success: false, error: "Forbidden" }
     }
+    if (access.userId === userId) {
+      return { success: false, error: "You cannot delete your own account" }
+    }
+
     const supabase = createServiceRoleClient()
+    const { data: targetProfile, error: targetProfileError } = await supabase
+      .from("admin_profiles")
+      .select("id, role, restaurant_id")
+      .eq("id", userId)
+      .single()
+
+    if (targetProfileError || !targetProfile) {
+      return { success: false, error: targetProfileError?.message || "User not found" }
+    }
+
+    const isManager = access.role === "manager" && !access.isSuperAdmin
+    if (isManager) {
+      const sameRestaurant = targetProfile.restaurant_id === access.restaurantId
+      const isStaffTarget = targetProfile.role === "staff"
+      if (!sameRestaurant || !isStaffTarget) {
+        return { success: false, error: "Managers can only delete staff in their restaurant" }
+      }
+    }
     
     // First delete the admin profile
     const { error: profileError } = await supabase

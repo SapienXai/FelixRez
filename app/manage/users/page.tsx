@@ -38,6 +38,11 @@ interface UserFormData {
 export default function UsersPage() {
   const { getTranslation } = useLanguage()
   const { role, loading: roleLoading } = useManageContext()
+  const isStaff = role === "staff"
+  const isReadonly = role === "readonly"
+  const isAdmin = role === "admin"
+  const isManager = role === "manager"
+  const canManageUsers = isAdmin || isManager
   const [users, setUsers] = useState<User[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [isDialogOpen, setIsDialogOpen] = useState(false)
@@ -60,7 +65,7 @@ export default function UsersPage() {
   useEffect(() => {
     const checkSession = async () => {
       const { data } = await supabase.auth.getSession()
-      if (data.session && role === 'staff') {
+      if (data.session && (isStaff || isReadonly)) {
         setIsLoading(false)
         return
       }
@@ -70,14 +75,13 @@ export default function UsersPage() {
     if (!roleLoading) {
       checkSession()
     }
-  }, [role, roleLoading, supabase])
+  }, [role, roleLoading, supabase, isStaff, isReadonly])
 
   useEffect(() => {
-    if (role === 'staff') {
-      // Redirect staff away from this page
+    if (isStaff || isReadonly) {
       window.location.replace('/manage')
     }
-  }, [role])
+  }, [isStaff, isReadonly])
 
   const fetchUsers = async () => {
     setIsLoading(true)
@@ -104,7 +108,7 @@ export default function UsersPage() {
     }
   }
 
-  if (role === 'staff') return null
+  if (!canManageUsers) return null
 
   const fetchRestaurantsList = async () => {
     try {
@@ -152,7 +156,7 @@ export default function UsersPage() {
         const trimmedPassword = formData.password.trim()
         const result = await updateUser(editingUser.id, {
           email: formData.email,
-          role: formData.role,
+          role: isManager ? "staff" : formData.role,
           restaurantId: formData.role === 'admin' ? null : (formData.restaurantId || null),
           password: trimmedPassword ? trimmedPassword : null,
         })
@@ -176,7 +180,7 @@ export default function UsersPage() {
         const result = await createUser({
           email: formData.email,
           password: formData.password,
-          role: formData.role,
+          role: isManager ? "staff" : formData.role,
           restaurantId: formData.role === 'admin' ? null : (formData.restaurantId || null),
         })
         
@@ -269,12 +273,13 @@ export default function UsersPage() {
 
   const handleAddUser = () => {
     setEditingUser(null)
+    const defaultRestaurant = isManager ? (restaurants[0]?.id || null) : null
     setFormData({
       email: "",
       password: "",
       confirmPassword: "",
       role: "staff",
-      restaurantId: null,
+      restaurantId: defaultRestaurant,
     })
     setFormErrors({})
     setIsDialogOpen(true)
@@ -307,7 +312,7 @@ export default function UsersPage() {
     <div className="w-full max-w-none">
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-2xl font-semibold">{getTranslation("manage.users.title")}</h1>
-        {role === 'admin' && (
+        {canManageUsers && (
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
           <DialogTrigger asChild>
             <Button onClick={handleAddUser}>
@@ -390,21 +395,30 @@ export default function UsersPage() {
               )}
               <div className="grid gap-2">
                 <Label htmlFor="role">{getTranslation("manage.users.form.role")}</Label>
-                <Select value={formData.role} onValueChange={(value) => setFormData({ ...formData, role: value })}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="admin">{getTranslation("manage.users.form.admin")}</SelectItem>
-                    <SelectItem value="manager">{getTranslation("manage.users.form.manager")}</SelectItem>
-                    <SelectItem value="staff">{getTranslation("manage.users.form.staff")}</SelectItem>
-                  </SelectContent>
-                </Select>
+                {isAdmin ? (
+                  <Select value={formData.role} onValueChange={(value) => setFormData({ ...formData, role: value })}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="admin">{getTranslation("manage.users.form.admin")}</SelectItem>
+                      <SelectItem value="manager">{getTranslation("manage.users.form.manager")}</SelectItem>
+                      <SelectItem value="staff">{getTranslation("manage.users.form.staff")}</SelectItem>
+                      <SelectItem value="readonly">{getTranslation("manage.users.form.readonly")}</SelectItem>
+                    </SelectContent>
+                  </Select>
+                ) : (
+                  <Input value={getTranslation("manage.users.form.staff")} disabled />
+                )}
               </div>
-              {formData.role !== 'admin' && (
+              {(isManager || formData.role !== 'admin') && (
                 <div className="grid gap-2">
                   <Label htmlFor="restaurant">{getTranslation("manage.dashboard.filter.allRestaurants")}</Label>
-                  <Select value={formData.restaurantId ?? undefined} onValueChange={(value) => setFormData({ ...formData, restaurantId: value })}>
+                  <Select
+                    value={formData.restaurantId ?? undefined}
+                    onValueChange={(value) => setFormData({ ...formData, restaurantId: value })}
+                    disabled={isManager}
+                  >
                     <SelectTrigger>
                       <SelectValue placeholder="Select restaurant" />
                     </SelectTrigger>
@@ -465,7 +479,7 @@ export default function UsersPage() {
                       {new Date(user.created_at).toLocaleDateString()}
                     </TableCell>
                     <TableCell className="text-right">
-                      {role === 'admin' && (
+                      {canManageUsers && (
                         <div className="flex justify-end gap-2">
                           <Button
                             variant="outline"

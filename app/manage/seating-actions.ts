@@ -1,7 +1,7 @@
 "use server"
 
 import { revalidatePath } from "next/cache"
-import { coerceRestaurantFilter } from "@/lib/auth-utils"
+import { canWrite, coerceRestaurantFilter, getCurrentUserAccess } from "@/lib/auth-utils"
 import { createServiceRoleClient } from "@/lib/supabase"
 
 type AssignableUser = {
@@ -143,6 +143,10 @@ export async function assignReservationTable(input: {
 }) {
   try {
     const supabase = createServiceRoleClient()
+    const access = await getCurrentUserAccess()
+    if (!canWrite(access)) {
+      return { success: false, message: "Forbidden" }
+    }
 
     const { data: existing, error: existingError } = await supabase
       .from("reservations")

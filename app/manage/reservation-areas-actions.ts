@@ -2,7 +2,7 @@
 
 import { createServiceRoleClient } from "@/lib/supabase"
 import { revalidatePath } from "next/cache"
-import { coerceRestaurantFilter } from "@/lib/auth-utils"
+import { canWrite, coerceRestaurantFilter, getCurrentUserAccess } from "@/lib/auth-utils"
 
 interface ReservationAreaData {
   id?: string
@@ -55,6 +55,10 @@ export async function getReservationAreas(restaurantId: string) {
 export async function createReservationArea(data: ReservationAreaData) {
   try {
     const supabase = createServiceRoleClient()
+    const access = await getCurrentUserAccess()
+    if (!canWrite(access)) {
+      return { success: false, message: "Forbidden" }
+    }
     const scope = await coerceRestaurantFilter(data.restaurant_id)
     if (scope.type === "deny") {
       return { success: false, message: "Forbidden" }
@@ -101,6 +105,10 @@ export async function createReservationArea(data: ReservationAreaData) {
 export async function updateReservationArea(id: string, data: Partial<ReservationAreaData>) {
   try {
     const supabase = createServiceRoleClient()
+    const access = await getCurrentUserAccess()
+    if (!canWrite(access)) {
+      return { success: false, message: "Forbidden" }
+    }
     const { data: existingArea, error: existingAreaError } = await supabase
       .from("reservation_areas")
       .select("id, restaurant_id")
@@ -166,6 +174,10 @@ export async function updateReservationArea(id: string, data: Partial<Reservatio
 export async function deleteReservationArea(id: string) {
   try {
     const supabase = createServiceRoleClient()
+    const access = await getCurrentUserAccess()
+    if (!canWrite(access)) {
+      return { success: false, message: "Forbidden" }
+    }
     const { data: existingArea, error: existingAreaError } = await supabase
       .from("reservation_areas")
       .select("id, restaurant_id")
@@ -224,6 +236,10 @@ export async function deleteReservationArea(id: string) {
 export async function bulkUpdateReservationAreas(restaurantId: string, areas: ReservationAreaData[]) {
   try {
     const supabase = createServiceRoleClient()
+    const access = await getCurrentUserAccess()
+    if (!canWrite(access)) {
+      return { success: false, message: "Forbidden" }
+    }
     const scope = await coerceRestaurantFilter(restaurantId)
     if (scope.type === "deny") {
       return { success: false, message: "Forbidden" }
@@ -349,6 +365,10 @@ export async function bulkUpdateReservationAreas(restaurantId: string, areas: Re
 export async function reorderReservationAreas(restaurantId: string, areaIds: string[]) {
   try {
     const supabase = createServiceRoleClient()
+    const access = await getCurrentUserAccess()
+    if (!canWrite(access)) {
+      return { success: false, message: "Forbidden" }
+    }
     const scope = await coerceRestaurantFilter(restaurantId)
     if (scope.type === "deny") {
       return { success: false, message: "Forbidden" }
