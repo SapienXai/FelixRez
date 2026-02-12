@@ -306,6 +306,7 @@ export async function createReservation(reservationData: {
   try {
     const supabase = createServiceRoleClient()
     const access = await getCurrentUserAccess()
+    const normalizedSpecialRequests = reservationData.special_requests?.trim() || null
     const scope = await coerceRestaurantFilter(reservationData.restaurant_id)
     if (scope.type === "deny") {
       return { success: false, message: "Forbidden" }
@@ -318,6 +319,7 @@ export async function createReservation(reservationData: {
       .from("reservations")
       .insert({
         ...reservationData,
+        notes: normalizedSpecialRequests,
         reservation_area_id: reservationData.reservation_area_id ? reservationData.reservation_area_id : null,
         status: reservationData.status || "pending",
         booked_by_user_id: access?.userId ?? null,
@@ -359,6 +361,8 @@ export async function updateReservation(id: string, reservationData: {
 }) {
   try {
     const supabase = createServiceRoleClient()
+    const shouldSyncNotes = reservationData.special_requests !== undefined
+    const normalizedSpecialRequests = reservationData.special_requests?.trim() || null
     const { data: existingReservation, error: existingReservationError } = await supabase
       .from("reservations")
       .select("id, restaurant_id")
@@ -390,6 +394,7 @@ export async function updateReservation(id: string, reservationData: {
       .from("reservations")
       .update({
         ...reservationData,
+        ...(shouldSyncNotes ? { notes: normalizedSpecialRequests } : {}),
         reservation_area_id: reservationData.reservation_area_id === "" || reservationData.reservation_area_id === undefined
           ? null
           : reservationData.reservation_area_id,

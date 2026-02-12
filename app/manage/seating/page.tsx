@@ -9,8 +9,10 @@ import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Textarea } from "@/components/ui/textarea"
+import { Plus } from "lucide-react"
 import { getRestaurants } from "@/app/manage/actions"
 import { assignReservationTable, getSeatingReservations } from "@/app/manage/seating-actions"
+import { ReservationForm } from "@/components/manage/reservation-form"
 import { useLanguage } from "@/context/language-context"
 import { toast } from "sonner"
 
@@ -57,6 +59,7 @@ export default function SeatingPage() {
     searchQuery: "",
   })
   const [selected, setSelected] = useState<SeatingReservation | null>(null)
+  const [showCreateForm, setShowCreateForm] = useState(false)
   const [tableNumber, setTableNumber] = useState("")
   const [notes, setNotes] = useState("")
   const [bookedByText, setBookedByText] = useState("")
@@ -160,9 +163,15 @@ export default function SeatingPage() {
     <div className="max-w-7xl mx-auto">
       <div className="mb-6 flex items-center justify-between gap-3">
         <h1 className="text-2xl font-semibold">{getTranslation("manage.seating.title")}</h1>
-        <Button variant="outline" onClick={handlePrintPdf}>
-          {getTranslation("manage.seating.exportPdf")}
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button onClick={() => setShowCreateForm(true)}>
+            <Plus className="mr-2 h-4 w-4" />
+            {getTranslation("manage.reservations.list.addReservation")}
+          </Button>
+          <Button variant="outline" onClick={handlePrintPdf}>
+            {getTranslation("manage.seating.exportPdf")}
+          </Button>
+        </div>
       </div>
 
       <Card className="mb-6">
@@ -334,6 +343,18 @@ export default function SeatingPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {showCreateForm && (
+        <ReservationForm
+          isOpen={showCreateForm}
+          mode="create"
+          onClose={() => setShowCreateForm(false)}
+          onSuccess={() => {
+            setShowCreateForm(false)
+            fetchList()
+          }}
+        />
+      )}
     </div>
   )
 }

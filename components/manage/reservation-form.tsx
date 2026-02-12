@@ -58,6 +58,29 @@ interface ReservationFormProps {
   mode: "create" | "edit"
 }
 
+const getTodayDate = () => {
+  const now = new Date()
+  const year = now.getFullYear()
+  const month = String(now.getMonth() + 1).padStart(2, "0")
+  const day = String(now.getDate()).padStart(2, "0")
+  return `${year}-${month}-${day}`
+}
+
+const getCreateDefaultFormData = () => ({
+  restaurant_id: "",
+  reservation_area_id: "",
+  customer_name: "",
+  customer_email: "rez@felixsmile.com",
+  customer_phone: "",
+  party_size: 1,
+  reservation_date: getTodayDate(),
+  reservation_time: "19:00",
+  special_requests: "",
+  status: "confirmed",
+  table_number: "",
+  reservation_type: "meal",
+})
+
 export function ReservationForm({
   isOpen,
   onClose,
@@ -69,20 +92,7 @@ export function ReservationForm({
   const [loading, setLoading] = useState(false)
   const [restaurants, setRestaurants] = useState<Restaurant[]>([])
   const [areas, setAreas] = useState<{ id: string; name: string; is_active: boolean }[]>([])
-  const [formData, setFormData] = useState({
-    restaurant_id: "",
-    reservation_area_id: "",
-    customer_name: "",
-    customer_email: "",
-    customer_phone: "",
-    party_size: 1,
-    reservation_date: "",
-    reservation_time: "",
-    special_requests: "",
-    status: "pending",
-    table_number: "",
-    reservation_type: "meal",
-  })
+  const [formData, setFormData] = useState(getCreateDefaultFormData())
 
   // Load restaurants on component mount
   useEffect(() => {
@@ -135,20 +145,7 @@ export function ReservationForm({
       })
     } else if (mode === "create") {
       // Reset form for create mode
-      setFormData({
-        restaurant_id: "",
-        reservation_area_id: "",
-        customer_name: "",
-        customer_email: "",
-        customer_phone: "",
-        party_size: 1,
-        reservation_date: "",
-        reservation_time: "",
-        special_requests: "",
-        status: "pending",
-        table_number: "",
-        reservation_type: "meal",
-      })
+      setFormData(getCreateDefaultFormData())
     }
   }, [mode, reservation, isOpen])
 
@@ -157,11 +154,16 @@ export function ReservationForm({
     setLoading(true)
 
     try {
+      const payload = {
+        ...formData,
+        customer_phone: formData.customer_phone.trim() || "-",
+      }
+
       let result
       if (mode === "create") {
-        result = await createReservation(formData)
+        result = await createReservation(payload)
       } else {
-        result = await updateReservation(reservation!.id, formData)
+        result = await updateReservation(reservation!.id, payload)
       }
 
       if (result.success) {
@@ -368,7 +370,6 @@ export function ReservationForm({
               value={formData.customer_phone}
               onChange={(e) => handleInputChange("customer_phone", e.target.value)}
               placeholder={getTranslation("manage.reservationForm.phonePlaceholder")}
-              required
             />
           </div>
 

@@ -10,6 +10,7 @@ import { CalendarClock, Clock, CheckCircle, XCircle, TrendingUp, Users, Utensils
 import { getDashboardStats, getTodayReservations, getUpcomingReservations, getNewReservations } from "./dashboard-actions"
 import { getRestaurants } from "./actions"
 import { ReservationList } from "@/components/manage/reservation-list"
+import { ReservationForm } from "@/components/manage/reservation-form"
 import { useLanguage } from "@/context/language-context"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { TriangleLoader } from "@/components/ui/triangle-loader"
@@ -46,6 +47,7 @@ export default function ManageDashboard() {
   const [activeTab, setActiveTab] = useState<string>("new")
   const [datePopoverOpen, setDatePopoverOpen] = useState(false)
   const [cardsExpanded, setCardsExpanded] = useState(false)
+  const [showCreateForm, setShowCreateForm] = useState(false)
   const router = useRouter()
   const supabase = getSupabaseBrowserClient()
   const isInitialMount = useRef(true);
@@ -342,7 +344,7 @@ export default function ManageDashboard() {
         <div className="flex items-center space-x-3">
           <h1 className="text-xl md:text-2xl font-semibold">{getTranslation("manage.dashboard.title")}</h1>
           <Button
-            onClick={() => router.push("/manage/reservations?action=new")}
+            onClick={() => setShowCreateForm(true)}
             className="bg-black hover:bg-gray-800 text-white text-xs px-2 py-1 h-7"
             size="sm"
           >
@@ -750,6 +752,18 @@ export default function ManageDashboard() {
           {getTranslation("manage.common.refreshData")}
         </Button>
       </div>
+
+      {showCreateForm && (
+        <ReservationForm
+          isOpen={showCreateForm}
+          mode="create"
+          onClose={() => setShowCreateForm(false)}
+          onSuccess={() => {
+            setShowCreateForm(false)
+            fetchDashboardData()
+          }}
+        />
+      )}
     </div>
   )
 }
