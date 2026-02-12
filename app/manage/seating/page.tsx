@@ -9,11 +9,12 @@ import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Textarea } from "@/components/ui/textarea"
-import { Plus } from "lucide-react"
+import { ChevronDown, ChevronUp, Plus } from "lucide-react"
 import { getRestaurants } from "@/app/manage/actions"
 import { assignReservationTable, getSeatingReservations } from "@/app/manage/seating-actions"
 import { ReservationForm } from "@/components/manage/reservation-form"
 import { useLanguage } from "@/context/language-context"
+import { useIsMobile } from "@/hooks/use-mobile"
 import { toast } from "sonner"
 
 type SeatingReservation = {
@@ -48,6 +49,7 @@ function todayAsYYYYMMDD() {
 
 export default function SeatingPage() {
   const { currentLang, getTranslation } = useLanguage()
+  const isMobile = useIsMobile()
   const [isLoading, setIsLoading] = useState(true)
   const [isSaving, setIsSaving] = useState(false)
   const [reservations, setReservations] = useState<SeatingReservation[]>([])
@@ -63,6 +65,7 @@ export default function SeatingPage() {
   const [tableNumber, setTableNumber] = useState("")
   const [notes, setNotes] = useState("")
   const [bookedByText, setBookedByText] = useState("")
+  const [showMobileFilters, setShowMobileFilters] = useState(false)
 
   const loadRestaurants = useCallback(async () => {
     const result = await getRestaurants()
@@ -147,6 +150,10 @@ export default function SeatingPage() {
     () => getTranslation("manage.seating.listCount", { count: String(reservations.length) }),
     [getTranslation, reservations.length]
   )
+  const totalPax = useMemo(
+    () => reservations.reduce((sum, reservation) => sum + (reservation.party_size || 0), 0),
+    [reservations]
+  )
 
   const handlePrintPdf = () => {
     const params = new URLSearchParams()
@@ -161,14 +168,14 @@ export default function SeatingPage() {
 
   return (
     <div className="max-w-7xl mx-auto">
-      <div className="mb-6 flex items-center justify-between gap-3">
-        <h1 className="text-2xl font-semibold">{getTranslation("manage.seating.title")}</h1>
-        <div className="flex items-center gap-2">
-          <Button onClick={() => setShowCreateForm(true)}>
+      <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <h1 className="text-xl font-semibold sm:text-2xl">{getTranslation("manage.seating.title")}</h1>
+        <div className="grid grid-cols-1 gap-2 sm:flex sm:items-center">
+          <Button onClick={() => setShowCreateForm(true)} className="w-full sm:w-auto">
             <Plus className="mr-2 h-4 w-4" />
             {getTranslation("manage.reservations.list.addReservation")}
           </Button>
-          <Button variant="outline" onClick={handlePrintPdf}>
+          <Button variant="outline" onClick={handlePrintPdf} className="w-full sm:w-auto">
             {getTranslation("manage.seating.exportPdf")}
           </Button>
         </div>
@@ -176,15 +183,28 @@ export default function SeatingPage() {
 
       <Card className="mb-6">
         <CardHeader>
-          <CardTitle>{getTranslation("manage.seating.filtersTitle")}</CardTitle>
-          <CardDescription>{getTranslation("manage.seating.filtersDescription")}</CardDescription>
+          <div className="flex items-center justify-between gap-2">
+            <CardTitle>{getTranslation("manage.seating.filtersTitle")}</CardTitle>
+            {isMobile && (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => setShowMobileFilters((prev) => !prev)}
+                className="h-8 px-2"
+              >
+                {showMobileFilters ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+              </Button>
+            )}
+          </div>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
             <div className="space-y-1">
               <Label>{getTranslation("manage.seating.date")}</Label>
               <Input
                 type="date"
+                className="text-left text-[13px] sm:text-sm"
                 value={filters.date}
                 onChange={(e) => setFilters((prev) => ({ ...prev, date: e.target.value }))}
               />
@@ -196,7 +216,7 @@ export default function SeatingPage() {
                 value={filters.restaurantId}
                 onValueChange={(value) => setFilters((prev) => ({ ...prev, restaurantId: value }))}
               >
-                <SelectTrigger>
+                <SelectTrigger className="justify-start pr-8 text-left text-[13px] sm:text-sm [&>span]:text-left">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -210,7 +230,7 @@ export default function SeatingPage() {
               </Select>
             </div>
 
-            <div className="space-y-1">
+            <div className={`space-y-1 col-span-2 md:col-span-1 ${isMobile && !showMobileFilters ? "hidden" : ""}`}>
               <Label>{getTranslation("manage.seating.status")}</Label>
               <Select
                 value={filters.status}
@@ -229,7 +249,7 @@ export default function SeatingPage() {
               </Select>
             </div>
 
-            <div className="space-y-1">
+            <div className={`space-y-1 col-span-2 md:col-span-1 ${isMobile && !showMobileFilters ? "hidden" : ""}`}>
               <Label>{getTranslation("manage.seating.search")}</Label>
               <Input
                 placeholder={getTranslation("manage.seating.searchPlaceholder")}
@@ -256,7 +276,48 @@ export default function SeatingPage() {
               {getTranslation("manage.seating.empty")}
             </div>
           ) : (
-            <div className="overflow-x-auto">
+            <>
+              {isMobile ? (
+              <div className="space-y-3">
+                {reservations.map((reservation) => (
+                  <div key={reservation.id} className="rounded-lg border p-3">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <div className="font-medium">{reservation.customer_name}</div>
+                        <div className="text-xs text-muted-foreground">{reservation.restaurants?.name || "-"}</div>
+                      </div>
+                      <div className="text-sm font-medium">{reservation.reservation_time.slice(0, 5)}</div>
+                    </div>
+                    <div className="mt-3 grid grid-cols-2 gap-2 text-sm">
+                      <div>
+                        <span className="text-muted-foreground">{getTranslation("manage.seating.colPhone")}:</span>{" "}
+                        {reservation.customer_phone || "-"}
+                      </div>
+                      <div>
+                        <span className="text-muted-foreground">{getTranslation("manage.seating.colPax")}:</span>{" "}
+                        {reservation.party_size}
+                      </div>
+                      <div>
+                        <span className="text-muted-foreground">{getTranslation("manage.seating.colTable")}:</span>{" "}
+                        {reservation.table_number || "-"}
+                      </div>
+                      <div>
+                        <span className="text-muted-foreground">{getTranslation("manage.seating.colBookedBy")}:</span>{" "}
+                        {reservation.booked_by_name || "-"}
+                      </div>
+                    </div>
+                    <div className="mt-2 text-sm break-words">
+                      <span className="text-muted-foreground">{getTranslation("manage.seating.colNote")}:</span>{" "}
+                      {reservation.notes || "-"}
+                    </div>
+                    <Button className="mt-3 w-full" variant="outline" size="sm" onClick={() => openEdit(reservation)}>
+                      {getTranslation("manage.seating.assignButton")}
+                    </Button>
+                  </div>
+                ))}
+              </div>
+              ) : (
+              <div className="overflow-x-auto">
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -292,6 +353,14 @@ export default function SeatingPage() {
                   ))}
                 </TableBody>
               </Table>
+              </div>
+              )}
+            </>
+          )}
+
+          {!isLoading && reservations.length > 0 && (
+            <div className="mt-4 border-t pt-3 text-right text-sm font-medium">
+              {getTranslation("manage.seating.colPax")} Total: {totalPax}
             </div>
           )}
         </CardContent>

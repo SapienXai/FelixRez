@@ -28,6 +28,10 @@ function SeatingPrintPageInner() {
   const { getTranslation } = useLanguage()
   const [loading, setLoading] = useState(true)
   const [reservations, setReservations] = useState<PrintReservation[]>([])
+  const totalPax = useMemo(
+    () => reservations.reduce((sum, reservation) => sum + (reservation.party_size || 0), 0),
+    [reservations]
+  )
 
   const filters = useMemo(
     () => ({
@@ -63,11 +67,16 @@ function SeatingPrintPageInner() {
   }, [loading])
 
   return (
-    <div className="mx-auto max-w-5xl p-6 print:p-0">
+    <div className="mx-auto max-w-5xl p-6 print:max-w-none print:p-0">
       <style>{`
         @media print {
+          @page {
+            size: A4 portrait;
+            margin: 16mm;
+          }
           .no-print { display: none !important; }
           body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+          .print-wrap { padding: 4mm 2mm; }
         }
       `}</style>
 
@@ -78,6 +87,7 @@ function SeatingPrintPageInner() {
         <Button onClick={() => window.print()}>{getTranslation("manage.seating.printNow")}</Button>
       </div>
 
+      <div className="print-wrap">
       <div className="mb-4 border-b pb-4">
         <h1 className="text-2xl font-semibold">{getTranslation("manage.seating.printTitle")}</h1>
         <div className="mt-2 text-sm text-muted-foreground">
@@ -89,6 +99,9 @@ function SeatingPrintPageInner() {
           </div>
           <div>
             {getTranslation("manage.seating.listCount", { count: String(reservations.length) })}
+          </div>
+          <div>
+            {getTranslation("manage.seating.colPax")} Total: {totalPax}
           </div>
         </div>
       </div>
@@ -124,6 +137,7 @@ function SeatingPrintPageInner() {
           </tbody>
         </table>
       )}
+      </div>
     </div>
   )
 }
