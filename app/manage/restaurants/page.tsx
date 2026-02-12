@@ -4,12 +4,13 @@ import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { Switch } from '@/components/ui/switch';
 import { RestaurantForm } from '@/components/restaurant-form';
 import { useConfirmationDialog } from '@/components/ui/confirmation-dialog';
-import { getRestaurants, deleteRestaurant } from '@/app/manage/actions';
+import { getRestaurants, deleteRestaurant, updateRestaurant } from '@/app/manage/actions';
 import { useLanguage } from '@/context/language-context';
 import { getSupabaseBrowserClient } from '@/lib/supabase';
-import { MoreHorizontal, Edit, Trash2, Plus } from 'lucide-react';
+import { MoreHorizontal, Edit, Trash2, Plus, MapPin, Phone, Utensils, Clock3 } from 'lucide-react';
 import { TriangleLoader } from '@/components/ui/triangle-loader';
 import { toast } from 'sonner';
 import Image from 'next/image';
@@ -27,6 +28,32 @@ interface RestaurantWithMedia extends Restaurant {
   }[]
 }
 
+function formatDisplayText(value: string | null | undefined) {
+  if (!value) return null
+  const withSpaces = value.replace(/\+/g, " ")
+  try {
+    return decodeURIComponent(withSpaces)
+  } catch {
+    return withSpaces
+  }
+}
+
+function formatReservationHours(restaurant: RestaurantWithMedia) {
+  if (restaurant.opening_time && restaurant.closing_time) {
+    return `${restaurant.opening_time.slice(0, 5)} - ${restaurant.closing_time.slice(0, 5)}`
+  }
+  return formatDisplayText(restaurant.hours)
+}
+
+function sortRestaurantsByStatus(items: RestaurantWithMedia[]) {
+  return [...items].sort((a, b) => {
+    const aEnabled = a.reservation_enabled ? 1 : 0
+    const bEnabled = b.reservation_enabled ? 1 : 0
+    if (aEnabled !== bEnabled) return bEnabled - aEnabled
+    return a.name.localeCompare(b.name)
+  })
+}
+
 export default function RestaurantsPage() {
   const [restaurants, setRestaurants] = useState<RestaurantWithMedia[]>([]);
   const [loading, setLoading] = useState(true);
@@ -42,7 +69,7 @@ export default function RestaurantsPage() {
     try {
       const result = await getRestaurants();
       if (result.success && result.data) {
-        setRestaurants(result.data);
+        setRestaurants(sortRestaurantsByStatus(result.data as RestaurantWithMedia[]));
       }
     } catch (error) {
       console.error('Error fetching restaurants:', error);
@@ -109,6 +136,24 @@ export default function RestaurantsPage() {
     setEditingRestaurant(undefined);
   };
 
+  const handleToggleReservationEnabled = async (restaurant: RestaurantWithMedia, enabled: boolean) => {
+    const result = await updateRestaurant(restaurant.id, { reservation_enabled: enabled })
+    if (result.success) {
+      setRestaurants((prev) =>
+        sortRestaurantsByStatus(
+          prev.map((item) => (item.id === restaurant.id ? { ...item, reservation_enabled: enabled } : item))
+        )
+      )
+      toast.success(
+        enabled
+          ? getTranslation('manage.restaurants.statusEnabled')
+          : getTranslation('manage.restaurants.statusDisabled')
+      )
+    } else {
+      toast.error(result.message || getTranslation('manage.restaurants.statusUpdateFailed'))
+    }
+  }
+
   if (loading) {
     return (
       <div className="fixed inset-0 bg-gray-100 flex items-center justify-center z-50">
@@ -140,6 +185,22 @@ export default function RestaurantsPage() {
         {restaurants.map((restaurant) => (
           <Card key={restaurant.id} className="overflow-hidden">
             <div className="relative h-48">
+              <div className="absolute left-2 top-2 z-10">
+                <div className="flex items-center gap-2 rounded-full border bg-white/90 px-2 py-1 shadow-sm backdrop-blur-sm">
+                  <span
+                    className={`text-xs font-semibold ${
+                      restaurant.reservation_enabled ? "text-emerald-700" : "text-gray-500"
+                    }`}
+                  >
+                    {restaurant.reservation_enabled ? "ON" : "OFF"}
+                  </span>
+                  <Switch
+                    checked={Boolean(restaurant.reservation_enabled)}
+                    onCheckedChange={(checked) => handleToggleReservationEnabled(restaurant, checked)}
+                    disabled={role !== 'admin'}
+                  />
+                </div>
+              </div>
               {restaurant.media && restaurant.media.length > 0 ? (
                 restaurant.media[0].media_url.endsWith('.mp4') || restaurant.media[0].media_url.endsWith('.webm') || restaurant.media[0].media_url.endsWith('.mov') ? (
                   <video
@@ -193,17 +254,33 @@ export default function RestaurantsPage() {
             <CardContent>
               <div className="space-y-2 text-sm text-gray-600">
                 {restaurant.cuisine && (
-                  <p><span className="font-medium">Cuisine:</span> {restaurant.cuisine}</p>
+                  <div className="flex items-center gap-2">
+                    <Utensils className="h-4 w-4 text-gray-400" />
+                    <span className="truncate">{formatDisplayText(restaurant.cuisine)}</span>
+                  </div>
                 )}
                 {restaurant.location && (
-                  <p><span className="font-medium">Location:</span> {restaurant.location}</p>
+                  <div className="flex items-center gap-2">
+                    <MapPin className="h-4 w-4 text-gray-400" />
+                    <span className="truncate">{formatDisplayText(restaurant.location)}</span>
+                  </div>
                 )}
                 {restaurant.phone && (
-                  <p><span className="font-medium">Phone:</span> {restaurant.phone}</p>
+                  <div className="flex items-center gap-2">
+                    <Phone className="h-4 w-4 text-gray-400" />
+                    <span className="truncate">{restaurant.phone}</span>
+                  </div>
                 )}
                 {restaurant.description && (
-                  <p className="text-gray-700 mt-2">{restaurant.description}</p>
+                  <p className="pt-1 text-gray-700 line-clamp-3">{formatDisplayText(restaurant.description)}</p>
                 )}
+              </div>
+              <div className="mt-3 border-t pt-3">
+                <div className="flex items-center gap-2 text-sm text-gray-700">
+                  <Clock3 className="h-4 w-4 text-gray-400" />
+                  <span className="font-medium">{getTranslation("manage.restaurants.reservationHours")}:</span>
+                  <span>{formatReservationHours(restaurant) || getTranslation("manage.restaurants.hoursNotSet")}</span>
+                </div>
               </div>
             </CardContent>
           </Card>

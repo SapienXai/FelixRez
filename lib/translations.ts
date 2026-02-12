@@ -350,6 +350,14 @@ export const translations = {
       },
       restaurants: {
         title: "Restaurants",
+        reservationStatus: "Reservations",
+        statusOpen: "Open",
+        statusClosed: "Closed",
+        statusEnabled: "Restaurant opened for reservations",
+        statusDisabled: "Restaurant closed for reservations",
+        statusUpdateFailed: "Failed to update reservation status",
+        reservationHours: "Reservation Hours",
+        hoursNotSet: "Not set",
       },
       users: {
         title: "User Management",
@@ -800,6 +808,14 @@ export const translations = {
       },
       restaurants: {
         title: "Restoranlar",
+        reservationStatus: "Rezervasyon",
+        statusOpen: "Açık",
+        statusClosed: "Kapalı",
+        statusEnabled: "Restoran rezervasyona açıldı",
+        statusDisabled: "Restoran rezervasyona kapatıldı",
+        statusUpdateFailed: "Rezervasyon durumu güncellenemedi",
+        reservationHours: "Rezervasyon Saatleri",
+        hoursNotSet: "Belirtilmedi",
       },
       users: {
         title: "Kullanıcı Yönetimi",
