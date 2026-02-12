@@ -3,6 +3,8 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Separator } from "@/components/ui/separator"
 import SeedControls from "@/components/setup/seed-controls"
 import { createServerClient } from "@/lib/supabase"
+import { getCurrentUserAccess } from "@/lib/auth-utils"
+import { redirect } from "next/navigation"
 
 async function getStatus() {
   // Server-side check of env + table status
@@ -24,6 +26,22 @@ async function getStatus() {
 }
 
 export default async function SetupPage() {
+  const access = await getCurrentUserAccess()
+  if (!access) {
+    redirect("/manage/login?redirect=/setup")
+  }
+
+  if (!access.isSuperAdmin) {
+    return (
+      <main className="mx-auto max-w-3xl p-6">
+        <Alert>
+          <AlertTitle>Forbidden</AlertTitle>
+          <AlertDescription>Only super admins can access setup tools.</AlertDescription>
+        </Alert>
+      </main>
+    )
+  }
+
   const status = await getStatus()
 
   return (

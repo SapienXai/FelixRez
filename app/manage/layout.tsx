@@ -2,6 +2,8 @@
 
 import type React from "react"
 import { usePathname } from "next/navigation"
+import { ManageProvider } from "@/context/manage-context"
+import { ManageShell } from "@/components/manage/manage-shell"
 
 export default function ManageLayout({
   children,
@@ -14,6 +16,10 @@ export default function ManageLayout({
   if (isLoginPage) {
     return <>{children}</>
   }
-  
-  return <div className="flex min-h-screen bg-gray-50">{children}</div>
+
+  return (
+    <ManageProvider>
+      <ManageShell>{children}</ManageShell>
+    </ManageProvider>
+  )
 }

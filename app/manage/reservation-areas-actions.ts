@@ -3,6 +3,7 @@
 import { createServiceRoleClient } from "@/lib/supabase"
 import { revalidatePath } from "next/cache"
 import type { ReservationArea } from "@/types/supabase"
+import { coerceRestaurantFilter } from "@/lib/auth-utils"
 
 interface ReservationAreaData {
   id?: string
@@ -26,6 +27,13 @@ interface ReservationAreaData {
 export async function getReservationAreas(restaurantId: string) {
   try {
     const supabase = createServiceRoleClient()
+    const scope = await coerceRestaurantFilter(restaurantId)
+    if (scope.type === "deny") {
+      return { success: false, message: "Forbidden", data: [] }
+    }
+    if (scope.type === "one" && scope.id && restaurantId !== scope.id) {
+      return { success: false, message: "Forbidden", data: [] }
+    }
 
     const { data, error } = await supabase
       .from("reservation_areas")
@@ -48,6 +56,13 @@ export async function getReservationAreas(restaurantId: string) {
 export async function createReservationArea(data: ReservationAreaData) {
   try {
     const supabase = createServiceRoleClient()
+    const scope = await coerceRestaurantFilter(data.restaurant_id)
+    if (scope.type === "deny") {
+      return { success: false, message: "Forbidden" }
+    }
+    if (scope.type === "one" && scope.id && data.restaurant_id !== scope.id) {
+      return { success: false, message: "Forbidden" }
+    }
 
     const { data: area, error } = await supabase
       .from("reservation_areas")
@@ -87,6 +102,33 @@ export async function createReservationArea(data: ReservationAreaData) {
 export async function updateReservationArea(id: string, data: Partial<ReservationAreaData>) {
   try {
     const supabase = createServiceRoleClient()
+    const { data: existingArea, error: existingAreaError } = await supabase
+      .from("reservation_areas")
+      .select("id, restaurant_id")
+      .eq("id", id)
+      .single()
+
+    if (existingAreaError || !existingArea) {
+      return { success: false, message: existingAreaError?.message || "Reservation area not found" }
+    }
+
+    const currentScope = await coerceRestaurantFilter(existingArea.restaurant_id)
+    if (currentScope.type === "deny") {
+      return { success: false, message: "Forbidden" }
+    }
+    if (currentScope.type === "one" && currentScope.id && existingArea.restaurant_id !== currentScope.id) {
+      return { success: false, message: "Forbidden" }
+    }
+
+    if (data.restaurant_id && data.restaurant_id !== existingArea.restaurant_id) {
+      const targetScope = await coerceRestaurantFilter(data.restaurant_id)
+      if (targetScope.type === "deny") {
+        return { success: false, message: "Forbidden" }
+      }
+      if (targetScope.type === "one" && targetScope.id && data.restaurant_id !== targetScope.id) {
+        return { success: false, message: "Forbidden" }
+      }
+    }
 
     const { error } = await supabase
       .from("reservation_areas")
@@ -125,6 +167,23 @@ export async function updateReservationArea(id: string, data: Partial<Reservatio
 export async function deleteReservationArea(id: string) {
   try {
     const supabase = createServiceRoleClient()
+    const { data: existingArea, error: existingAreaError } = await supabase
+      .from("reservation_areas")
+      .select("id, restaurant_id")
+      .eq("id", id)
+      .single()
+
+    if (existingAreaError || !existingArea) {
+      return { success: false, message: existingAreaError?.message || "Reservation area not found" }
+    }
+
+    const scope = await coerceRestaurantFilter(existingArea.restaurant_id)
+    if (scope.type === "deny") {
+      return { success: false, message: "Forbidden" }
+    }
+    if (scope.type === "one" && scope.id && existingArea.restaurant_id !== scope.id) {
+      return { success: false, message: "Forbidden" }
+    }
 
     // Check if there are any reservations for this area
     const { data: reservations, error: reservationError } = await supabase
@@ -166,6 +225,13 @@ export async function deleteReservationArea(id: string) {
 export async function bulkUpdateReservationAreas(restaurantId: string, areas: ReservationAreaData[]) {
   try {
     const supabase = createServiceRoleClient()
+    const scope = await coerceRestaurantFilter(restaurantId)
+    if (scope.type === "deny") {
+      return { success: false, message: "Forbidden" }
+    }
+    if (scope.type === "one" && scope.id && restaurantId !== scope.id) {
+      return { success: false, message: "Forbidden" }
+    }
 
     // Start a transaction-like operation
     const results: { success: boolean; area?: string; error?: string }[] = []
@@ -284,6 +350,13 @@ export async function bulkUpdateReservationAreas(restaurantId: string, areas: Re
 export async function reorderReservationAreas(restaurantId: string, areaIds: string[]) {
   try {
     const supabase = createServiceRoleClient()
+    const scope = await coerceRestaurantFilter(restaurantId)
+    if (scope.type === "deny") {
+      return { success: false, message: "Forbidden" }
+    }
+    if (scope.type === "one" && scope.id && restaurantId !== scope.id) {
+      return { success: false, message: "Forbidden" }
+    }
 
     // Update display_order for each area
     const updates = areaIds.map((id, index) => 

@@ -2,6 +2,7 @@
 
 import { cookies } from "next/headers"
 import { createServiceRoleClient } from "../lib/supabase"
+import { extractAccessToken, verifyAccessToken } from "../lib/auth-token"
 
 export interface UserAccess {
   userId: string
@@ -32,13 +33,10 @@ export async function getCurrentUserAccess(): Promise<UserAccess | null> {
     const raw = store.get(cookieName)?.value
     if (!raw) return null
 
-    let userId: string | null = null
-    try {
-      const parsed = JSON.parse(raw)
-      userId = parsed?.currentSession?.user?.id || parsed?.user?.id || null
-    } catch {
-      userId = null
-    }
+    const token = extractAccessToken(raw)
+    if (!token) return null
+    const payload = await verifyAccessToken(token)
+    const userId = payload?.sub || null
     if (!userId) return null
 
     const supabase = createServiceRoleClient()

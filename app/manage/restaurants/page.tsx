@@ -4,8 +4,6 @@ import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { ManageHeader } from '@/components/manage/manage-header';
-import { ManageSidebar } from '@/components/manage/manage-sidebar';
 import { RestaurantForm } from '@/components/restaurant-form';
 import { useConfirmationDialog } from '@/components/ui/confirmation-dialog';
 import { getRestaurants, deleteRestaurant } from '@/app/manage/actions';
@@ -16,6 +14,7 @@ import { TriangleLoader } from '@/components/ui/triangle-loader';
 import { toast } from 'sonner';
 import Image from 'next/image';
 import type { Database } from '@/types/supabase';
+import { useManageContext } from '@/context/manage-context';
 
 type Restaurant = Database['public']['Tables']['restaurants']['Row']
 
@@ -33,12 +32,10 @@ export default function RestaurantsPage() {
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [editingRestaurant, setEditingRestaurant] = useState<RestaurantWithMedia | undefined>(undefined);
-  const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [user, setUser] = useState({ email: '', name: 'Admin User' });
+  const { role, loading: roleLoading } = useManageContext();
   const { getTranslation } = useLanguage();
   const { showConfirmation, ConfirmationDialogComponent } = useConfirmationDialog();
   const supabase = getSupabaseBrowserClient();
-  const [role, setRole] = useState<string | null>(null);
   const isStaff = role === 'staff';
 
   const fetchRestaurants = async () => {
@@ -57,26 +54,17 @@ export default function RestaurantsPage() {
   useEffect(() => {
     const checkSession = async () => {
       const { data } = await supabase.auth.getSession();
-      if (data.session) {
-        setUser({
-          email: data.session.user.email || '',
-          name: data.session.user.user_metadata?.full_name || 'Admin User',
-        });
-        try {
-          const res = await fetch('/api/me/role', { cache: 'no-store' })
-          const json = await res.json()
-          setRole(json?.role || null)
-          if (json?.role === 'staff') {
-            setLoading(false);
-            return;
-          }
-        } catch {}
+      if (data.session && isStaff) {
+        setLoading(false);
+        return;
       }
       fetchRestaurants();
     };
 
-    checkSession();
-  }, [supabase]);
+    if (!roleLoading) {
+      checkSession();
+    }
+  }, [supabase, isStaff, roleLoading]);
 
   useEffect(() => {
     if (role === 'staff') {
@@ -121,10 +109,6 @@ export default function RestaurantsPage() {
     setEditingRestaurant(undefined);
   };
 
-  const toggleSidebar = () => {
-    setSidebarOpen(!sidebarOpen);
-  };
-
   if (loading) {
     return (
       <div className="fixed inset-0 bg-gray-100 flex items-center justify-center z-50">
@@ -139,114 +123,106 @@ export default function RestaurantsPage() {
   if (isStaff) return null
 
   return (
-    <div className="flex h-screen bg-gray-100">
-      <ManageSidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
-      <div className="flex-1 flex flex-col overflow-hidden">
-        <ManageHeader user={user} toggleSidebar={toggleSidebar} />
-        <main className="flex-1 overflow-y-auto p-4 md:p-6">
-          <div className="max-w-7xl mx-auto">
-            <div className="mb-6 flex justify-between items-center">
-              <div>
-                <h1 className="text-2xl font-semibold">{getTranslation('manage.restaurants.title')}</h1>
-              </div>
-              {role === 'admin' && (
-              <Button onClick={() => setShowForm(true)} className="flex items-center gap-2">
-                <Plus className="h-4 w-4" />
-                Add Restaurant
-              </Button>
-              )}
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {restaurants.map((restaurant) => (
-                <Card key={restaurant.id} className="overflow-hidden">
-                  <div className="relative h-48">
-                    {restaurant.media && restaurant.media.length > 0 ? (
-                      restaurant.media[0].media_url.endsWith('.mp4') || restaurant.media[0].media_url.endsWith('.webm') || restaurant.media[0].media_url.endsWith('.mov') ? (
-                        <video
-                          src={restaurant.media[0].media_url}
-                          className="w-full h-full object-cover"
-                          autoPlay
-                          muted
-                          loop
-                          playsInline
-                        />
-                      ) : (
-                        <Image
-                          src={restaurant.media[0].media_url}
-                          alt={restaurant.name}
-                          fill
-                          className="object-cover"
-                        />
-                      )
-                    ) : (
-                      <div className="w-full h-full bg-gray-200 flex items-center justify-center">
-                        <span className="text-gray-500">No media</span>
-                      </div>
-                    )}
-                    <div className="absolute top-2 right-2">
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="sm" className="h-8 w-8 p-0 bg-white/80 hover:bg-white">
-                            <MoreHorizontal className="h-4 w-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          {role === 'admin' && (
-                            <>
-                              <DropdownMenuItem onClick={() => handleEdit(restaurant)} className="text-blue-600">
-                                <Edit className="mr-2 h-4 w-4" />
-                                Edit
-                              </DropdownMenuItem>
-                              <DropdownMenuItem onClick={() => handleDelete(restaurant.id, restaurant.name)} className="text-red-600">
-                                <Trash2 className="mr-2 h-4 w-4" />
-                                Delete
-                              </DropdownMenuItem>
-                            </>
-                          )}
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </div>
-                  </div>
-                  <CardHeader>
-                    <CardTitle className="text-lg">{restaurant.name}</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-2 text-sm text-gray-600">
-                      {restaurant.cuisine && (
-                        <p><span className="font-medium">Cuisine:</span> {restaurant.cuisine}</p>
-                      )}
-                      {restaurant.location && (
-                        <p><span className="font-medium">Location:</span> {restaurant.location}</p>
-                      )}
-                      {restaurant.phone && (
-                        <p><span className="font-medium">Phone:</span> {restaurant.phone}</p>
-                      )}
-                      {restaurant.description && (
-                        <p className="text-gray-700 mt-2">{restaurant.description}</p>
-                      )}
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-
-            {restaurants.length === 0 && (
-              <div className="text-center py-12">
-                <p className="text-gray-500">{getTranslation('manage.common.noRestaurants')}</p>
-              </div>
-            )}
-          </div>
-          
-          <RestaurantForm
-            restaurant={editingRestaurant || undefined}
-            onSuccess={handleFormSuccess}
-            onClose={handleFormClose}
-            open={showForm}
-          />
-          {ConfirmationDialogComponent}
-        </main>
+    <div className="max-w-7xl mx-auto">
+      <div className="mb-6 flex justify-between items-center">
+        <div>
+          <h1 className="text-2xl font-semibold">{getTranslation('manage.restaurants.title')}</h1>
+        </div>
+        {role === 'admin' && (
+        <Button onClick={() => setShowForm(true)} className="flex items-center gap-2">
+          <Plus className="h-4 w-4" />
+          Add Restaurant
+        </Button>
+        )}
       </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {restaurants.map((restaurant) => (
+          <Card key={restaurant.id} className="overflow-hidden">
+            <div className="relative h-48">
+              {restaurant.media && restaurant.media.length > 0 ? (
+                restaurant.media[0].media_url.endsWith('.mp4') || restaurant.media[0].media_url.endsWith('.webm') || restaurant.media[0].media_url.endsWith('.mov') ? (
+                  <video
+                    src={restaurant.media[0].media_url}
+                    className="w-full h-full object-cover"
+                    autoPlay
+                    muted
+                    loop
+                    playsInline
+                  />
+                ) : (
+                  <Image
+                    src={restaurant.media[0].media_url}
+                    alt={restaurant.name}
+                    fill
+                    className="object-cover"
+                  />
+                )
+              ) : (
+                <div className="w-full h-full bg-gray-200 flex items-center justify-center">
+                  <span className="text-gray-500">No media</span>
+                </div>
+              )}
+              <div className="absolute top-2 right-2">
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="ghost" size="sm" className="h-8 w-8 p-0 bg-white/80 hover:bg-white">
+                      <MoreHorizontal className="h-4 w-4" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    {role === 'admin' && (
+                      <>
+                        <DropdownMenuItem onClick={() => handleEdit(restaurant)} className="text-blue-600">
+                          <Edit className="mr-2 h-4 w-4" />
+                          Edit
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => handleDelete(restaurant.id, restaurant.name)} className="text-red-600">
+                          <Trash2 className="mr-2 h-4 w-4" />
+                          Delete
+                        </DropdownMenuItem>
+                      </>
+                    )}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
+            </div>
+            <CardHeader>
+              <CardTitle className="text-lg">{restaurant.name}</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-2 text-sm text-gray-600">
+                {restaurant.cuisine && (
+                  <p><span className="font-medium">Cuisine:</span> {restaurant.cuisine}</p>
+                )}
+                {restaurant.location && (
+                  <p><span className="font-medium">Location:</span> {restaurant.location}</p>
+                )}
+                {restaurant.phone && (
+                  <p><span className="font-medium">Phone:</span> {restaurant.phone}</p>
+                )}
+                {restaurant.description && (
+                  <p className="text-gray-700 mt-2">{restaurant.description}</p>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+
+      {restaurants.length === 0 && (
+        <div className="text-center py-12">
+          <p className="text-gray-500">{getTranslation('manage.common.noRestaurants')}</p>
+        </div>
+      )}
+      
+      <RestaurantForm
+        restaurant={editingRestaurant || undefined}
+        onSuccess={handleFormSuccess}
+        onClose={handleFormClose}
+        open={showForm}
+      />
+      {ConfirmationDialogComponent}
     </div>
   );
 }

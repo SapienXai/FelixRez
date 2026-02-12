@@ -11,6 +11,34 @@ type LanguageContextType = {
 }
 
 const LanguageContext = createContext<LanguageContextType | undefined>(undefined)
+type SupportedLanguage = keyof typeof translations
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null
+}
+
+function isSupportedLanguage(value: string): value is SupportedLanguage {
+  return value in translations
+}
+
+function getNestedValue(source: unknown, path: string[]): unknown {
+  let current: unknown = source
+  for (const segment of path) {
+    if (!isRecord(current) || !(segment in current)) {
+      return undefined
+    }
+    current = current[segment]
+  }
+  return current
+}
+
+function applyReplacements(template: string, replacements: Record<string, string>): string {
+  let output = template
+  for (const placeholder in replacements) {
+    output = output.replace(new RegExp(`{${placeholder}}`, "g"), replacements[placeholder])
+  }
+  return output
+}
 
 export function SimpleLanguageProvider({ children }: { children: React.ReactNode }) {
   const [currentLang, setCurrentLang] = useState<string>("en")
@@ -30,13 +58,13 @@ export function SimpleLanguageProvider({ children }: { children: React.ReactNode
       const urlParams = new URLSearchParams(window.location.search)
       const langParam = urlParams.get("lang")
 
-      if (langParam && translations[langParam]) {
+      if (langParam && isSupportedLanguage(langParam)) {
         setCurrentLang(langParam)
         localStorage.setItem("selectedLanguage", langParam)
       } else {
         // Then check localStorage
         const storedLang = localStorage.getItem("selectedLanguage")
-        if (storedLang && translations[storedLang]) {
+        if (storedLang && isSupportedLanguage(storedLang)) {
           setCurrentLang(storedLang)
         }
       }
@@ -54,7 +82,7 @@ export function SimpleLanguageProvider({ children }: { children: React.ReactNode
   }, [currentLang, isClient])
 
   const handleSetLanguage = (lang: string) => {
-    if (translations[lang]) {
+    if (isSupportedLanguage(lang)) {
       setCurrentLang(lang)
 
       if (isClient) {
@@ -75,44 +103,18 @@ export function SimpleLanguageProvider({ children }: { children: React.ReactNode
 
   const getTranslation = (key: string, replacements: Record<string, string> = {}) => {
     const keys = key.split(".")
-    let result = translations[currentLang]
-
-    for (const k of keys) {
-      if (result && typeof result === "object" && k in result) {
-        result = result[k]
-      } else {
-        if (currentLang !== "en") {
-          // Fallback to English for missing keys
-          const fallbackKeys = key.split(".")
-          let fallbackResult = translations["en"]
-
-          for (const fk of fallbackKeys) {
-            if (fallbackResult && typeof fallbackResult === "object" && fk in fallbackResult) {
-              fallbackResult = fallbackResult[fk]
-            } else {
-              return key
-            }
-          }
-
-          if (typeof fallbackResult === "string") {
-            for (const placeholder in replacements) {
-              fallbackResult = fallbackResult.replace(new RegExp(`{${placeholder}}`, "g"), replacements[placeholder])
-            }
-            return fallbackResult
-          }
-          return key
-        }
-        return key
+    const langKey: SupportedLanguage = isSupportedLanguage(currentLang) ? currentLang : "en"
+    const localized = getNestedValue(translations[langKey], keys)
+    if (typeof localized === "string") {
+      return applyReplacements(localized, replacements)
+    }
+    if (langKey !== "en") {
+      const fallback = getNestedValue(translations.en, keys)
+      if (typeof fallback === "string") {
+        return applyReplacements(fallback, replacements)
       }
     }
-
-    if (typeof result === "string") {
-      for (const placeholder in replacements) {
-        result = result.replace(new RegExp(`{${placeholder}}`, "g"), replacements[placeholder])
-      }
-    }
-
-    return result
+    return key
   }
 
   return (

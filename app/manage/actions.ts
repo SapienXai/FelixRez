@@ -262,6 +262,11 @@ export async function updateReservationStatus(id: string, status: string, notes?
 // Add a function to get all reservations without filters for debugging
 export async function getAllReservations() {
   try {
+    const access = await getCurrentUserAccess()
+    if (!access || !access.isSuperAdmin) {
+      return { success: false, message: "Forbidden", data: [] }
+    }
+
     const supabase = createServiceRoleClient()
 
     const { data, error } = await supabase
@@ -299,6 +304,13 @@ export async function createReservation(reservationData: {
 }) {
   try {
     const supabase = createServiceRoleClient()
+    const scope = await coerceRestaurantFilter(reservationData.restaurant_id)
+    if (scope.type === "deny") {
+      return { success: false, message: "Forbidden" }
+    }
+    if (scope.type === "one" && scope.id && reservationData.restaurant_id !== scope.id) {
+      return { success: false, message: "Forbidden" }
+    }
 
     const { data, error } = await supabase
       .from("reservations")
@@ -344,6 +356,32 @@ export async function updateReservation(id: string, reservationData: {
 }) {
   try {
     const supabase = createServiceRoleClient()
+    const { data: existingReservation, error: existingReservationError } = await supabase
+      .from("reservations")
+      .select("id, restaurant_id")
+      .eq("id", id)
+      .single()
+
+    if (existingReservationError || !existingReservation) {
+      return { success: false, message: existingReservationError?.message || "Reservation not found" }
+    }
+
+    const currentScope = await coerceRestaurantFilter(existingReservation.restaurant_id)
+    if (currentScope.type === "deny") {
+      return { success: false, message: "Forbidden" }
+    }
+    if (currentScope.type === "one" && currentScope.id && existingReservation.restaurant_id !== currentScope.id) {
+      return { success: false, message: "Forbidden" }
+    }
+
+    const targetRestaurantId = reservationData.restaurant_id ?? existingReservation.restaurant_id
+    const targetScope = await coerceRestaurantFilter(targetRestaurantId)
+    if (targetScope.type === "deny") {
+      return { success: false, message: "Forbidden" }
+    }
+    if (targetScope.type === "one" && targetScope.id && targetRestaurantId !== targetScope.id) {
+      return { success: false, message: "Forbidden" }
+    }
 
     const { data, error } = await supabase
       .from("reservations")

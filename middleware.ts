@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server"
 import type { NextRequest } from "next/server"
+import { extractAccessToken, verifyAccessToken } from "@/lib/auth-token"
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
@@ -18,18 +19,10 @@ export async function middleware(request: NextRequest) {
 
   let hasSession = false
   if (cookieVal) {
-    try {
-      const parsed = JSON.parse(cookieVal)
-      // Support both our manual shape and auth-helpers shapes
-      hasSession = Boolean(
-        parsed?.currentToken ||
-          parsed?.access_token ||
-          parsed?.value?.access_token ||
-          parsed?.currentSession?.access_token
-      )
-    } catch {
-      // If cookie can't be parsed, treat as no session
-      hasSession = false
+    const token = extractAccessToken(cookieVal)
+    if (token) {
+      const payload = await verifyAccessToken(token)
+      hasSession = Boolean(payload?.sub)
     }
   }
 

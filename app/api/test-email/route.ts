@@ -1,8 +1,14 @@
 import { NextResponse } from "next/server"
 import { sendEmail } from "@/lib/email-service"
+import { getCurrentUserAccess } from "@/lib/auth-utils"
 
 export async function POST(request: Request) {
   try {
+    const access = await getCurrentUserAccess()
+    if (!access || !access.isSuperAdmin) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 })
+    }
+
     const { email } = await request.json()
 
     if (!email) {
@@ -27,10 +33,14 @@ export async function POST(request: Request) {
 
     if (!success) {
       console.error("Error sending test email:", error)
-      return NextResponse.json({ error: error.message }, { status: 500 })
+      const errorMessage =
+        typeof error === "object" && error && "message" in error
+          ? String((error as { message?: unknown }).message || "Failed to send email")
+          : "Failed to send email"
+      return NextResponse.json({ error: errorMessage }, { status: 500 })
     }
 
-    return NextResponse.json({ message: "Email sent successfully", id: data.id })
+    return NextResponse.json({ message: "Email sent successfully", id: data?.id || null })
   } catch (error) {
     console.error("Error in test-email API route:", error)
     return NextResponse.json({ error: "An unexpected error occurred" }, { status: 500 })

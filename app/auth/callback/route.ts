@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server"
+import { extractAccessToken, verifyAccessToken } from "@/lib/auth-token"
 
 type AuthEvent = "SIGNED_IN" | "TOKEN_REFRESHED" | "SIGNED_OUT" | string
 
@@ -28,6 +29,10 @@ export async function POST(request: Request) {
       if (!session || !session.access_token) {
         return NextResponse.json({ ok: false, error: "Missing session" }, { status: 400 })
       }
+      const payload = await verifyAccessToken(session.access_token)
+      if (!payload?.sub) {
+        return NextResponse.json({ ok: false, error: "Invalid session token" }, { status: 401 })
+      }
       const now = Math.floor(Date.now() / 1000)
       const exp = Number(session.expires_at || now + 60 * 60)
       const maxAge = Math.max(0, exp - now)
@@ -36,6 +41,8 @@ export async function POST(request: Request) {
         path: "/",
         maxAge,
         sameSite: "lax",
+        httpOnly: true,
+        secure: process.env.NODE_ENV === "production",
       })
       return res
     }

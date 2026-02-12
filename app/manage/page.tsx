@@ -10,17 +10,17 @@ import { CalendarClock, Clock, CheckCircle, XCircle, TrendingUp, Users, Utensils
 import { getDashboardStats, getTodayReservations, getUpcomingReservations, getNewReservations } from "./dashboard-actions"
 import { getRestaurants } from "./actions"
 import { ReservationList } from "@/components/manage/reservation-list"
-import { ManageHeader } from "@/components/manage/manage-header"
-import { ManageSidebar } from "@/components/manage/manage-sidebar"
 import { useLanguage } from "@/context/language-context"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { TriangleLoader } from "@/components/ui/triangle-loader"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { Calendar as CalendarComponent } from "@/components/ui/calendar"
 import { format } from "date-fns"
+import { useManageContext } from "@/context/manage-context"
 
 export default function ManageDashboard() {
   const { getTranslation } = useLanguage()
+  const { isSuperAdmin, loading: roleLoading } = useManageContext()
   const [isLoading, setIsLoading] = useState(true)
   const [isStatsLoading, setIsStatsLoading] = useState(false)
   const [stats, setStats] = useState({
@@ -44,11 +44,8 @@ export default function ManageDashboard() {
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(undefined)
   const [timePeriod, setTimePeriod] = useState<string>("daily")
   const [activeTab, setActiveTab] = useState<string>("new")
-  const [sidebarOpen, setSidebarOpen] = useState(false)
   const [datePopoverOpen, setDatePopoverOpen] = useState(false)
   const [cardsExpanded, setCardsExpanded] = useState(false)
-  const [user, setUser] = useState({ email: "", name: "Admin User" })
-  const [isSuperAdmin, setIsSuperAdmin] = useState(false)
   const router = useRouter()
   const supabase = getSupabaseBrowserClient()
   const isInitialMount = useRef(true);
@@ -57,26 +54,16 @@ export default function ManageDashboard() {
     const checkSession = async () => {
       const { data } = await supabase.auth.getSession()
       if (data.session) {
-        setUser({
-          email: data.session.user.email || "",
-          name: data.session.user.user_metadata?.full_name || "Admin User",
-        })
-        try {
-          const res = await fetch('/api/me/role', { cache: 'no-store' })
-          const json = await res.json()
-          const isSuperAdminValue = Boolean(json?.isSuperAdmin)
-          setIsSuperAdmin(isSuperAdminValue)
-          await fetchRestaurants(isSuperAdminValue)
-        } catch {
-          await fetchRestaurants(false)
-        }
+        await fetchRestaurants(isSuperAdmin)
       } else {
         await fetchRestaurants(false)
       }
       fetchDashboardData()
     }
 
-    checkSession()
+    if (!roleLoading) {
+      checkSession()
+    }
 
     // Keep cookie/session synced while on dashboard
     const { data: subscription } = supabase.auth.onAuthStateChange(async (event, session) => {
@@ -93,7 +80,7 @@ export default function ManageDashboard() {
     })
 
     return () => subscription?.subscription?.unsubscribe?.()
-  }, [router, supabase])
+  }, [router, supabase, isSuperAdmin, roleLoading])
 
   // Fetch stats when restaurant filter, date, or time period changes
   useEffect(() => {
@@ -309,10 +296,6 @@ export default function ManageDashboard() {
     }
   }
 
-  const toggleSidebar = () => {
-    setSidebarOpen(!sidebarOpen)
-  }
-
   const handleStatusChange = () => {
     fetchDashboardData()
   }
@@ -349,384 +332,418 @@ export default function ManageDashboard() {
   }
 
   return (
-    <div className="flex flex-1 bg-gray-100">
-      <ManageSidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
+    <div className="max-w-5xl lg:max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div className="flex flex-col space-y-4 sm:flex-row sm:items-center sm:justify-between sm:space-y-0 mb-6">
+        <div className="flex items-center space-x-3">
+          <h1 className="text-xl md:text-2xl font-semibold">{getTranslation("manage.dashboard.title")}</h1>
+          <Button
+            onClick={() => router.push("/manage/reservations?action=new")}
+            className="bg-black hover:bg-gray-800 text-white text-xs px-2 py-1 h-7"
+            size="sm"
+          >
+            + {getTranslation("manage.reservations.list.addReservation")}
+          </Button>
+        </div>
 
-      <div className="flex-1 flex flex-col overflow-hidden">
-        <ManageHeader user={user} toggleSidebar={toggleSidebar} />
-
-        <main className="flex-1 overflow-y-auto py-2 md:py-2">
-          <div className="max-w-5xl lg:max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="flex flex-col space-y-4 sm:flex-row sm:items-center sm:justify-between sm:space-y-0 mb-6">
-              <div className="flex items-center space-x-3">
-                <h1 className="text-xl md:text-2xl font-semibold">{getTranslation("manage.dashboard.title")}</h1>
-                <Button 
-                  onClick={() => router.push('/manage/reservations?action=new')}
-                  className="bg-black hover:bg-gray-800 text-white text-xs px-2 py-1 h-7"
-                  size="sm"
-                >
-                  + {getTranslation("manage.reservations.list.addReservation")}
-                </Button>
-              </div>
-              
-              <div className="flex items-center space-x-4">
-                <div className="w-full sm:min-w-[180px]">
-                  <Select value={timePeriod} onValueChange={setTimePeriod}>
-                    <SelectTrigger className="text-sm">
-                      <SelectValue placeholder={getTranslation("manage.dashboard.filter.timePeriod")} />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="daily">
-                        <div className="flex items-center justify-between w-full">
-                          <span>{getTranslation("manage.dashboard.filter.daily")}</span>
-                          <span className="text-xs text-muted-foreground ml-2">
-                            ({new Date().toLocaleDateString(getTranslation('common.locale'), { weekday: 'long' })})
-                          </span>
-                        </div>
-                      </SelectItem>
-                      <SelectItem value="weekly">
-                        <div className="flex items-center justify-between w-full">
-                          <span>{getTranslation("manage.dashboard.filter.weekly")}</span>
-                          <span className="text-xs text-muted-foreground ml-2">(Mon-Sun)</span>
-                        </div>
-                      </SelectItem>
-                      <SelectItem value="monthly">
-                        <div className="flex items-center justify-between w-full">
-                          <span>{getTranslation("manage.dashboard.filter.monthly")}</span>
-                          <span className="text-xs text-muted-foreground ml-2">({new Date().toLocaleDateString('en', { month: 'short' })})</span>
-                        </div>
-                      </SelectItem>
-                      <SelectItem value="yearly">
-                        <div className="flex items-center justify-between w-full">
-                          <span>{getTranslation("manage.dashboard.filter.yearly")}</span>
-                          <span className="text-xs text-muted-foreground ml-2">({new Date().getFullYear()})</span>
-                        </div>
-                      </SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="w-full sm:min-w-[200px]">
-                  <Select value={selectedRestaurant} onValueChange={handleRestaurantChange}>
-                    <SelectTrigger className="text-sm">
-                      <SelectValue placeholder={getTranslation("manage.dashboard.filter.allRestaurants")} />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {isSuperAdmin && (
-                        <SelectItem value="all">{getTranslation("manage.dashboard.filter.allRestaurants")}</SelectItem>
-                      )}
-                      {restaurants.map((restaurant) => (
-                        <SelectItem key={restaurant.id} value={restaurant.id}>
-                          {restaurant.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-            </div>
-
-            <div className="mb-6">
-              
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4 transition-all duration-300">
-                <Card className={`cursor-pointer transition-all hover:shadow-md ${statusFilter === "all" ? "ring-2 ring-blue-500" : ""}`} onClick={() => handleStatusFilter("all")}>
-                  <CardContent className="p-4 md:p-6">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-xs md:text-sm font-medium text-muted-foreground">{getTranslation("manage.dashboard.stats.total")}</p>
-                        <p className="text-2xl md:text-3xl font-bold">{stats.total}</p>
-                      </div>
-                      <div className="rounded-full bg-blue-100 p-2 md:p-3 text-blue-600">
-                        <CalendarClock className="h-4 w-4 md:h-6 md:w-6" />
-                      </div>
-                    </div>
-                    <div className="mt-2 md:mt-4 flex items-center text-xs md:text-sm">
-                      <TrendingUp
-                        className={`mr-1 h-3 w-3 md:h-4 md:w-4 ${stats.percentChange >= 0 ? "text-green-500" : "text-red-500"}`}
-                      />
-                      <span className={stats.percentChange >= 0 ? "text-green-500" : "text-red-500"}>
-                        {getTranslation("manage.dashboard.stats.percentChange", { percent: String(stats.percentChange) })}
-                      </span>
-                    </div>
-                  </CardContent>
-                </Card>
-
-                <Card className={`cursor-pointer transition-all hover:shadow-md ${statusFilter === "pending" ? "ring-2 ring-yellow-500" : ""}`} onClick={() => handleStatusFilter("pending")}>
-                  <CardContent className="p-4 md:p-6">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-xs md:text-sm font-medium text-muted-foreground">{getTranslation("manage.dashboard.stats.pending")}</p>
-                        <p className="text-2xl md:text-3xl font-bold">{stats.pending}</p>
-                      </div>
-                      <div className="rounded-full bg-yellow-100 p-2 md:p-3 text-yellow-600">
-                        <Clock className="h-4 w-4 md:h-6 md:w-6" />
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-
-                <Card className={`cursor-pointer transition-all hover:shadow-md ${statusFilter === "confirmed" ? "ring-2 ring-green-500" : ""}`} onClick={() => handleStatusFilter("confirmed")}>
-                  <CardContent className="p-4 md:p-6">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-xs md:text-sm font-medium text-muted-foreground">{getTranslation("manage.dashboard.stats.confirmed")}</p>
-                        <p className="text-2xl md:text-3xl font-bold">{stats.confirmed}</p>
-                      </div>
-                      <div className="rounded-full bg-green-100 p-2 md:p-3 text-green-600">
-                        <CheckCircle className="h-4 w-4 md:h-6 md:w-6" />
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-
-                <Card className={`cursor-pointer transition-all hover:shadow-md ${statusFilter === "cancelled" ? "ring-2 ring-red-500" : ""}`} onClick={() => handleStatusFilter("cancelled")}>
-                  <CardContent className="p-4 md:p-6">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-xs md:text-sm font-medium text-muted-foreground">{getTranslation("manage.dashboard.stats.cancelled")}</p>
-                        <p className="text-2xl md:text-3xl font-bold">{stats.cancelled}</p>
-                      </div>
-                      <div className="rounded-full bg-red-100 p-2 md:p-3 text-red-600">
-                        <XCircle className="h-4 w-4 md:h-6 md:w-6" />
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-
-               </div>
-               
-               {/* Additional Metrics Cards - Only show when expanded */}
-               {cardsExpanded && (
-                 <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4 mt-3 md:mt-4 transition-all duration-300">
-                   <Card className="cursor-default transition-all hover:shadow-md">
-                     <CardContent className="p-4 md:p-6">
-                       <div className="flex items-center justify-between">
-                         <div>
-                           <p className="text-xs md:text-sm font-medium text-muted-foreground">Total Kuver</p>
-                           <p className="text-2xl md:text-3xl font-bold">{stats.totalKuver}</p>
-                         </div>
-                         <div className="rounded-full bg-purple-100 p-2 md:p-3 text-purple-600">
-                           <Users className="h-4 w-4 md:h-6 md:w-6" />
-                         </div>
-                       </div>
-                       <p className="text-xs text-muted-foreground mt-2">Customers served</p>
-                     </CardContent>
-                   </Card>
-
-                   <Card className="cursor-default transition-all hover:shadow-md">
-                     <CardContent className="p-4 md:p-6">
-                       <div className="flex items-center justify-between">
-                         <div>
-                           <p className="text-xs md:text-sm font-medium text-muted-foreground">Meal Reservations</p>
-                           <p className="text-2xl md:text-3xl font-bold">{stats.totalMealReservations}</p>
-                         </div>
-                         <div className="rounded-full bg-orange-100 p-2 md:p-3 text-orange-600">
-                           <UtensilsCrossed className="h-4 w-4 md:h-6 md:w-6" />
-                         </div>
-                       </div>
-                       <p className="text-xs text-muted-foreground mt-2">Food reservations</p>
-                     </CardContent>
-                   </Card>
-
-                   <Card className="cursor-default transition-all hover:shadow-md">
-                     <CardContent className="p-4 md:p-6">
-                       <div className="flex items-center justify-between">
-                         <div>
-                           <p className="text-xs md:text-sm font-medium text-muted-foreground">Deck</p>
-                           <p className="text-2xl md:text-3xl font-bold">{stats.deckKuvers}</p>
-                         </div>
-                         <div className="rounded-full bg-teal-100 p-2 md:p-3 text-teal-600">
-                           <MapPin className="h-4 w-4 md:h-6 md:w-6" />
-                         </div>
-                       </div>
-                       <p className="text-xs text-muted-foreground mt-2">Kuvers today</p>
-                     </CardContent>
-                   </Card>
-
-                   <Card className="cursor-default transition-all hover:shadow-md">
-                     <CardContent className="p-4 md:p-6">
-                       <div className="flex items-center justify-between">
-                         <div>
-                           <p className="text-xs md:text-sm font-medium text-muted-foreground">Terrace</p>
-                           <p className="text-2xl md:text-3xl font-bold">{stats.terraceKuvers}</p>
-                         </div>
-                         <div className="rounded-full bg-emerald-100 p-2 md:p-3 text-emerald-600">
-                           <MapPin className="h-4 w-4 md:h-6 md:w-6" />
-                         </div>
-                       </div>
-                       <p className="text-xs text-muted-foreground mt-2">Kuvers today</p>
-                     </CardContent>
-                   </Card>
-                 </div>
-               )}
-               
-               {/* Minimal expand/collapse indicator */}
-               <div className="flex justify-center -mt-2">
-                 <Button
-                   variant="ghost"
-                   size="sm"
-                   onClick={() => setCardsExpanded(!cardsExpanded)}
-                   className="h-6 px-2 text-xs text-muted-foreground hover:text-foreground transition-colors"
-                 >
-                   {cardsExpanded ? (
-                      <ChevronUp className="h-4 w-4" />
-                    ) : (
-                      <ChevronDown className="h-4 w-4" />
-                    )}
-                 </Button>
-               </div>
-            </div>
-
-              <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
-                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-                  <TabsList className={`grid w-full ${selectedDate ? 'grid-cols-4' : 'grid-cols-4'} lg:w-auto lg:grid-cols-none lg:flex`}>
-                    <TabsTrigger value="new" className="text-xs sm:text-sm">{getTranslation("manage.dashboard.tabs.new")}</TabsTrigger>
-                    <TabsTrigger value="today" className="text-xs sm:text-sm">{getTranslation("manage.dashboard.tabs.today")}</TabsTrigger>
-                    <TabsTrigger value="upcoming" className="text-xs sm:text-sm">{getTranslation("manage.dashboard.tabs.upcoming")}</TabsTrigger>
-                    {selectedDate ? (
-                      <Popover open={datePopoverOpen} onOpenChange={setDatePopoverOpen}>
-                        <PopoverTrigger asChild>
-                          <TabsTrigger value="selected-date" className="text-xs sm:text-sm">
-                            <Calendar className="mr-2 h-4 w-4" />
-                            {format(selectedDate, 'MMM dd')} ({selectedDateReservations.length})
-                          </TabsTrigger>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-auto p-0" align="start">
-                          <CalendarComponent
-                            mode="single"
-                            selected={selectedDate}
-                            onSelect={(date) => {
-                              setSelectedDate(date);
-                              if (date) {
-                                setActiveTab("selected-date");
-                              }
-                              setDatePopoverOpen(false);
-                            }}
-                            initialFocus
-                          />
-                          <div className="p-3 border-t">
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => {
-                                setSelectedDate(undefined);
-                                setActiveTab("new");
-                                setDatePopoverOpen(false);
-                              }}
-                              className="w-full"
-                            >
-                              {getTranslation("manage.dashboard.clearDate")}
-                            </Button>
-                          </div>
-                        </PopoverContent>
-                      </Popover>
-                    ) : (
-                      <Popover open={datePopoverOpen} onOpenChange={setDatePopoverOpen}>
-                        <PopoverTrigger asChild>
-                          <TabsTrigger value="select-date" className="text-xs sm:text-sm">
-                            <Calendar className="mr-2 h-4 w-4" />
-                            {getTranslation("manage.dashboard.tabs.selectDate")}
-                          </TabsTrigger>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-auto p-0" align="start">
-                          <CalendarComponent
-                            mode="single"
-                            selected={selectedDate}
-                            onSelect={(date) => {
-                              setSelectedDate(date);
-                              if (date) {
-                                setActiveTab("selected-date");
-                              }
-                              setDatePopoverOpen(false);
-                            }}
-                            initialFocus
-                          />
-                        </PopoverContent>
-                      </Popover>
-                    )}
-                  </TabsList>
-                </div>
-              <div className="relative">
-                {isStatsLoading && (
-                  <div className="absolute inset-0 bg-gray-100/80 backdrop-blur-sm flex items-start justify-center z-10 rounded-lg pt-12">
-                    <TriangleLoader />
+        <div className="flex items-center space-x-4">
+          <div className="w-full sm:min-w-[180px]">
+            <Select value={timePeriod} onValueChange={setTimePeriod}>
+              <SelectTrigger className="text-sm">
+                <SelectValue placeholder={getTranslation("manage.dashboard.filter.timePeriod")} />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="daily">
+                  <div className="flex items-center justify-between w-full">
+                    <span>{getTranslation("manage.dashboard.filter.daily")}</span>
+                    <span className="text-xs text-muted-foreground ml-2">
+                      ({new Date().toLocaleDateString(getTranslation("common.locale"), { weekday: "long" })})
+                    </span>
                   </div>
-                )}
-                <TabsContent value="new" className="space-y-4">
-                  <div>
-                    <div className="mb-4">
-                      <h3 className="text-lg font-semibold">{getTranslation("manage.dashboard.new.cardTitle")}</h3>
-                      <p className="text-sm text-muted-foreground">
-                        {getTranslation("manage.dashboard.new.cardDescription", { count: String(getFilteredReservations(newReservations).length) })}
-                        {statusFilter !== "all" && (
-                          <span className="ml-2 text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded-full">
-                            Filtered by: {statusFilter}
-                          </span>
-                        )}
-                      </p>
-                    </div>
-                    <ReservationList reservations={getFilteredReservations(newReservations)} onStatusChange={handleStatusChange} itemsPerPage={10} />
+                </SelectItem>
+                <SelectItem value="weekly">
+                  <div className="flex items-center justify-between w-full">
+                    <span>{getTranslation("manage.dashboard.filter.weekly")}</span>
+                    <span className="text-xs text-muted-foreground ml-2">(Mon-Sun)</span>
                   </div>
-                </TabsContent>
-                <TabsContent value="today" className="space-y-4">
-                  <div>
-                    <div className="mb-4">
-                      <h3 className="text-lg font-semibold">{getTranslation("manage.dashboard.today.cardTitle")}</h3>
-                      <p className="text-sm text-muted-foreground">
-                        {getTranslation("manage.dashboard.today.cardDescription", { count: String(getFilteredReservations(todayReservations).length) })}
-                        {statusFilter !== "all" && (
-                          <span className="ml-2 text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded-full">
-                            Filtered by: {statusFilter}
-                          </span>
-                        )}
-                      </p>
-                    </div>
-                    <ReservationList reservations={getFilteredReservations(todayReservations)} onStatusChange={handleStatusChange} itemsPerPage={10} />
+                </SelectItem>
+                <SelectItem value="monthly">
+                  <div className="flex items-center justify-between w-full">
+                    <span>{getTranslation("manage.dashboard.filter.monthly")}</span>
+                    <span className="text-xs text-muted-foreground ml-2">
+                      ({new Date().toLocaleDateString("en", { month: "short" })})
+                    </span>
                   </div>
-                </TabsContent>
-                <TabsContent value="upcoming" className="space-y-4">
-                  <div>
-                    <div className="mb-4">
-                      <h3 className="text-lg font-semibold">{getTranslation("manage.dashboard.upcoming.cardTitle")}</h3>
-                      <p className="text-sm text-muted-foreground">
-                        {getTranslation("manage.dashboard.upcoming.cardDescription", { count: String(getFilteredReservations(upcomingReservations).length) })}
-                        {statusFilter !== "all" && (
-                          <span className="ml-2 text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded-full">
-                            Filtered by: {statusFilter}
-                          </span>
-                        )}
-                      </p>
-                    </div>
-                    <ReservationList reservations={getFilteredReservations(upcomingReservations)} onStatusChange={handleStatusChange} itemsPerPage={10} />
+                </SelectItem>
+                <SelectItem value="yearly">
+                  <div className="flex items-center justify-between w-full">
+                    <span>{getTranslation("manage.dashboard.filter.yearly")}</span>
+                    <span className="text-xs text-muted-foreground ml-2">({new Date().getFullYear()})</span>
                   </div>
-                </TabsContent>
-                {selectedDate && (
-                  <TabsContent value="selected-date" className="space-y-4">
-                    <div>
-                      <div className="mb-4">
-                        <h3 className="text-lg font-semibold">Reservations for {format(selectedDate, 'PPP')}</h3>
-                        <p className="text-sm text-muted-foreground">
-                          {getFilteredReservations(selectedDateReservations).length} reservations for the selected date
-                          {statusFilter !== "all" && (
-                            <span className="ml-2 text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded-full">
-                              Filtered by: {statusFilter}
-                            </span>
-                          )}
-                        </p>
-                      </div>
-                      <ReservationList reservations={getFilteredReservations(selectedDateReservations)} onStatusChange={handleStatusChange} itemsPerPage={10} />
-                    </div>
-                  </TabsContent>
-                )}
-              </div>
-            </Tabs>
-
-            <div className="mt-6">
-              <Button onClick={fetchDashboardData} variant="outline">
-                {getTranslation("manage.common.refreshData")}
-              </Button>
-            </div>
+                </SelectItem>
+              </SelectContent>
+            </Select>
           </div>
-        </main>
+          <div className="w-full sm:min-w-[200px]">
+            <Select value={selectedRestaurant} onValueChange={handleRestaurantChange}>
+              <SelectTrigger className="text-sm">
+                <SelectValue placeholder={getTranslation("manage.dashboard.filter.allRestaurants")} />
+              </SelectTrigger>
+              <SelectContent>
+                {isSuperAdmin && (
+                  <SelectItem value="all">{getTranslation("manage.dashboard.filter.allRestaurants")}</SelectItem>
+                )}
+                {restaurants.map((restaurant) => (
+                  <SelectItem key={restaurant.id} value={restaurant.id}>
+                    {restaurant.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+      </div>
+
+      <div className="mb-6">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4 transition-all duration-300">
+          <Card
+            className={`cursor-pointer transition-all hover:shadow-md ${statusFilter === "all" ? "ring-2 ring-blue-500" : ""}`}
+            onClick={() => handleStatusFilter("all")}
+          >
+            <CardContent className="p-4 md:p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-xs md:text-sm font-medium text-muted-foreground">
+                    {getTranslation("manage.dashboard.stats.total")}
+                  </p>
+                  <p className="text-2xl md:text-3xl font-bold">{stats.total}</p>
+                </div>
+                <div className="rounded-full bg-blue-100 p-2 md:p-3 text-blue-600">
+                  <CalendarClock className="h-4 w-4 md:h-6 md:w-6" />
+                </div>
+              </div>
+              <div className="mt-2 md:mt-4 flex items-center text-xs md:text-sm">
+                <TrendingUp
+                  className={`mr-1 h-3 w-3 md:h-4 md:w-4 ${stats.percentChange >= 0 ? "text-green-500" : "text-red-500"}`}
+                />
+                <span className={stats.percentChange >= 0 ? "text-green-500" : "text-red-500"}>
+                  {getTranslation("manage.dashboard.stats.percentChange", { percent: String(stats.percentChange) })}
+                </span>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card
+            className={`cursor-pointer transition-all hover:shadow-md ${statusFilter === "pending" ? "ring-2 ring-yellow-500" : ""}`}
+            onClick={() => handleStatusFilter("pending")}
+          >
+            <CardContent className="p-4 md:p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-xs md:text-sm font-medium text-muted-foreground">
+                    {getTranslation("manage.dashboard.stats.pending")}
+                  </p>
+                  <p className="text-2xl md:text-3xl font-bold">{stats.pending}</p>
+                </div>
+                <div className="rounded-full bg-yellow-100 p-2 md:p-3 text-yellow-600">
+                  <Clock className="h-4 w-4 md:h-6 md:w-6" />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card
+            className={`cursor-pointer transition-all hover:shadow-md ${statusFilter === "confirmed" ? "ring-2 ring-green-500" : ""}`}
+            onClick={() => handleStatusFilter("confirmed")}
+          >
+            <CardContent className="p-4 md:p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-xs md:text-sm font-medium text-muted-foreground">
+                    {getTranslation("manage.dashboard.stats.confirmed")}
+                  </p>
+                  <p className="text-2xl md:text-3xl font-bold">{stats.confirmed}</p>
+                </div>
+                <div className="rounded-full bg-green-100 p-2 md:p-3 text-green-600">
+                  <CheckCircle className="h-4 w-4 md:h-6 md:w-6" />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card
+            className={`cursor-pointer transition-all hover:shadow-md ${statusFilter === "cancelled" ? "ring-2 ring-red-500" : ""}`}
+            onClick={() => handleStatusFilter("cancelled")}
+          >
+            <CardContent className="p-4 md:p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-xs md:text-sm font-medium text-muted-foreground">
+                    {getTranslation("manage.dashboard.stats.cancelled")}
+                  </p>
+                  <p className="text-2xl md:text-3xl font-bold">{stats.cancelled}</p>
+                </div>
+                <div className="rounded-full bg-red-100 p-2 md:p-3 text-red-600">
+                  <XCircle className="h-4 w-4 md:h-6 md:w-6" />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        {cardsExpanded && (
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4 mt-3 md:mt-4 transition-all duration-300">
+            <Card className="cursor-default transition-all hover:shadow-md">
+              <CardContent className="p-4 md:p-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-xs md:text-sm font-medium text-muted-foreground">Total Kuver</p>
+                    <p className="text-2xl md:text-3xl font-bold">{stats.totalKuver}</p>
+                  </div>
+                  <div className="rounded-full bg-purple-100 p-2 md:p-3 text-purple-600">
+                    <Users className="h-4 w-4 md:h-6 md:w-6" />
+                  </div>
+                </div>
+                <p className="text-xs text-muted-foreground mt-2">Customers served</p>
+              </CardContent>
+            </Card>
+
+            <Card className="cursor-default transition-all hover:shadow-md">
+              <CardContent className="p-4 md:p-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-xs md:text-sm font-medium text-muted-foreground">Meal Reservations</p>
+                    <p className="text-2xl md:text-3xl font-bold">{stats.totalMealReservations}</p>
+                  </div>
+                  <div className="rounded-full bg-orange-100 p-2 md:p-3 text-orange-600">
+                    <UtensilsCrossed className="h-4 w-4 md:h-6 md:w-6" />
+                  </div>
+                </div>
+                <p className="text-xs text-muted-foreground mt-2">Food reservations</p>
+              </CardContent>
+            </Card>
+
+            <Card className="cursor-default transition-all hover:shadow-md">
+              <CardContent className="p-4 md:p-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-xs md:text-sm font-medium text-muted-foreground">Deck</p>
+                    <p className="text-2xl md:text-3xl font-bold">{stats.deckKuvers}</p>
+                  </div>
+                  <div className="rounded-full bg-teal-100 p-2 md:p-3 text-teal-600">
+                    <MapPin className="h-4 w-4 md:h-6 md:w-6" />
+                  </div>
+                </div>
+                <p className="text-xs text-muted-foreground mt-2">Kuvers today</p>
+              </CardContent>
+            </Card>
+
+            <Card className="cursor-default transition-all hover:shadow-md">
+              <CardContent className="p-4 md:p-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-xs md:text-sm font-medium text-muted-foreground">Terrace</p>
+                    <p className="text-2xl md:text-3xl font-bold">{stats.terraceKuvers}</p>
+                  </div>
+                  <div className="rounded-full bg-emerald-100 p-2 md:p-3 text-emerald-600">
+                    <MapPin className="h-4 w-4 md:h-6 md:w-6" />
+                  </div>
+                </div>
+                <p className="text-xs text-muted-foreground mt-2">Kuvers today</p>
+              </CardContent>
+            </Card>
+          </div>
+        )}
+
+        <div className="flex justify-center -mt-2">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setCardsExpanded(!cardsExpanded)}
+            className="h-6 px-2 text-xs text-muted-foreground hover:text-foreground transition-colors"
+          >
+            {cardsExpanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+          </Button>
+        </div>
+      </div>
+
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <TabsList
+            className={`grid w-full ${selectedDate ? "grid-cols-4" : "grid-cols-4"} lg:w-auto lg:grid-cols-none lg:flex`}
+          >
+            <TabsTrigger value="new" className="text-xs sm:text-sm">
+              {getTranslation("manage.dashboard.tabs.new")}
+            </TabsTrigger>
+            <TabsTrigger value="today" className="text-xs sm:text-sm">
+              {getTranslation("manage.dashboard.tabs.today")}
+            </TabsTrigger>
+            <TabsTrigger value="upcoming" className="text-xs sm:text-sm">
+              {getTranslation("manage.dashboard.tabs.upcoming")}
+            </TabsTrigger>
+            {selectedDate ? (
+              <Popover open={datePopoverOpen} onOpenChange={setDatePopoverOpen}>
+                <PopoverTrigger asChild>
+                  <TabsTrigger value="selected-date" className="text-xs sm:text-sm">
+                    <Calendar className="mr-2 h-4 w-4" />
+                    {format(selectedDate, "MMM dd")} ({selectedDateReservations.length})
+                  </TabsTrigger>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <CalendarComponent
+                    mode="single"
+                    selected={selectedDate}
+                    onSelect={(date) => {
+                      setSelectedDate(date)
+                      if (date) {
+                        setActiveTab("selected-date")
+                      }
+                      setDatePopoverOpen(false)
+                    }}
+                    initialFocus
+                  />
+                  <div className="p-3 border-t">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        setSelectedDate(undefined)
+                        setActiveTab("new")
+                        setDatePopoverOpen(false)
+                      }}
+                      className="w-full"
+                    >
+                      {getTranslation("manage.dashboard.clearDate")}
+                    </Button>
+                  </div>
+                </PopoverContent>
+              </Popover>
+            ) : (
+              <Popover open={datePopoverOpen} onOpenChange={setDatePopoverOpen}>
+                <PopoverTrigger asChild>
+                  <TabsTrigger value="select-date" className="text-xs sm:text-sm">
+                    <Calendar className="mr-2 h-4 w-4" />
+                    {getTranslation("manage.dashboard.tabs.selectDate")}
+                  </TabsTrigger>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <CalendarComponent
+                    mode="single"
+                    selected={selectedDate}
+                    onSelect={(date) => {
+                      setSelectedDate(date)
+                      if (date) {
+                        setActiveTab("selected-date")
+                      }
+                      setDatePopoverOpen(false)
+                    }}
+                    initialFocus
+                  />
+                </PopoverContent>
+              </Popover>
+            )}
+          </TabsList>
+        </div>
+        <div className="relative">
+          {isStatsLoading && (
+            <div className="absolute inset-0 bg-gray-100/80 backdrop-blur-sm flex items-start justify-center z-10 rounded-lg pt-12">
+              <TriangleLoader />
+            </div>
+          )}
+          <TabsContent value="new" className="space-y-4">
+            <div>
+              <div className="mb-4">
+                <h3 className="text-lg font-semibold">{getTranslation("manage.dashboard.new.cardTitle")}</h3>
+                <p className="text-sm text-muted-foreground">
+                  {getTranslation("manage.dashboard.new.cardDescription", {
+                    count: String(getFilteredReservations(newReservations).length),
+                  })}
+                  {statusFilter !== "all" && (
+                    <span className="ml-2 text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded-full">
+                      Filtered by: {statusFilter}
+                    </span>
+                  )}
+                </p>
+              </div>
+              <ReservationList
+                reservations={getFilteredReservations(newReservations)}
+                onStatusChange={handleStatusChange}
+                itemsPerPage={10}
+              />
+            </div>
+          </TabsContent>
+          <TabsContent value="today" className="space-y-4">
+            <div>
+              <div className="mb-4">
+                <h3 className="text-lg font-semibold">{getTranslation("manage.dashboard.today.cardTitle")}</h3>
+                <p className="text-sm text-muted-foreground">
+                  {getTranslation("manage.dashboard.today.cardDescription", {
+                    count: String(getFilteredReservations(todayReservations).length),
+                  })}
+                  {statusFilter !== "all" && (
+                    <span className="ml-2 text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded-full">
+                      Filtered by: {statusFilter}
+                    </span>
+                  )}
+                </p>
+              </div>
+              <ReservationList
+                reservations={getFilteredReservations(todayReservations)}
+                onStatusChange={handleStatusChange}
+                itemsPerPage={10}
+              />
+            </div>
+          </TabsContent>
+          <TabsContent value="upcoming" className="space-y-4">
+            <div>
+              <div className="mb-4">
+                <h3 className="text-lg font-semibold">{getTranslation("manage.dashboard.upcoming.cardTitle")}</h3>
+                <p className="text-sm text-muted-foreground">
+                  {getTranslation("manage.dashboard.upcoming.cardDescription", {
+                    count: String(getFilteredReservations(upcomingReservations).length),
+                  })}
+                  {statusFilter !== "all" && (
+                    <span className="ml-2 text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded-full">
+                      Filtered by: {statusFilter}
+                    </span>
+                  )}
+                </p>
+              </div>
+              <ReservationList
+                reservations={getFilteredReservations(upcomingReservations)}
+                onStatusChange={handleStatusChange}
+                itemsPerPage={10}
+              />
+            </div>
+          </TabsContent>
+          {selectedDate && (
+            <TabsContent value="selected-date" className="space-y-4">
+              <div>
+                <div className="mb-4">
+                  <h3 className="text-lg font-semibold">Reservations for {format(selectedDate, "PPP")}</h3>
+                  <p className="text-sm text-muted-foreground">
+                    {getFilteredReservations(selectedDateReservations).length} reservations for the selected date
+                    {statusFilter !== "all" && (
+                      <span className="ml-2 text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded-full">
+                        Filtered by: {statusFilter}
+                      </span>
+                    )}
+                  </p>
+                </div>
+                <ReservationList
+                  reservations={getFilteredReservations(selectedDateReservations)}
+                  onStatusChange={handleStatusChange}
+                  itemsPerPage={10}
+                />
+              </div>
+            </TabsContent>
+          )}
+        </div>
+      </Tabs>
+
+      <div className="mt-6">
+        <Button onClick={fetchDashboardData} variant="outline">
+          {getTranslation("manage.common.refreshData")}
+        </Button>
       </div>
     </div>
   )

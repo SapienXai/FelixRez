@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server"
+import { getCurrentUserAccess } from "@/lib/auth-utils"
 
 type EnvInfo = {
   key: string
@@ -18,6 +19,15 @@ function info(key: string, hint?: string): EnvInfo {
 }
 
 export async function GET() {
+  if (process.env.NODE_ENV === "production") {
+    return NextResponse.json({ error: "Not found" }, { status: 404 })
+  }
+
+  const access = await getCurrentUserAccess()
+  if (!access || !access.isSuperAdmin) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 })
+  }
+
   const serverUrl = process.env.SUPABASE_URL
   const clientUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
 

@@ -15,6 +15,7 @@ export interface UpdateUserData {
   email: string
   role: string
   restaurantId?: string | null
+  password?: string | null
 }
 
 export async function getUsers() {
@@ -167,10 +168,16 @@ export async function updateUser(userId: string, userData: UpdateUserData) {
     }
     const supabase = createServiceRoleClient()
     
-    // Update user email in Supabase Auth
-    const { data: authData, error: authError } = await supabase.auth.admin.updateUserById(userId, {
+    const authUpdates: { email: string; password?: string } = {
       email: userData.email
-    })
+    }
+    const nextPassword = userData.password?.trim()
+    if (nextPassword) {
+      authUpdates.password = nextPassword
+    }
+
+    // Update user email (and optionally password) in Supabase Auth
+    const { data: authData, error: authError } = await supabase.auth.admin.updateUserById(userId, authUpdates)
     
     if (authError) {
       console.error("Error updating auth user:", authError)

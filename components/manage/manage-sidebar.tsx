@@ -7,8 +7,7 @@ import { ScrollArea } from "@/components/ui/scroll-area"
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet"
 import { LayoutDashboard, CalendarClock, Store, Users, X } from "lucide-react"
 import { useLanguage } from "@/context/language-context"
-import { useEffect, useState } from "react"
-import { getSupabaseBrowserClient } from "@/lib/supabase"
+import { useManageContext } from "@/context/manage-context"
 
 interface ManageSidebarProps {
   isOpen: boolean
@@ -18,28 +17,12 @@ interface ManageSidebarProps {
 export function ManageSidebar({ isOpen, onClose }: ManageSidebarProps) {
   const pathname = usePathname()
   const { currentLang, getTranslation } = useLanguage()
-  const supabase = getSupabaseBrowserClient()
-  const [role, setRole] = useState<string | null>(null)
+  const { role } = useManageContext()
   const isStaff = role === 'staff'
 
   const isActive = (path: string) => {
     return pathname === path || pathname.startsWith(`${path}/`)
   }
-
-  useEffect(() => {
-    let mounted = true
-    const loadRole = async () => {
-      try {
-        const res = await fetch('/api/me/role', { cache: 'no-store' })
-        const json = await res.json()
-        if (mounted) setRole(json?.role || null)
-      } catch {
-        if (mounted) setRole(null)
-      }
-    }
-    loadRole()
-    return () => { mounted = false }
-  }, [])
 
   const navigation = [
     {
