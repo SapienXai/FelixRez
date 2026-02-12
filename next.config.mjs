@@ -3,7 +3,6 @@ const nextConfig = {
   output: 'standalone',
   // Use a simpler configuration
   reactStrictMode: true,
-  swcMinify: true,
   eslint: {
     ignoreDuringBuilds: true,
   },

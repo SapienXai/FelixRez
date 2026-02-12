@@ -6,6 +6,8 @@ import { createServerClient } from "@/lib/supabase"
 import { getCurrentUserAccess } from "@/lib/auth-utils"
 import { redirect } from "next/navigation"
 
+export const dynamic = "force-dynamic"
+
 async function getStatus() {
   // Server-side check of env + table status
   try {

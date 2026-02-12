@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useMemo, useState } from "react"
+import { Suspense, useEffect, useMemo, useState } from "react"
 import { useSearchParams } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { getSeatingReservations } from "@/app/manage/seating-actions"
@@ -23,7 +23,7 @@ function formatDateLabel(date: string) {
   return parsed.toLocaleDateString("tr-TR", { year: "numeric", month: "2-digit", day: "2-digit" })
 }
 
-export default function SeatingPrintPage() {
+function SeatingPrintPageInner() {
   const params = useSearchParams()
   const { getTranslation } = useLanguage()
   const [loading, setLoading] = useState(true)
@@ -125,5 +125,13 @@ export default function SeatingPrintPage() {
         </table>
       )}
     </div>
+  )
+}
+
+export default function SeatingPrintPage() {
+  return (
+    <Suspense fallback={<div className="mx-auto max-w-5xl p-6 text-sm text-muted-foreground">Loading...</div>}>
+      <SeatingPrintPageInner />
+    </Suspense>
   )
 }
