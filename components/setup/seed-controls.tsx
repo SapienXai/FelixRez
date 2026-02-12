@@ -12,7 +12,7 @@ type SeedState = { success: boolean; message: string }
 export default function SeedControls({ supabaseOk }: Props) {
   const router = useRouter()
   const [state, action, pending] = useActionState<SeedState, FormData>(
-    async (_prev, _form) => {
+    async () => {
       const res = await seedDatabase()
       return { success: !!res?.success, message: res?.message ?? "Done" }
     },

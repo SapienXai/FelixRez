@@ -13,6 +13,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Loader2 } from "lucide-react"
 import { useLanguage } from "@/context/language-context"
+import Image from "next/image"
 
 export default function LoginPage() {
   const { getTranslation } = useLanguage()
@@ -89,7 +90,7 @@ export default function LoginPage() {
       <Card className="w-full max-w-md relative z-10 shadow-2xl border-0 backdrop-blur-sm bg-white/95 animate-in fade-in-0 zoom-in-95 duration-500 slide-in-from-bottom-4">
         <CardHeader className="space-y-6 text-center">
           <div className="mx-auto w-20 h-20 rounded-full bg-gray-200 flex items-center justify-center shadow-lg">
-            <img src="/assets/felix.png" alt="Felix Logo" className="w-12 h-12 object-contain" />
+            <Image src="/assets/felix.png" alt="Felix Logo" width={48} height={48} className="object-contain" />
           </div>
           <div className="space-y-2">
             <CardTitle className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-blue-800 bg-clip-text text-transparent">

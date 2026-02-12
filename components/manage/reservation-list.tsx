@@ -113,7 +113,7 @@ export function ReservationList({ reservations, onStatusChange, itemsPerPage = 5
       } else {
         toast.error(result.message)
       }
-    } catch (error) {
+    } catch {
       toast.error("An unexpected error occurred")
     } finally {
       setLoading(false)
@@ -142,7 +142,7 @@ export function ReservationList({ reservations, onStatusChange, itemsPerPage = 5
       } else {
         toast.error(getTranslation("manage.reservations.list.deleteError"))
       }
-    } catch (error) {
+    } catch {
       toast.error(getTranslation("manage.reservations.list.deleteError"))
     } finally {
       setLoading(false)

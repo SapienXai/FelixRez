@@ -2,7 +2,7 @@
 
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
-import { Menu, User, LogOut, Bell, X } from "lucide-react"
+import { Menu, LogOut, Bell, X } from "lucide-react"
 import { LanguageSelector } from "@/components/language-selector"
 import { getSupabaseBrowserClient } from "@/lib/supabase"
 import { useRouter } from "next/navigation"
@@ -43,10 +43,10 @@ interface PopupNotification {
   created_at: string
 }
 
-export function ManageHeader({ user, toggleSidebar }: ManageHeaderProps) {
+export function ManageHeader({ toggleSidebar }: ManageHeaderProps) {
   const router = useRouter()
   const supabase = getSupabaseBrowserClient()
-  const { getTranslation, currentLang } = useLanguage()
+  const { getTranslation } = useLanguage()
   const [unreadCount, setUnreadCount] = useState(0)
   const [showNotifications, setShowNotifications] = useState(false)
   const [notifications, setNotifications] = useState<Notification[]>([])

@@ -3,7 +3,7 @@
 import { useEffect, useState, useRef } from "react"
 import { useRouter } from "next/navigation"
 import { getSupabaseBrowserClient } from "@/lib/supabase"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { CalendarClock, Clock, CheckCircle, XCircle, TrendingUp, Users, UtensilsCrossed, MapPin, ChevronDown, ChevronUp, Calendar } from "lucide-react"
@@ -80,48 +80,53 @@ export default function ManageDashboard() {
     })
 
     return () => subscription?.subscription?.unsubscribe?.()
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [router, supabase, isSuperAdmin, roleLoading])
 
   // Fetch stats when restaurant filter, date, or time period changes
   useEffect(() => {
     const fetchStatsOnly = async () => {
       setIsStatsLoading(true)
-      const restaurantFilter = selectedRestaurant === "all" || !selectedRestaurant ? undefined : selectedRestaurant
-      const dateFilter = selectedDate ? format(selectedDate, 'yyyy-MM-dd') : undefined
-      
-      const [statsResult, todayResult] = await Promise.all([
-        getDashboardStats(restaurantFilter, dateFilter, timePeriod),
-        getTodayReservations(restaurantFilter, dateFilter)
-      ])
-      
-      if (statsResult.success && statsResult.stats) {
-         setStats({
-           total: statsResult.stats.total,
-           pending: statsResult.stats.pending,
-           confirmed: statsResult.stats.confirmed,
-           cancelled: statsResult.stats.cancelled,
-           percentChange: statsResult.stats.percentChange,
-           totalKuver: statsResult.stats.totalKuver,
-           totalMealReservations: statsResult.stats.totalMealReservations,
-           deckKuvers: statsResult.stats.deckKuvers,
-           terraceKuvers: statsResult.stats.terraceKuvers,
-         })
-       }
-       
-       // Update reservations based on date selection
-       if (todayResult.success && todayResult.data) {
-         setTodayReservations(todayResult.data)
-         if (selectedDate) {
-           setSelectedDateReservations(todayResult.data)
+      try {
+        const restaurantFilter = selectedRestaurant === "all" || !selectedRestaurant ? undefined : selectedRestaurant
+        const dateFilter = selectedDate ? format(selectedDate, 'yyyy-MM-dd') : undefined
+        
+        const [statsResult, todayResult] = await Promise.all([
+          getDashboardStats(restaurantFilter, dateFilter, timePeriod),
+          getTodayReservations(restaurantFilter, dateFilter)
+        ])
+        
+        if (statsResult?.success && statsResult.stats) {
+           setStats({
+             total: statsResult.stats.total,
+             pending: statsResult.stats.pending,
+             confirmed: statsResult.stats.confirmed,
+             cancelled: statsResult.stats.cancelled,
+             percentChange: statsResult.stats.percentChange,
+             totalKuver: statsResult.stats.totalKuver,
+             totalMealReservations: statsResult.stats.totalMealReservations,
+             deckKuvers: statsResult.stats.deckKuvers,
+             terraceKuvers: statsResult.stats.terraceKuvers,
+           })
          }
-       }
-       
-       // Clear selected date reservations if no date is selected
-       if (!selectedDate) {
-         setSelectedDateReservations([])
-       }
-       
-      setIsStatsLoading(false)
+         
+         // Update reservations based on date selection
+         if (todayResult?.success && todayResult.data) {
+           setTodayReservations(todayResult.data)
+           if (selectedDate) {
+             setSelectedDateReservations(todayResult.data)
+           }
+         }
+         
+         // Clear selected date reservations if no date is selected
+         if (!selectedDate) {
+           setSelectedDateReservations([])
+         }
+      } catch (error) {
+        console.error("Error fetching stats:", error)
+      } finally {
+        setIsStatsLoading(false)
+      }
     }
 
     if (isInitialMount.current) {
@@ -131,7 +136,7 @@ export default function ManageDashboard() {
         fetchStatsOnly()
       }
     }
-  }, [selectedRestaurant, selectedDate, timePeriod])
+  }, [selectedRestaurant, selectedDate, timePeriod, restaurants.length])
 
   // Handle tab switching when date is cleared
   useEffect(() => {
@@ -222,7 +227,7 @@ export default function ManageDashboard() {
     return () => {
       supabase.removeChannel(channel)
     }
-  }, [selectedRestaurant])
+  }, [selectedRestaurant, selectedDate])
 
   const fetchRestaurants = async (isSuperAdminValue?: boolean) => {
     try {

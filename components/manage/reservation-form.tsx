@@ -114,7 +114,6 @@ export function ReservationForm({
       }
     }
     loadAreas()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [formData.restaurant_id])
 
   // Populate form when editing
@@ -172,7 +171,7 @@ export function ReservationForm({
       } else {
         toast.error(result.message)
       }
-    } catch (error) {
+    } catch {
       toast.error("An unexpected error occurred")
     } finally {
       setLoading(false)

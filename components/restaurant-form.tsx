@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -9,12 +9,11 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Switch } from '@/components/ui/switch';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Separator } from '@/components/ui/separator';
 import { createRestaurant, updateRestaurant } from '@/app/manage/actions';
 import { getReservationAreas, bulkUpdateReservationAreas } from '@/app/manage/reservation-areas-actions';
 import { ReservationAreasForm } from '@/components/manage/reservation-areas-form';
 import { toast } from 'sonner';
-import type { Restaurant, ReservationArea } from '@/types/supabase';
+import type { Restaurant } from '@/types/supabase';
 
 interface RestaurantFormProps {
   restaurant?: RestaurantWithMedia;
@@ -111,42 +110,7 @@ export function RestaurantForm({ restaurant, onSuccess, onClose, open = true }: 
     }
   }, [open, restaurant])
 
-  // When an existing restaurant is selected for editing, sync form fields
-  useEffect(() => {
-    if (!restaurant) return;
-    setFormData({
-      name: restaurant.name || '',
-      description: restaurant.description || '',
-      cuisine: restaurant.cuisine || '',
-      location: restaurant.location || '',
-      phone: restaurant.phone || '',
-      hours: restaurant.hours || '',
-      atmosphere: restaurant.atmosphere || '',
-      media_type: restaurant.media_type || '',
-      media_url: restaurant.media?.[0]?.media_url || '',
-      reservation_enabled: restaurant.reservation_enabled ?? true,
-      opening_time: restaurant.opening_time || '09:00',
-      closing_time: restaurant.closing_time || '22:00',
-      time_slot_duration: restaurant.time_slot_duration || 30,
-      advance_booking_days: restaurant.advance_booking_days || 30,
-      min_advance_hours: restaurant.min_advance_hours || 2,
-      max_party_size: restaurant.max_party_size || 12,
-      min_party_size: restaurant.min_party_size || 1,
-      allowed_days_of_week: restaurant.allowed_days_of_week || [1, 2, 3, 4, 5, 6, 7],
-      meal_only_reservations: (restaurant as any)?.meal_only_reservations ?? false,
-    });
-    // Reset areas until loaded for this restaurant
-    setReservationAreas([])
-  }, [restaurant?.id]);
-
-  // Load reservation areas for existing restaurant
-  useEffect(() => {
-    if (restaurant?.id) {
-      loadReservationAreas();
-    }
-  }, [restaurant?.id]);
-
-  const loadReservationAreas = async () => {
+  const loadReservationAreas = useCallback(async () => {
     if (!restaurant?.id) return;
     
     const result = await getReservationAreas(restaurant.id);
@@ -185,7 +149,42 @@ export function RestaurantForm({ restaurant, onSuccess, onClose, open = true }: 
         return [...fetched, ...unsaved]
       })
     }
-  };
+  }, [formData.closing_time, formData.opening_time, restaurant?.id]);
+
+  // When an existing restaurant is selected for editing, sync form fields
+  useEffect(() => {
+    if (!restaurant) return;
+    setFormData({
+      name: restaurant.name || '',
+      description: restaurant.description || '',
+      cuisine: restaurant.cuisine || '',
+      location: restaurant.location || '',
+      phone: restaurant.phone || '',
+      hours: restaurant.hours || '',
+      atmosphere: restaurant.atmosphere || '',
+      media_type: restaurant.media_type || '',
+      media_url: restaurant.media?.[0]?.media_url || '',
+      reservation_enabled: restaurant.reservation_enabled ?? true,
+      opening_time: restaurant.opening_time || '09:00',
+      closing_time: restaurant.closing_time || '22:00',
+      time_slot_duration: restaurant.time_slot_duration || 30,
+      advance_booking_days: restaurant.advance_booking_days || 30,
+      min_advance_hours: restaurant.min_advance_hours || 2,
+      max_party_size: restaurant.max_party_size || 12,
+      min_party_size: restaurant.min_party_size || 1,
+      allowed_days_of_week: restaurant.allowed_days_of_week || [1, 2, 3, 4, 5, 6, 7],
+      meal_only_reservations: (restaurant as any)?.meal_only_reservations ?? false,
+    });
+    // Reset areas until loaded for this restaurant
+    setReservationAreas([])
+  }, [restaurant]);
+
+  // Load reservation areas for existing restaurant
+  useEffect(() => {
+    if (restaurant?.id) {
+      loadReservationAreas();
+    }
+  }, [loadReservationAreas, restaurant?.id]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -234,7 +233,7 @@ export function RestaurantForm({ restaurant, onSuccess, onClose, open = true }: 
       } else {
         toast.error(result.message);
       }
-    } catch (error) {
+    } catch {
       toast.error('An unexpected error occurred');
     } finally {
       setIsLoading(false);

@@ -1,10 +1,10 @@
 "use client"
 
-import { useEffect, useState, useRef } from "react"
+import { useEffect, useState } from "react"
 import { getSupabaseBrowserClient } from "@/lib/supabase"
 import { Bell, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { useLanguage } from "@/context/language-context"
 
@@ -27,7 +27,6 @@ export function NotificationSystem({ onNewReservation }: NotificationSystemProps
   const [notifications, setNotifications] = useState<Notification[]>([])
   const [isOpen, setIsOpen] = useState(false)
   const [unreadCount, setUnreadCount] = useState(0)
-  const audioRef = useRef<HTMLAudioElement | null>(null)
   const supabase = getSupabaseBrowserClient()
 
   useEffect(() => {
@@ -50,7 +49,7 @@ export function NotificationSystem({ onNewReservation }: NotificationSystemProps
         
         oscillator.start(audioContext.currentTime)
         oscillator.stop(audioContext.currentTime + 0.5)
-      } catch (error) {
+      } catch {
         console.log('Audio notification not supported')
       }
     }

@@ -5,7 +5,6 @@ import { useEffect, useState } from "react"
 import { AppHeader } from "./app-header"
 import { ReservationStep1 } from "./reservation-step1"
 import { ReservationStep2 } from "./reservation-step2"
-import { useRouter } from "next/navigation"
 import { createReservation, getRestaurantByName, getActiveReservationAreas } from "@/app/actions/reservation-actions"
 // Server actions are used for data access to avoid client RLS issues
 import type { Restaurant, ReservationArea } from "@/types/supabase"
@@ -55,7 +54,7 @@ export function ReservationApp({ initialRestaurant, initialLang }: ReservationAp
 
   const { currentLang, setLanguage, getTranslation } = languageContext
   const [currentStep, setCurrentStep] = useState(1)
-  const [restaurantName, setRestaurantName] = useState(initialRestaurant)
+  const restaurantName = initialRestaurant
   const [restaurantData, setRestaurantData] = useState<Restaurant | null>(null)
   const [partySize, setPartySize] = useState("2")
   const [selectedDate, setSelectedDate] = useState(new Date())
@@ -73,7 +72,6 @@ export function ReservationApp({ initialRestaurant, initialLang }: ReservationAp
   const [reservationComplete, setReservationComplete] = useState(false)
   const [isClient, setIsClient] = useState(false)
   const [showStep2Errors, setShowStep2Errors] = useState(false)
-  const router = useRouter()
 
   // Check if we're on the client side
   useEffect(() => {
@@ -128,7 +126,7 @@ export function ReservationApp({ initialRestaurant, initialLang }: ReservationAp
       }
     }
     fetchAreas()
-  }, [restaurantData?.id])
+  }, [restaurantData?.id, selectedAreaId])
 
   // No alternative fetching; show a simple message and a Home button when closed
 
@@ -226,17 +224,6 @@ export function ReservationApp({ initialRestaurant, initialLang }: ReservationAp
         
         // Save reservation to cookie for 3 hours
         if (result.data) {
-          const parseReservationDateTime = (dateStr: string, timeStr: string) => {
-            const [y, m, d] = dateStr.split("-").map(Number)
-            const [hh, mm] = timeStr.split(":").map(Number)
-            const dt = new Date()
-            dt.setFullYear(y)
-            dt.setMonth((m || 1) - 1)
-            dt.setDate(d || 1)
-            dt.setHours(hh || 0, mm || 0, 0, 0)
-            return dt
-          }
-
           const reservationData = {
             id: result.data.id,
             restaurant_name: restaurantName,

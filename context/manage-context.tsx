@@ -64,7 +64,7 @@ export function ManageProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     refreshRole()
-  }, [])
+  }, [refreshRole])
 
   const value = useMemo(
     () => ({ user, role, isSuperAdmin, loading, refreshRole }),

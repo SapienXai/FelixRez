@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server"
-import { extractAccessToken, verifyAccessToken } from "@/lib/auth-token"
+import { verifyAccessToken } from "@/lib/auth-token"
 
 type AuthEvent = "SIGNED_IN" | "TOKEN_REFRESHED" | "SIGNED_OUT" | string
 

@@ -132,19 +132,6 @@ export function ReservationAreasForm({ restaurant, areas, onAreasChange }: Reser
     updateArea(areaIndex, { allowed_days_of_week: newDays })
   }
 
-  const moveArea = (fromIndex: number, toIndex: number) => {
-    const newAreas = [...areas]
-    const [movedArea] = newAreas.splice(fromIndex, 1)
-    newAreas.splice(toIndex, 0, movedArea)
-    
-    // Update display_order for all areas
-    newAreas.forEach((area, index) => {
-      area.display_order = index
-    })
-    
-    onAreasChange(newAreas)
-  }
-
   const getEffectiveValue = (areaValue: any, restaurantValue: any, defaultValue: any) => {
     return areaValue !== null ? areaValue : (restaurantValue || defaultValue)
   }

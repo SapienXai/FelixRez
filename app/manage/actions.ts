@@ -5,6 +5,7 @@ import { coerceRestaurantFilter, getUserRestaurantIds, getCurrentUserAccess } fr
 import { revalidatePath } from "next/cache"
 import { sendEmail, generateStatusUpdateEmail } from "@/lib/email-service"
 import { generateICSFile } from "@/lib/calendar-invite"
+import { fetchManagedRestaurants, fetchPublicRestaurants } from "@/lib/services/manage/restaurant-service"
 
 export async function getReservations(filters: {
   status?: string
@@ -456,8 +457,6 @@ export async function deleteReservation(id: string) {
 
 export async function getRestaurants() {
   try {
-    const supabase = createServiceRoleClient()
-
     // Enforce restaurant scope
     const allowed = await getUserRestaurantIds()
 
@@ -465,19 +464,7 @@ export async function getRestaurants() {
       return { success: true, data: [] }
     }
 
-    let query = supabase
-      .from("restaurants")
-      .select(`
-        *,
-        media:restaurant_media(*)
-      `)
-      .order("name", { ascending: true })
-
-    if (Array.isArray(allowed) && allowed.length === 1) {
-      query = query.eq("id", allowed[0])
-    }
-
-    const { data, error } = await query
+    const { data, error } = await fetchManagedRestaurants(allowed)
 
     if (error) {
       console.error("Error fetching restaurants:", error)
@@ -494,16 +481,7 @@ export async function getRestaurants() {
 // Public function to get all restaurants for the main page (no authentication required)
 export async function getPublicRestaurants() {
   try {
-    const supabase = createServiceRoleClient()
-
-    const { data, error } = await supabase
-      .from("restaurants")
-      .select(`
-        *,
-        media:restaurant_media(*)
-      `)
-      .eq("reservation_enabled", true)
-      .order("name", { ascending: true })
+    const { data, error } = await fetchPublicRestaurants()
 
     if (error) {
       console.error("Error fetching public restaurants:", error)

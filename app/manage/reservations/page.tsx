@@ -2,7 +2,7 @@
 
 import type React from "react"
 
-import { useEffect, useState } from "react"
+import { useCallback, useEffect, useState } from "react"
 import { getSupabaseBrowserClient } from "@/lib/supabase"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -30,6 +30,22 @@ export default function ReservationsPage() {
   })
   const supabase = getSupabaseBrowserClient()
 
+  const fetchReservations = useCallback(async () => {
+    setIsLoading(true)
+    console.log('Fetching reservations with filters:', filters)
+    try {
+      const result = await getReservations(filters)
+      console.log('Reservation fetch result:', result)
+      if (result.success) {
+        setReservations(result.data)
+      }
+    } catch (error) {
+      console.error("Error fetching reservations:", error)
+    } finally {
+      setIsLoading(false)
+    }
+  }, [filters])
+
   useEffect(() => {
     const checkSession = async () => {
       await supabase.auth.getSession()
@@ -45,7 +61,7 @@ export default function ReservationsPage() {
     }
 
     checkSession()
-  }, [supabase])
+  }, [supabase, fetchReservations])
 
   // Auto-fetch reservations when filters change
   useEffect(() => {
@@ -54,23 +70,7 @@ export default function ReservationsPage() {
     }, 300) // Debounce search by 300ms
 
     return () => clearTimeout(timeoutId)
-  }, [filters])
-
-  const fetchReservations = async () => {
-    setIsLoading(true)
-    console.log('Fetching reservations with filters:', filters)
-    try {
-      const result = await getReservations(filters)
-      console.log('Reservation fetch result:', result)
-      if (result.success) {
-        setReservations(result.data)
-      }
-    } catch (error) {
-      console.error("Error fetching reservations:", error)
-    } finally {
-      setIsLoading(false)
-    }
-  }
+  }, [filters, fetchReservations])
 
   const handleFilterChange = (key: string, value: string) => {
     setFilters((prev) => ({ ...prev, [key]: value }))

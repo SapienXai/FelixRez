@@ -4,6 +4,8 @@ import { useLanguage } from "@/context/language-context"
 import { useEffect, useMemo, useState } from "react"
 import { Users, Calendar } from "lucide-react"
 
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+
 interface ReservationArea {
   id: string
   restaurant_id: string
@@ -98,7 +100,6 @@ export function ReservationStep2({
   }, [isDiningOnlyArea, reservationType, setReservationType])
 
   // Basic validators
-  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
   const errors = useMemo(() => {
     const errs: { name?: string; email?: string; phone?: string } = {}
     if (!customerName || customerName.trim().length === 0) {
@@ -106,7 +107,7 @@ export function ReservationStep2({
     }
     if (!customerEmail || customerEmail.trim().length === 0) {
       errs.email = getTranslation("reserve.step2.errors.emailRequired")
-    } else if (!emailRegex.test(customerEmail)) {
+    } else if (!EMAIL_REGEX.test(customerEmail)) {
       errs.email = getTranslation("reserve.step2.errors.emailInvalid")
     }
     if (!customerPhone || customerPhone.trim().length === 0) {

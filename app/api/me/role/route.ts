@@ -6,8 +6,7 @@ export async function GET() {
     const access = await getCurrentUserAccess()
     if (!access) return NextResponse.json({ ok: true, role: null })
     return NextResponse.json({ ok: true, role: access.role, isSuperAdmin: access.isSuperAdmin })
-  } catch (e) {
+  } catch {
     return NextResponse.json({ ok: false, error: "failed" }, { status: 500 })
   }
 }
-

@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 
 interface UsePaginationProps {
   data: any[]
@@ -46,12 +46,12 @@ export function usePagination({ data, itemsPerPage = 10 }: UsePaginationProps): 
   const canGoNext = currentPage < totalPages
   const canGoPrevious = currentPage > 1
 
-  // Reset to page 1 when data changes significantly
-  useMemo(() => {
+  // Reset to page 1 when total pages shrink below current page
+  useEffect(() => {
     if (currentPage > totalPages && totalPages > 0) {
       setCurrentPage(1)
     }
-  }, [data.length, totalPages, currentPage])
+  }, [totalPages, currentPage])
 
   return {
     currentPage,

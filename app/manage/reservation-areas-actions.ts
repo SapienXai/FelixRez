@@ -2,7 +2,6 @@
 
 import { createServiceRoleClient } from "@/lib/supabase"
 import { revalidatePath } from "next/cache"
-import type { ReservationArea } from "@/types/supabase"
 import { coerceRestaurantFilter } from "@/lib/auth-utils"
 
 interface ReservationAreaData {

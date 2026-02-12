@@ -19,6 +19,7 @@ export default defineConfig([
   globalIgnores([
     ".next/**",
     "node_modules/**",
+    "scripts/dev-only/**",
     "out/**",
     "build/**",
     "next-env.d.ts",

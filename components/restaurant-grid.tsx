@@ -20,7 +20,7 @@ interface RestaurantWithMedia {
 }
 
 export function RestaurantGrid() {
-  const { getTranslation, currentLang } = useLanguage()
+  const { getTranslation } = useLanguage()
   const [restaurants, setRestaurants] = useState<RestaurantWithMedia[]>([])
   const [loading, setLoading] = useState(true)
 

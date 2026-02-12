@@ -1,9 +1,13 @@
 "use server"
 
-import { createServerClient, createServiceRoleClient } from "@/lib/supabase"
+import { createServiceRoleClient } from "@/lib/supabase"
 import { revalidatePath } from "next/cache"
 import { sendEmail, generateReservationConfirmationEmail, generateManagementNotificationEmail, MANAGEMENT_EMAIL } from "@/lib/email-service"
-import { defaultRestaurant, defaultMedia } from "@/lib/fallback-data"
+import {
+  fetchActiveReservationAreas,
+  fetchRestaurantByName,
+  fetchRestaurantMedia,
+} from "@/lib/services/public/restaurant-service"
 
 /**
  * Create a reservation (server action).
@@ -147,79 +151,16 @@ export async function createReservation(params: CreateReservationParams) {
   per Next.js guidance on expected errors [^1][^2][^5].
 */
 export async function getRestaurantByName(name: string) {
-  try {
-    // Use service role to reliably read even if RLS blocks anon
-    const supabase = createServiceRoleClient()
-
-    const { data, error } = await supabase
-      .from("restaurants")
-      .select("*")
-      .ilike("name", name)
-      .limit(1)
-      .maybeSingle()
-
-    if (error) {
-      console.warn("getRestaurantByName query error:", error.message)
-      return null
-    }
-
-    return data
-  } catch (err: any) {
-    console.warn("getRestaurantByName failed:", String(err))
-    return null
-  }
+  return fetchRestaurantByName(name)
 }
 
 // Fetch active reservation areas for a restaurant
 export async function getActiveReservationAreas(restaurantId: string) {
-  try {
-    const supabase = createServiceRoleClient()
-
-    const { data, error } = await supabase
-      .from("reservation_areas")
-      .select("*")
-      .eq("restaurant_id", restaurantId)
-      .eq("is_active", true)
-      .order("display_order", { ascending: true })
-
-    if (error) {
-      console.warn("getActiveReservationAreas error:", error.message)
-      return []
-    }
-
-    return data || []
-  } catch (err: any) {
-    console.warn("getActiveReservationAreas failed:", String(err))
-    return []
-  }
+  return fetchActiveReservationAreas(restaurantId)
 }
 
 export async function getRestaurantMedia(restaurantId: string) {
-  try {
-    // Use service role for consistent reads
-    const supabase = createServiceRoleClient()
-
-    const { data, error } = await supabase
-      .from("restaurant_media")
-      .select("*")
-      .eq("restaurant_id", restaurantId)
-      .order("media_order")
-
-    if (error) {
-      console.error("Error fetching restaurant media:", error)
-      return defaultMedia
-    }
-
-    return data?.length ? data : defaultMedia
-  } catch (err: any) {
-    const msg = String(err?.message || err || "")
-    if (msg.includes("Unexpected token") || msg.toLowerCase().includes("invalid")) {
-      console.warn("Using fallback media due to Supabase misconfiguration.")
-      return defaultMedia
-    }
-    console.error("Error in getRestaurantMedia:", msg)
-    return defaultMedia
-  }
+  return fetchRestaurantMedia(restaurantId)
 }
 
 /**
