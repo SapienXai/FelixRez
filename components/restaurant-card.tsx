@@ -4,7 +4,6 @@
 import { useLanguage } from "@/context/language-context"
 import Link from "next/link"
 import { useEffect, useRef, useState } from "react"
-import { Dialog, DialogContent, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 
 interface Restaurant {
   id: string
@@ -21,6 +20,26 @@ interface Restaurant {
 
 interface RestaurantCardProps {
   restaurant: Restaurant
+}
+
+const EVENTS_LINK =
+  "https://www.instagram.com/s/aGlnaGxpZ2h0OjE3ODcyODAxNjc0NDc5MjIx?igsh=MTFhcmpkNHpudHpycw=="
+
+const LOCATION_LINKS: Record<string, string> = {
+  "Felix Beach": "https://maps.app.goo.gl/GZNW14ijyKa9kn4CA",
+  "Felix Marina": "https://maps.app.goo.gl/RSio7uPmpb2TBCsn6",
+  "Felix Selimiye": "https://maps.app.goo.gl/QKxgotppELsMr1y2A",
+}
+
+function getLocationHref(restaurant: Restaurant) {
+  const customLink = LOCATION_LINKS[restaurant.name]
+  if (customLink) return customLink
+
+  if (restaurant.location.startsWith("http://") || restaurant.location.startsWith("https://")) {
+    return restaurant.location
+  }
+
+  return `https://maps.google.com/?q=${encodeURIComponent(restaurant.location)}`
 }
 
 export function RestaurantCard({ restaurant }: RestaurantCardProps) {
@@ -106,32 +125,23 @@ export function RestaurantCard({ restaurant }: RestaurantCardProps) {
                   <span>{getTranslation("card.whatsappButton")}</span>
                 </a>
                 <a
-                  href={`https://maps.google.com/?q=${restaurant.location}`}
+                  href={getLocationHref(restaurant)}
                   target="_blank"
                   className="contact-btn"
-                  rel="noreferrer"
+                  rel="noreferrer noopener"
                 >
                   <i className="fas fa-map-marker-alt"></i>
                   <span>{getTranslation("card.locationButton")}</span>
                 </a>
-                <Dialog>
-                  <DialogTrigger asChild>
-                    <button type="button" className="contact-btn events-btn">
-                      <i className="fas fa-calendar-alt"></i>
-                      <span>{getTranslation("card.eventsButton")}</span>
-                    </button>
-                  </DialogTrigger>
-                  <DialogContent className="max-w-[95vw] sm:max-w-3xl p-0 overflow-hidden bg-transparent border-none shadow-none">
-                    <DialogTitle className="sr-only">
-                      {restaurant.name} events
-                    </DialogTitle>
-                    <img
-                      src="/assets/events.jpeg"
-                      alt={`${restaurant.name} events`}
-                      className="block w-full h-auto max-h-[85vh] object-contain"
-                    />
-                  </DialogContent>
-                </Dialog>
+                <a
+                  href={EVENTS_LINK}
+                  target="_blank"
+                  className="contact-btn events-btn"
+                  rel="noreferrer"
+                >
+                  <i className="fas fa-calendar-alt"></i>
+                  <span>{getTranslation("card.eventsButton")}</span>
+                </a>
               </div>
             </div>
           </div>
