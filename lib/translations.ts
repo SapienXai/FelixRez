@@ -290,8 +290,10 @@ export const translations = {
           dining: "Dining",
           table: "Table",
           note: "Note",
+          createdBy: "Created by",
           copyTooltip: "Copy reservation details",
           copySuccess: "Reservation details copied!",
+          copied: "Copied",
         },
       },
       seating: {
@@ -754,8 +756,10 @@ export const translations = {
           dining: "Yemek",
           table: "Masa",
           note: "Not",
+          createdBy: "Oluşturan",
           copyTooltip: "Rezervasyon bilgilerini kopyala",
           copySuccess: "Rezervasyon bilgileri kopyalandı!",
+          copied: "Kopyalandı",
         },
       },
       seating: {

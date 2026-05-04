@@ -3,6 +3,33 @@
 import { createServiceRoleClient } from "@/lib/supabase"
 import { coerceRestaurantFilter } from "@/lib/auth-utils"
 
+async function attachBookedByEmails<T extends { booked_by_user_id?: string | null; booked_by_email?: string | null }>(
+  supabase: ReturnType<typeof createServiceRoleClient>,
+  rows: T[]
+): Promise<T[]> {
+  const userIds = Array.from(new Set(rows.map((row) => row.booked_by_user_id).filter((id): id is string => Boolean(id))))
+  if (userIds.length === 0) {
+    return rows
+  }
+
+  const emailMap = new Map<string, string>()
+  await Promise.all(userIds.map(async (userId) => {
+    try {
+      const { data, error } = await supabase.auth.admin.getUserById(userId)
+      if (!error && data.user?.email) {
+        emailMap.set(userId, data.user.email)
+      }
+    } catch (error) {
+      console.warn(`Could not fetch auth user email for ${userId}:`, error)
+    }
+  }))
+
+  return rows.map((row) => ({
+    ...row,
+    booked_by_email: row.booked_by_user_id ? emailMap.get(row.booked_by_user_id) || null : null,
+  }))
+}
+
 export async function getDashboardStats(restaurantId?: string, selectedDate?: string, timePeriod?: string) {
   try {
     const supabase = createServiceRoleClient()
@@ -367,7 +394,7 @@ export async function getTodayReservations(restaurantId?: string, selectedDate?:
       return { success: false, message: error.message, data: [] }
     }
 
-    return { success: true, data: data || [] }
+    return { success: true, data: await attachBookedByEmails(supabase, data || []) }
   } catch (error) {
     console.error("Error in getTodayReservations:", error)
     return { success: false, message: "An unexpected error occurred", data: [] }
@@ -403,7 +430,7 @@ export async function getNewReservations(restaurantId?: string) {
       return { success: false, message: error.message, data: [] }
     }
 
-    return { success: true, data: data || [] }
+    return { success: true, data: await attachBookedByEmails(supabase, data || []) }
   } catch (error) {
     console.error("Error in getNewReservations:", error)
     return { success: false, message: "An unexpected error occurred", data: [] }
@@ -446,7 +473,7 @@ export async function getTodayCreatedReservations(restaurantId?: string) {
       return { success: false, message: error.message, data: [] }
     }
 
-    return { success: true, data: data || [] }
+    return { success: true, data: await attachBookedByEmails(supabase, data || []) }
   } catch (error) {
     console.error("Error in getTodayCreatedReservations:", error)
     return { success: false, message: "An unexpected error occurred", data: [] }

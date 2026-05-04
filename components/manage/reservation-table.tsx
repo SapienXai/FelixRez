@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { Button } from "@/components/ui/button"
@@ -54,6 +54,8 @@ export function ReservationTable({ reservations, onRefresh, itemsPerPage = 10 }:
   const [editingReservation, setEditingReservation] = useState<ReservationWithRestaurant | null>(null)
   const [currentItemsPerPage, setCurrentItemsPerPage] = useState(itemsPerPage)
   const [viewMode, setViewMode] = useState<"table" | "card">("card")
+  const [copiedReservationId, setCopiedReservationId] = useState<string | null>(null)
+  const copyResetTimeoutRef = useRef<number | null>(null)
 
   const {
     currentPage,
@@ -66,6 +68,43 @@ export function ReservationTable({ reservations, onRefresh, itemsPerPage = 10 }:
     endIndex,
     totalItems,
   } = usePagination({ data: reservations, itemsPerPage: currentItemsPerPage })
+
+  useEffect(() => {
+    return () => {
+      if (copyResetTimeoutRef.current) {
+        window.clearTimeout(copyResetTimeoutRef.current)
+      }
+    }
+  }, [])
+
+  const copyReservationInfo = async (reservation: ReservationWithRestaurant) => {
+    const areaFirstWord = reservation.reservation_areas?.name?.split(' ')[0]
+    const isMainHall = !areaFirstWord || areaFirstWord.toLowerCase() === 'main'
+    const areaText = isMainHall ? '' : `${areaFirstWord} - `
+    const reservationInfo = `${reservation.restaurants?.name || 'Restaurant'}\n${new Date(reservation.reservation_date).toLocaleDateString('en-US', {
+      weekday: 'long',
+      month: 'long',
+      day: 'numeric'
+    })}
+${reservation.customer_name}
+${reservation.party_size} people - ${areaText}${reservation.reservation_type === 'drinks' ? 'Drinks Only' : 'Dining'}
+${reservation.reservation_time.substring(0, 5)}
+${reservation.customer_phone}${reservation.special_requests ? `\n${reservation.special_requests}` : ''}`
+
+    setCopiedReservationId(reservation.id)
+    if (copyResetTimeoutRef.current) {
+      window.clearTimeout(copyResetTimeoutRef.current)
+    }
+    copyResetTimeoutRef.current = window.setTimeout(() => {
+      setCopiedReservationId((current) => (current === reservation.id ? null : current))
+    }, 1400)
+    try {
+      await navigator.clipboard.writeText(reservationInfo)
+      toast.success(getTranslation("manage.reservations.card.copySuccess"))
+    } catch {
+      toast.error("Failed to copy reservation details")
+    }
+  }
 
   const handleAction = async () => {
     if (!selectedReservation || !actionType) return
@@ -145,31 +184,26 @@ export function ReservationTable({ reservations, onRefresh, itemsPerPage = 10 }:
                     minute: '2-digit'
                   })}
                 </div>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => {
-                    const areaFirstWord = reservation.reservation_areas?.name?.split(' ')[0];
-                     const isMainHall = !areaFirstWord || areaFirstWord.toLowerCase() === 'main';
-                     const areaText = isMainHall ? '' : `${areaFirstWord} - `;
-                     const reservationInfo = `${reservation.restaurants?.name || 'Restaurant'}\n${new Date(reservation.reservation_date).toLocaleDateString('en-US', {
-                        weekday: 'long',
-                        month: 'long',
-                        day: 'numeric'
-                      })}
-${reservation.customer_name}
-${reservation.party_size} people - ${areaText}${reservation.reservation_type === 'drinks' ? 'Drinks Only' : 'Dining'}
-${reservation.reservation_time.substring(0, 5)}
-${reservation.customer_phone}${reservation.special_requests ? `
-${reservation.special_requests}` : ''}`;
-                    navigator.clipboard.writeText(reservationInfo);
-                     toast.success(getTranslation('manage.reservations.card.copySuccess'));
-                  }}
-                  className="h-8 w-8 p-0 text-gray-500 hover:text-gray-700"
-                  title={getTranslation('manage.reservations.card.copyTooltip')}
-                >
-                  <Copy className="h-4 w-4" />
-                </Button>
+                <div className="flex items-center gap-1">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => copyReservationInfo(reservation)}
+                    className={`h-8 w-8 p-0 transition-colors ${
+                      copiedReservationId === reservation.id
+                        ? "bg-green-50 text-green-700 hover:bg-green-100 hover:text-green-700"
+                        : "text-gray-500 hover:text-gray-700"
+                    }`}
+                    title={getTranslation("manage.reservations.card.copyTooltip")}
+                  >
+                    <Copy className="h-4 w-4" />
+                  </Button>
+                  {copiedReservationId === reservation.id && (
+                    <div className="text-[10px] font-medium text-green-700 whitespace-nowrap">
+                      {getTranslation("manage.reservations.card.copied")}
+                    </div>
+                  )}
+                </div>
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-gray-500 hover:text-gray-700">
