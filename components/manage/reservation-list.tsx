@@ -231,10 +231,28 @@ ${reservation.customer_phone}${reservation.special_requests ? `\n${reservation.s
     }
   }
 
+  const getCardBorderClass = (status: string) => {
+    switch (status) {
+      case "confirmed":
+        return "border-l-green-500"
+      case "cancelled":
+        return "border-l-red-500"
+      case "pending":
+        return "border-l-yellow-500"
+      case "completed":
+        return "border-l-blue-500"
+      default:
+        return "border-l-blue-500"
+    }
+  }
+
   const renderCardView = () => (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
       {paginatedData.map((reservation) => (
-        <Card key={reservation.id} className="hover:shadow-md transition-shadow border-l-4 border-l-blue-500">
+        <Card
+          key={reservation.id}
+          className={`hover:shadow-md transition-shadow border-l-4 ${getCardBorderClass(reservation.status || "pending")}`}
+        >
           <CardHeader className="pb-4">
             <div className="flex items-start justify-between gap-2">
               <div className="space-y-1">
