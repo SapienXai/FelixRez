@@ -142,6 +142,10 @@ export default function UsersPage() {
       errors.confirmPassword = getTranslation("manage.users.form.passwordMismatch")
     }
 
+    if (formData.role !== "admin" && formData.role !== "manager" && !formData.restaurantId) {
+      errors.restaurantId = getTranslation("manage.users.form.restaurantRequired")
+    }
+
     setFormErrors(errors)
     return Object.keys(errors).length === 0
   }
@@ -157,7 +161,7 @@ export default function UsersPage() {
         const result = await updateUser(editingUser.id, {
           email: formData.email,
           role: isManager ? "staff" : formData.role,
-          restaurantId: formData.role === 'admin' ? null : (formData.restaurantId || null),
+          restaurantId: (formData.role === 'admin' || formData.role === 'manager') ? null : (formData.restaurantId || null),
           password: trimmedPassword ? trimmedPassword : null,
         })
         
@@ -181,7 +185,7 @@ export default function UsersPage() {
           email: formData.email,
           password: formData.password,
           role: isManager ? "staff" : formData.role,
-          restaurantId: formData.role === 'admin' ? null : (formData.restaurantId || null),
+          restaurantId: (formData.role === 'admin' || formData.role === 'manager') ? null : (formData.restaurantId || null),
         })
         
         if (result.success) {
@@ -273,13 +277,12 @@ export default function UsersPage() {
 
   const handleAddUser = () => {
     setEditingUser(null)
-    const defaultRestaurant = isManager ? (restaurants[0]?.id || null) : null
     setFormData({
       email: "",
       password: "",
       confirmPassword: "",
       role: "staff",
-      restaurantId: defaultRestaurant,
+      restaurantId: null,
     })
     setFormErrors({})
     setIsDialogOpen(true)
@@ -292,7 +295,8 @@ export default function UsersPage() {
       email: "",
       password: "",
       confirmPassword: "",
-      role: "staff"
+      role: "staff",
+      restaurantId: null,
     })
     setFormErrors({})
   }
@@ -411,25 +415,25 @@ export default function UsersPage() {
                   <Input value={getTranslation("manage.users.form.staff")} disabled />
                 )}
               </div>
-              {(isManager || formData.role !== 'admin') && (
+              {(isManager || (formData.role !== 'admin' && formData.role !== 'manager')) && (
                 <div className="grid gap-2">
-                  <Label htmlFor="restaurant">{getTranslation("manage.dashboard.filter.allRestaurants")}</Label>
+                  <Label htmlFor="restaurant">{getTranslation("manage.users.form.restaurant")}</Label>
                   <Select
                     value={formData.restaurantId ?? undefined}
                     onValueChange={(value) => setFormData({ ...formData, restaurantId: value })}
-                    disabled={isManager}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select restaurant" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {restaurants.map((r) => (
-                        <SelectItem key={r.id} value={r.id}>{r.name}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              )}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder={getTranslation("manage.users.form.restaurantPlaceholder")} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {restaurants.map((r) => (
+                      <SelectItem key={r.id} value={r.id}>{r.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {formErrors.restaurantId && <p className="text-sm text-red-500">{formErrors.restaurantId}</p>}
+              </div>
+            )}
             </div>
             <DialogFooter>
               <Button variant="outline" onClick={handleCloseDialog}>

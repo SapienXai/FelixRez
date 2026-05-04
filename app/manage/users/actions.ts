@@ -39,12 +39,16 @@ export async function getUsers() {
       .order("created_at", { ascending: false })
 
     if (!access.isSuperAdmin) {
-      if (!access.restaurantId) {
-        return { success: true, data: [] }
+      if (access.role === "manager") {
+        profileQuery = profileQuery.eq("role", "staff")
+      } else {
+        if (!access.restaurantId) {
+          return { success: true, data: [] }
+        }
+        profileQuery = profileQuery
+          .eq("restaurant_id", access.restaurantId)
+          .eq("role", "staff")
       }
-      profileQuery = profileQuery
-        .eq("restaurant_id", access.restaurantId)
-        .eq("role", "staff")
     }
 
     const { data: adminProfiles, error: profileError } = await profileQuery
@@ -114,12 +118,15 @@ export async function createUser(userData: CreateUserData) {
       return { success: false, error: "Managers can only create staff users" }
     }
 
-    const targetRestaurantId = isManager
-      ? (access.restaurantId || null)
-      : (userData.role === "admin" ? null : (userData.restaurantId ?? null))
+    const targetRestaurantId =
+      userData.role === "admin" || userData.role === "manager"
+        ? null
+        : (userData.restaurantId ?? null)
 
-    if (isManager && !targetRestaurantId) {
-      return { success: false, error: "Manager must be assigned to a restaurant" }
+    if (userData.role === "staff" || userData.role === "readonly") {
+      if (!targetRestaurantId) {
+        return { success: false, error: "User must be assigned to a restaurant" }
+      }
     }
 
     const supabase = createServiceRoleClient()
@@ -217,22 +224,22 @@ export async function updateUser(userId: string, userData: UpdateUserData) {
 
     const isManager = access.role === "manager" && !access.isSuperAdmin
     if (isManager) {
-      const sameRestaurant = targetProfile.restaurant_id === access.restaurantId
       const isStaffTarget = targetProfile.role === "staff"
-      if (!sameRestaurant || !isStaffTarget) {
-        return { success: false, error: "Managers can only edit staff in their restaurant" }
+      if (!isStaffTarget) {
+        return { success: false, error: "Managers can only edit staff users" }
       }
       if (userData.role !== "staff") {
         return { success: false, error: "Managers cannot change role to non-staff" }
       }
     }
 
-    const targetRestaurantId = isManager
-      ? (access.restaurantId || null)
-      : (userData.role === "admin" ? null : (userData.restaurantId ?? null))
+    const targetRestaurantId =
+      userData.role === "admin" || userData.role === "manager"
+        ? null
+        : (userData.restaurantId ?? null)
 
-    if (isManager && !targetRestaurantId) {
-      return { success: false, error: "Manager must be assigned to a restaurant" }
+    if ((userData.role === "staff" || userData.role === "readonly") && !targetRestaurantId) {
+      return { success: false, error: "User must be assigned to a restaurant" }
     }
     
     const authUpdates: { email: string; password?: string } = {
@@ -320,10 +327,9 @@ export async function deleteUser(userId: string) {
 
     const isManager = access.role === "manager" && !access.isSuperAdmin
     if (isManager) {
-      const sameRestaurant = targetProfile.restaurant_id === access.restaurantId
       const isStaffTarget = targetProfile.role === "staff"
-      if (!sameRestaurant || !isStaffTarget) {
-        return { success: false, error: "Managers can only delete staff in their restaurant" }
+      if (!isStaffTarget) {
+        return { success: false, error: "Managers can only delete staff users" }
       }
     }
     

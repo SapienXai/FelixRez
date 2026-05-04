@@ -73,7 +73,7 @@ export async function getCurrentUserAccess(): Promise<UserAccess | null> {
 export async function hasRestaurantAccess(restaurantId: string): Promise<boolean> {
   const access = await getCurrentUserAccess()
   if (!access) return false
-  if (access.isSuperAdmin) return true
+  if (access.isSuperAdmin || access.role === "manager") return true
   return access.restaurantId === restaurantId
 }
 
@@ -86,7 +86,7 @@ export async function hasRestaurantAccess(restaurantId: string): Promise<boolean
 export async function getUserRestaurantIds(): Promise<string[] | null> {
   const access = await getCurrentUserAccess()
   if (!access) return []
-  if (access.isSuperAdmin) return null
+  if (access.isSuperAdmin || access.role === "manager") return null
   return access.restaurantId ? [access.restaurantId] : []
 }
 

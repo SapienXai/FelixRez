@@ -21,7 +21,7 @@ import { useManageContext } from "@/context/manage-context"
 
 export default function ManageDashboard() {
   const { getTranslation } = useLanguage()
-  const { isSuperAdmin, loading: roleLoading } = useManageContext()
+  const { role, isSuperAdmin, loading: roleLoading } = useManageContext()
   const [isLoading, setIsLoading] = useState(true)
   const [isStatsLoading, setIsStatsLoading] = useState(false)
   const [stats, setStats] = useState({
@@ -56,7 +56,7 @@ export default function ManageDashboard() {
     const checkSession = async () => {
       const { data } = await supabase.auth.getSession()
       if (data.session) {
-        await fetchRestaurants(isSuperAdmin)
+        await fetchRestaurants(isSuperAdmin || role === "manager")
       } else {
         await fetchRestaurants(false)
       }
@@ -83,7 +83,7 @@ export default function ManageDashboard() {
 
     return () => subscription?.subscription?.unsubscribe?.()
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [router, supabase, isSuperAdmin, roleLoading])
+  }, [router, supabase, role, isSuperAdmin, roleLoading])
 
   // Fetch stats when restaurant filter, date, or time period changes
   useEffect(() => {
@@ -231,14 +231,14 @@ export default function ManageDashboard() {
     }
   }, [selectedRestaurant, selectedDate])
 
-  const fetchRestaurants = async (isSuperAdminValue?: boolean) => {
+  const fetchRestaurants = async (forceAllRestaurants?: boolean) => {
     try {
       const result = await getRestaurants()
       if (result.success && result.data) {
         setRestaurants(result.data)
         // Set initial restaurant selection based on user role
-        const isSuper = isSuperAdminValue !== undefined ? isSuperAdminValue : isSuperAdmin
-        if (isSuper) {
+        const isGlobal = forceAllRestaurants ?? (isSuperAdmin || role === "manager")
+        if (isGlobal) {
           setSelectedRestaurant("all")
         } else if (result.data.length > 0) {
           setSelectedRestaurant(result.data[0].id)
