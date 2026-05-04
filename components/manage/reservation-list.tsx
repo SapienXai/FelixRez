@@ -20,20 +20,16 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
+import { CardFooter } from "@/components/ui/card"
 import { Textarea } from "@/components/ui/textarea"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Label } from "@/components/ui/label"
-import { CheckCircle, XCircle, Clock, Edit, List, Grid, User, Phone, Mail, Calendar, MoreHorizontal, Utensils, Coffee, Trash2, Copy } from "lucide-react"
+import { CheckCircle, XCircle, Clock, Edit, List, Grid, User, Phone, Mail, Calendar, Utensils, Coffee, Copy } from "lucide-react"
 import type { Reservation } from "@/types/supabase"
 import { updateReservationStatus, deleteReservation } from "@/app/manage/actions"
 import { toast } from "sonner"
 import { ReservationForm } from "@/components/manage/reservation-form"
+import { ReservationActionsMenu } from "@/components/manage/reservation-actions-menu"
 import { usePagination } from "@/hooks/use-pagination"
 import { PaginationControls } from "@/components/ui/pagination-controls"
 import { useLanguage } from "@/context/language-context"
@@ -240,30 +236,20 @@ ${reservation.customer_phone}${reservation.special_requests ? `\n${reservation.s
       {paginatedData.map((reservation) => (
         <Card key={reservation.id} className="hover:shadow-md transition-shadow border-l-4 border-l-blue-500">
           <CardHeader className="pb-4">
-            <div className="flex items-start justify-between">
+            <div className="flex items-start justify-between gap-2">
               <div className="space-y-1">
                  <CardTitle className="text-lg text-gray-900">{reservation.restaurants?.name || "Unknown Restaurant"}</CardTitle>
                  <div className="flex items-center gap-2">
                    {getStatusBadge(reservation.status || "pending")}
                  </div>
                </div>
-               <div className="flex items-center gap-1">
-                 <div className="text-xs text-gray-500 mr-2">
-                   {new Date(reservation.created_at).toLocaleDateString('tr-TR', {
-                     day: '2-digit',
-                     month: '2-digit',
-                     year: 'numeric'
-                   })} {new Date(reservation.created_at).toLocaleTimeString('tr-TR', {
-                     hour: '2-digit',
-                     minute: '2-digit'
-                   })}
-                 </div>
+               <div className="flex items-center gap-1 shrink-0">
                  <div className="flex items-center gap-1">
                    <Button
                      variant="ghost"
                      size="sm"
                      onClick={() => copyReservationInfo(reservation)}
-                     className={`h-8 w-8 p-0 transition-colors ${
+                     className={`h-10 w-10 sm:h-8 sm:w-8 p-0 transition-colors ${
                        copiedReservationId === reservation.id
                          ? "bg-green-50 text-green-700 hover:bg-green-100 hover:text-green-700"
                          : "text-gray-500 hover:text-gray-700"
@@ -278,46 +264,15 @@ ${reservation.customer_phone}${reservation.special_requests ? `\n${reservation.s
                      </div>
                    )}
                  </div>
-                 <DropdownMenu>
-                   <DropdownMenuTrigger asChild>
-                     <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-gray-500 hover:text-gray-700">
-                       <MoreHorizontal className="h-4 w-4" />
-                       <span className="sr-only">Open menu</span>
-                     </Button>
-                   </DropdownMenuTrigger>
-                   <DropdownMenuContent align="end">
-                     <DropdownMenuItem
-                       onClick={() => openEditForm(reservation)}
-                       className="text-blue-600"
-                     >
-                       <Edit className="mr-2 h-4 w-4" />
-                       {getTranslation("manage.reservations.list.editReservation")}
-                     </DropdownMenuItem>
-                     <DropdownMenuItem
-                       onClick={() => openActionDialog(reservation, "confirm")}
-                       disabled={reservation.status === "confirmed" || reservation.status === "cancelled"}
-                       className="text-green-600"
-                     >
-                       <CheckCircle className="mr-2 h-4 w-4" />
-                       {getTranslation("manage.reservations.list.confirmReservation")}
-                     </DropdownMenuItem>
-                     <DropdownMenuItem
-                       onClick={() => openActionDialog(reservation, "cancel")}
-                       disabled={reservation.status === "cancelled"}
-                       className="text-red-600"
-                     >
-                       <XCircle className="mr-2 h-4 w-4" />
-                       {getTranslation("manage.reservations.list.cancelReservation")}
-                     </DropdownMenuItem>
-                     <DropdownMenuItem
-                       onClick={() => openDeleteDialog(reservation)}
-                       className="text-red-600"
-                     >
-                       <Trash2 className="mr-2 h-4 w-4" />
-                       {getTranslation("manage.reservations.list.deleteReservation")}
-                     </DropdownMenuItem>
-                   </DropdownMenuContent>
-                 </DropdownMenu>
+                 <ReservationActionsMenu
+                   onEdit={() => openEditForm(reservation)}
+                   onConfirm={() => openActionDialog(reservation, "confirm")}
+                   onCancel={() => openActionDialog(reservation, "cancel")}
+                   onDelete={() => openDeleteDialog(reservation)}
+                   confirmDisabled={reservation.status === "confirmed" || reservation.status === "cancelled"}
+                   cancelDisabled={reservation.status === "cancelled"}
+                   showDelete
+                 />
                </div>
             </div>
           </CardHeader>
@@ -401,15 +356,29 @@ ${reservation.customer_phone}${reservation.special_requests ? `\n${reservation.s
               </div>
             )}
 
-            {reservation.booked_by_email && (
-              <div className="border-t pt-2">
-                <div className="text-[10px] text-gray-500 truncate leading-none">
-                  {getTranslation("manage.reservations.card.createdBy")}: {reservation.booked_by_email}
-                </div>
-              </div>
-            )}
-
           </CardContent>
+          <CardFooter className="flex items-center justify-between gap-3 border-t pt-3">
+            <div className="min-w-0 text-[10px] text-gray-500 leading-none text-left">
+              {reservation.booked_by_email ? (
+                <>
+                  {getTranslation("manage.reservations.card.createdBy")}:{" "}
+                  <span className="truncate">{reservation.booked_by_email}</span>
+                </>
+              ) : (
+                getTranslation("manage.reservations.card.createdBy")
+              )}
+            </div>
+            <div className="shrink-0 text-[10px] text-gray-500 leading-none text-right">
+              {new Date(reservation.created_at).toLocaleDateString('tr-TR', {
+                day: '2-digit',
+                month: '2-digit',
+                year: 'numeric'
+              })} {new Date(reservation.created_at).toLocaleTimeString('tr-TR', {
+                hour: '2-digit',
+                minute: '2-digit'
+              })}
+            </div>
+          </CardFooter>
         </Card>
       ))}
     </div>
@@ -522,47 +491,16 @@ ${reservation.customer_phone}${reservation.special_requests ? `\n${reservation.s
                       </Badge>
                     </TableCell>
                     <TableCell>{getStatusBadge(reservation.status || "pending")}</TableCell>
-          <TableCell className="text-right">
-            <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="icon">
-                            <MoreHorizontal className="h-4 w-4" />
-                            <span className="sr-only">Open menu</span>
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem
-                            onClick={() => openEditForm(reservation)}
-                            className="text-blue-600"
-                          >
-                            <Edit className="mr-2 h-4 w-4" />
-                            {getTranslation("manage.reservations.list.editReservation")}
-                          </DropdownMenuItem>
-                          <DropdownMenuItem
-                            onClick={() => openActionDialog(reservation, "confirm")}
-                            disabled={reservation.status === "confirmed" || reservation.status === "cancelled"}
-                            className="text-green-600"
-                          >
-                            <CheckCircle className="mr-2 h-4 w-4" />
-                            {getTranslation("manage.reservations.list.confirmReservation")}
-                          </DropdownMenuItem>
-                          <DropdownMenuItem
-                            onClick={() => openActionDialog(reservation, "cancel")}
-                            disabled={reservation.status === "cancelled"}
-                            className="text-red-600"
-                          >
-                            <XCircle className="mr-2 h-4 w-4" />
-                            {getTranslation("manage.reservations.list.cancelReservation")}
-                          </DropdownMenuItem>
-                          <DropdownMenuItem
-                            onClick={() => openDeleteDialog(reservation)}
-                            className="text-red-600"
-                          >
-                            <Trash2 className="mr-2 h-4 w-4" />
-                            {getTranslation("manage.reservations.list.deleteReservation")}
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
+                    <TableCell className="text-right">
+                      <ReservationActionsMenu
+                        onEdit={() => openEditForm(reservation)}
+                        onConfirm={() => openActionDialog(reservation, "confirm")}
+                        onCancel={() => openActionDialog(reservation, "cancel")}
+                        onDelete={() => openDeleteDialog(reservation)}
+                        confirmDisabled={reservation.status === "confirmed" || reservation.status === "cancelled"}
+                        cancelDisabled={reservation.status === "cancelled"}
+                        showDelete
+                      />
                     </TableCell>
                   </TableRow>
                  </React.Fragment>

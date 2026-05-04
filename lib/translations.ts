@@ -282,7 +282,11 @@ export const translations = {
         cancelReservation: "Cancel Reservation",
         processing: "Processing...",
         cancel: "Cancel",
-        deleting: "Deleting...",
+          deleting: "Deleting...",
+        },
+        actions: {
+          title: "Reservation Actions",
+          description: "Choose what you want to do with this reservation.",
         },
         card: {
           people: "people",
@@ -290,7 +294,7 @@ export const translations = {
           dining: "Dining",
           table: "Table",
           note: "Note",
-          createdBy: "Created by",
+          createdBy: "Created",
           copyTooltip: "Copy reservation details",
           copySuccess: "Reservation details copied!",
           copied: "Copied",
@@ -748,7 +752,11 @@ export const translations = {
         cancelReservation: "Rezervasyonu İptal Et",
         processing: "İşleniyor...",
         cancel: "İptal",
-        deleting: "Siliniyor...",
+          deleting: "Siliniyor...",
+        },
+        actions: {
+          title: "Rezervasyon İşlemleri",
+          description: "Bu rezervasyon için bir işlem seçin.",
         },
         card: {
           people: "kişi",
@@ -756,7 +764,7 @@ export const translations = {
           dining: "Yemek",
           table: "Masa",
           note: "Not",
-          createdBy: "Oluşturan",
+          createdBy: "Oluşturulan",
           copyTooltip: "Rezervasyon bilgilerini kopyala",
           copySuccess: "Rezervasyon bilgileri kopyalandı!",
           copied: "Kopyalandı",

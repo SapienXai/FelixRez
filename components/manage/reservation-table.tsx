@@ -2,10 +2,9 @@
 
 import { useEffect, useRef, useState } from "react"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import {
   Dialog,
   DialogContent,
@@ -17,10 +16,11 @@ import {
 import { Textarea } from "@/components/ui/textarea"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Label } from "@/components/ui/label"
-import { Loader2, MoreHorizontal, CheckCircle, XCircle, Clock, Calendar, Mail, Edit, Grid, List, Phone, User, Utensils, Coffee, Copy } from "lucide-react"
+import { Loader2, CheckCircle, XCircle, Clock, Calendar, Mail, Edit, Grid, List, Phone, User, Utensils, Coffee, Copy } from "lucide-react"
 import type { Reservation } from "@/types/supabase"
 import { updateReservationStatus } from "@/app/manage/actions"
 import { ReservationForm } from "./reservation-form"
+import { ReservationActionsMenu } from "@/components/manage/reservation-actions-menu"
 import { usePagination } from "@/hooks/use-pagination"
 import { PaginationControls } from "@/components/ui/pagination-controls"
 import { toast } from "sonner"
@@ -35,6 +35,7 @@ interface ReservationWithRestaurant extends Reservation {
     id: string
     name: string
   }
+  booked_by_email?: string | null
 }
 
 interface ReservationTableProps {
@@ -173,76 +174,38 @@ ${reservation.customer_phone}${reservation.special_requests ? `\n${reservation.s
                   {getStatusBadge(reservation.status || "pending")}
                 </div>
               </div>
-              <div className="flex items-center gap-1">
-                <div className="text-xs text-gray-500 mr-2">
-                  {new Date(reservation.created_at).toLocaleDateString('tr-TR', {
-                    day: '2-digit',
-                    month: '2-digit',
-                    year: 'numeric'
-                  })} {new Date(reservation.created_at).toLocaleTimeString('tr-TR', {
-                    hour: '2-digit',
-                    minute: '2-digit'
-                  })}
-                </div>
-                <div className="flex items-center gap-1">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => copyReservationInfo(reservation)}
-                    className={`h-8 w-8 p-0 transition-colors ${
-                      copiedReservationId === reservation.id
-                        ? "bg-green-50 text-green-700 hover:bg-green-100 hover:text-green-700"
-                        : "text-gray-500 hover:text-gray-700"
-                    }`}
-                    title={getTranslation("manage.reservations.card.copyTooltip")}
-                  >
-                    <Copy className="h-4 w-4" />
-                  </Button>
-                  {copiedReservationId === reservation.id && (
-                    <div className="text-[10px] font-medium text-green-700 whitespace-nowrap">
-                      {getTranslation("manage.reservations.card.copied")}
-                    </div>
-                  )}
-                </div>
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-gray-500 hover:text-gray-700">
-                      <MoreHorizontal className="h-4 w-4" />
-                      <span className="sr-only">Open menu</span>
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end">
-                    <DropdownMenuItem
-                      onClick={() => setEditingReservation(reservation)}
-                      className="text-blue-600"
-                    >
-                      <Edit className="mr-2 h-4 w-4" />
-                      Edit Reservation
-                    </DropdownMenuItem>
-                    <DropdownMenuItem
-                      onClick={() => {
-                        setSelectedReservation(reservation)
-                        setActionType("confirm")
-                      }}
-                      disabled={reservation.status === "confirmed" || reservation.status === "cancelled"}
-                      className="text-green-600"
-                    >
-                      <CheckCircle className="mr-2 h-4 w-4" />
-                      Confirm Reservation
-                    </DropdownMenuItem>
-                    <DropdownMenuItem
-                      onClick={() => {
-                        setSelectedReservation(reservation)
-                        setActionType("cancel")
-                      }}
-                      disabled={reservation.status === "cancelled"}
-                      className="text-red-600"
-                    >
-                      <XCircle className="mr-2 h-4 w-4" />
-                      Cancel Reservation
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
+              <div className="flex items-center gap-1 shrink-0">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => copyReservationInfo(reservation)}
+                  className={`h-10 w-10 sm:h-8 sm:w-8 p-0 transition-colors ${
+                    copiedReservationId === reservation.id
+                      ? "bg-green-50 text-green-700 hover:bg-green-100 hover:text-green-700"
+                      : "text-gray-500 hover:text-gray-700"
+                  }`}
+                  title={getTranslation("manage.reservations.card.copyTooltip")}
+                >
+                  <Copy className="h-4 w-4" />
+                </Button>
+                {copiedReservationId === reservation.id && (
+                  <div className="text-[10px] font-medium text-green-700 whitespace-nowrap">
+                    {getTranslation("manage.reservations.card.copied")}
+                  </div>
+                )}
+                <ReservationActionsMenu
+                  onEdit={() => setEditingReservation(reservation)}
+                  onConfirm={() => {
+                    setSelectedReservation(reservation)
+                    setActionType("confirm")
+                  }}
+                  onCancel={() => {
+                    setSelectedReservation(reservation)
+                    setActionType("cancel")
+                  }}
+                  confirmDisabled={reservation.status === "confirmed" || reservation.status === "cancelled"}
+                  cancelDisabled={reservation.status === "cancelled"}
+                />
               </div>
             </div>
           </CardHeader>
@@ -323,9 +286,29 @@ ${reservation.customer_phone}${reservation.special_requests ? `\n${reservation.s
                 )}
               </div>
             )}
-            
-
           </CardContent>
+          <CardFooter className="flex items-center justify-between gap-3 border-t pt-3">
+            <div className="min-w-0 text-[10px] text-gray-500 leading-none text-left">
+              {reservation.booked_by_email ? (
+                <>
+                  {getTranslation("manage.reservations.card.createdBy")}:{" "}
+                  <span className="truncate">{reservation.booked_by_email}</span>
+                </>
+              ) : (
+                getTranslation("manage.reservations.card.createdBy")
+              )}
+            </div>
+            <div className="shrink-0 text-[10px] text-gray-500 leading-none text-right">
+              {new Date(reservation.created_at).toLocaleDateString('tr-TR', {
+                day: '2-digit',
+                month: '2-digit',
+                year: 'numeric'
+              })} {new Date(reservation.created_at).toLocaleTimeString('tr-TR', {
+                hour: '2-digit',
+                minute: '2-digit'
+              })}
+            </div>
+          </CardFooter>
         </Card>
       ))}
     </div>
@@ -437,45 +420,19 @@ ${reservation.customer_phone}${reservation.special_requests ? `\n${reservation.s
                    </TableCell>
                    <TableCell>{getStatusBadge(reservation.status || "pending")}</TableCell>
                    <TableCell className="text-right">
-                     <DropdownMenu>
-                       <DropdownMenuTrigger asChild>
-                         <Button variant="ghost" size="icon">
-                           <MoreHorizontal className="h-4 w-4" />
-                           <span className="sr-only">Open menu</span>
-                         </Button>
-                       </DropdownMenuTrigger>
-                       <DropdownMenuContent align="end">
-                         <DropdownMenuItem
-                           onClick={() => setEditingReservation(reservation)}
-                           className="text-blue-600"
-                         >
-                           <Edit className="mr-2 h-4 w-4" />
-                           Edit Reservation
-                         </DropdownMenuItem>
-                         <DropdownMenuItem
-                           onClick={() => {
-                             setSelectedReservation(reservation)
-                             setActionType("confirm")
-                           }}
-                           disabled={reservation.status === "confirmed" || reservation.status === "cancelled"}
-                           className="text-green-600"
-                         >
-                           <CheckCircle className="mr-2 h-4 w-4" />
-                           Confirm Reservation
-                         </DropdownMenuItem>
-                         <DropdownMenuItem
-                           onClick={() => {
-                             setSelectedReservation(reservation)
-                             setActionType("cancel")
-                           }}
-                           disabled={reservation.status === "cancelled"}
-                           className="text-red-600"
-                         >
-                           <XCircle className="mr-2 h-4 w-4" />
-                           Cancel Reservation
-                         </DropdownMenuItem>
-                       </DropdownMenuContent>
-                     </DropdownMenu>
+                     <ReservationActionsMenu
+                       onEdit={() => setEditingReservation(reservation)}
+                       onConfirm={() => {
+                         setSelectedReservation(reservation)
+                         setActionType("confirm")
+                       }}
+                       onCancel={() => {
+                         setSelectedReservation(reservation)
+                         setActionType("cancel")
+                       }}
+                       confirmDisabled={reservation.status === "confirmed" || reservation.status === "cancelled"}
+                       cancelDisabled={reservation.status === "cancelled"}
+                     />
                    </TableCell>
                  </TableRow>
                ))}
