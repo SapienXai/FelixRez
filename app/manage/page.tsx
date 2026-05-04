@@ -6,8 +6,8 @@ import { getSupabaseBrowserClient } from "@/lib/supabase"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { CalendarClock, Clock, CheckCircle, XCircle, TrendingUp, Users, UtensilsCrossed, MapPin, ChevronDown, ChevronUp, Calendar } from "lucide-react"
-import { getDashboardStats, getTodayReservations, getUpcomingReservations, getNewReservations } from "./dashboard-actions"
+import { CalendarClock, Clock, CheckCircle, XCircle, Users, UtensilsCrossed, MapPin, ChevronDown, ChevronUp, Calendar } from "lucide-react"
+import { getDashboardStats, getTodayReservations, getUpcomingReservations, getNewReservations, getTodayCreatedReservations } from "./dashboard-actions"
 import { getRestaurants } from "./actions"
 import { ReservationList } from "@/components/manage/reservation-list"
 import { ReservationForm } from "@/components/manage/reservation-form"
@@ -36,6 +36,7 @@ export default function ManageDashboard() {
     terraceKuvers: 0,
   })
   const [newReservations, setNewReservations] = useState<any[]>([])
+  const [newTodayReservations, setNewTodayReservations] = useState<any[]>([])
   const [todayReservations, setTodayReservations] = useState<any[]>([])
   const [upcomingReservations, setUpcomingReservations] = useState<any[]>([])
   const [selectedDateReservations, setSelectedDateReservations] = useState<any[]>([])
@@ -93,9 +94,10 @@ export default function ManageDashboard() {
         const restaurantFilter = selectedRestaurant === "all" || !selectedRestaurant ? undefined : selectedRestaurant
         const dateFilter = selectedDate ? format(selectedDate, 'yyyy-MM-dd') : undefined
         
-        const [statsResult, todayResult] = await Promise.all([
+        const [statsResult, todayResult, newTodayResult] = await Promise.all([
           getDashboardStats(restaurantFilter, dateFilter, timePeriod),
-          getTodayReservations(restaurantFilter, dateFilter)
+          getTodayReservations(restaurantFilter, dateFilter),
+          getTodayCreatedReservations(restaurantFilter)
         ])
         
         if (statsResult?.success && statsResult.stats) {
@@ -118,6 +120,10 @@ export default function ManageDashboard() {
            if (selectedDate) {
              setSelectedDateReservations(todayResult.data)
            }
+         }
+
+         if (newTodayResult?.success && newTodayResult.data) {
+           setNewTodayReservations(newTodayResult.data)
          }
          
          // Clear selected date reservations if no date is selected
@@ -181,26 +187,32 @@ export default function ManageDashboard() {
           // Always prepend to New tab (if not already present)
           setNewReservations((prev) => (notIn(prev) ? [newReservation, ...prev] : prev))
 
+          const createdAt = new Date(newReservation.created_at)
+          const todayCreated = new Date()
+          const fmt = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+          if (fmt(createdAt) === fmt(todayCreated)) {
+            setNewTodayReservations((prev) => (notIn(prev) ? [newReservation, ...prev] : prev))
+          }
+
           // Compute date buckets for Today and Upcoming
           const today = new Date()
-          const fmt = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
           const todayStr = fmt(today)
           const tomorrow = new Date(today)
           tomorrow.setDate(tomorrow.getDate() + 1)
-          const nextWeek = new Date(today)
-          nextWeek.setDate(nextWeek.getDate() + 7)
+          const next30Days = new Date(tomorrow)
+          next30Days.setDate(next30Days.getDate() + 29)
           const tomorrowStr = fmt(tomorrow)
-          const nextWeekStr = fmt(nextWeek)
+          const next30DaysStr = fmt(next30Days)
 
           // Update Today tab
           if (newReservation.reservation_date === todayStr) {
             setTodayReservations((prev) => (notIn(prev) ? [newReservation, ...prev] : prev))
           }
 
-          // Update Upcoming tab (tomorrow <= date < nextWeek)
+          // Update Upcoming tab (tomorrow to next 30 days)
           if (
             newReservation.reservation_date >= tomorrowStr &&
-            newReservation.reservation_date < nextWeekStr
+            newReservation.reservation_date <= next30DaysStr
           ) {
             setUpcomingReservations((prev) => (notIn(prev) ? [newReservation, ...prev] : prev))
           }
@@ -255,10 +267,11 @@ export default function ManageDashboard() {
       const restaurantFilter = selectedRestaurant === 'all' || !selectedRestaurant ? undefined : selectedRestaurant
       const dateFilter = selectedDate ? format(selectedDate, 'yyyy-MM-dd') : undefined
       
-      const [statsResult, newResult, todayResult, upcomingResult] = await Promise.all([
+      const [statsResult, newResult, todayResult, newTodayResult, upcomingResult] = await Promise.all([
         getDashboardStats(restaurantFilter, dateFilter, timePeriod),
         getNewReservations(restaurantFilter),
         getTodayReservations(restaurantFilter, dateFilter),
+        getTodayCreatedReservations(restaurantFilter),
         getUpcomingReservations(restaurantFilter, dateFilter),
       ])
       
@@ -278,6 +291,10 @@ export default function ManageDashboard() {
 
       if (newResult.success && newResult.data) {
         setNewReservations(newResult.data)
+      }
+
+      if (newTodayResult.success && newTodayResult.data) {
+        setNewTodayReservations(newTodayResult.data)
       }
 
       if (todayResult.success && todayResult.data) {
@@ -326,6 +343,11 @@ export default function ManageDashboard() {
     }
     return filtered
   }
+
+  const newTabCount = getFilteredReservations(newTodayReservations).length
+  const todayTabCount = getFilteredReservations(todayReservations).length
+  const upcomingTabCount = getFilteredReservations(upcomingReservations).length
+  const todayCount = todayReservations.length
 
   if (isLoading) {
     return (
@@ -422,19 +444,11 @@ export default function ManageDashboard() {
                   <p className="text-xs md:text-sm font-medium text-muted-foreground">
                     {getTranslation("manage.dashboard.stats.total")}
                   </p>
-                  <p className="text-2xl md:text-3xl font-bold">{stats.total}</p>
+                  <p className="text-2xl md:text-3xl font-bold">{todayCount}</p>
                 </div>
                 <div className="rounded-full bg-blue-100 p-2 md:p-3 text-blue-600">
                   <CalendarClock className="h-4 w-4 md:h-6 md:w-6" />
                 </div>
-              </div>
-              <div className="mt-2 md:mt-4 flex items-center text-xs md:text-sm">
-                <TrendingUp
-                  className={`mr-1 h-3 w-3 md:h-4 md:w-4 ${stats.percentChange >= 0 ? "text-green-500" : "text-red-500"}`}
-                />
-                <span className={stats.percentChange >= 0 ? "text-green-500" : "text-red-500"}>
-                  {getTranslation("manage.dashboard.stats.percentChange", { percent: String(stats.percentChange) })}
-                </span>
               </div>
             </CardContent>
           </Card>
@@ -578,21 +592,25 @@ export default function ManageDashboard() {
           <TabsList
             className={`grid w-full ${selectedDate ? "grid-cols-4" : "grid-cols-4"} lg:w-auto lg:grid-cols-none lg:flex`}
           >
-            <TabsTrigger value="new" className="text-xs sm:text-sm">
-              {getTranslation("manage.dashboard.tabs.new")}
+            <TabsTrigger value="new" className="text-xs sm:text-sm gap-1.5">
+              <span>{getTranslation("manage.dashboard.tabs.new")}</span>
+              <span className="text-[9px] text-muted-foreground leading-none">({newTabCount})</span>
             </TabsTrigger>
-            <TabsTrigger value="today" className="text-xs sm:text-sm">
-              {getTranslation("manage.dashboard.tabs.today")}
+            <TabsTrigger value="today" className="text-xs sm:text-sm gap-1.5">
+              <span>{getTranslation("manage.dashboard.tabs.today")}</span>
+              <span className="text-[9px] text-muted-foreground leading-none">({todayTabCount})</span>
             </TabsTrigger>
-            <TabsTrigger value="upcoming" className="text-xs sm:text-sm">
-              {getTranslation("manage.dashboard.tabs.upcoming")}
+            <TabsTrigger value="upcoming" className="text-xs sm:text-sm gap-1.5">
+              <span>{getTranslation("manage.dashboard.tabs.upcoming")}</span>
+              <span className="text-[9px] text-muted-foreground leading-none">({upcomingTabCount})</span>
             </TabsTrigger>
             {selectedDate ? (
               <Popover open={datePopoverOpen} onOpenChange={setDatePopoverOpen}>
                 <PopoverTrigger asChild>
-                  <TabsTrigger value="selected-date" className="text-xs sm:text-sm">
+                  <TabsTrigger value="selected-date" className="text-xs sm:text-sm gap-1.5">
                     <Calendar className="mr-2 h-4 w-4" />
-                    {format(selectedDate, "MMM dd")} ({selectedDateReservations.length})
+                    <span>{format(selectedDate, "MMM dd")}</span>
+                    <span className="text-[9px] text-muted-foreground leading-none">({selectedDateReservations.length})</span>
                   </TabsTrigger>
                 </PopoverTrigger>
                 <PopoverContent className="w-auto p-0" align="start">

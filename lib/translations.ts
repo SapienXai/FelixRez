@@ -217,7 +217,7 @@ export const translations = {
       dashboard: {
         title: "Dashboard",
         stats: {
-          total: "Total Reservations",
+          total: "Today's Reservations",
           pending: "Pending",
           confirmed: "Confirmed",
           cancelled: "Cancelled",
@@ -242,8 +242,8 @@ export const translations = {
           cardDescription: "Manage reservations scheduled for today. {count} total.",
         },
         upcoming: {
-          cardTitle: "Upcoming Reservations",
-          cardDescription: "View and manage upcoming reservations. {count} total.",
+          cardTitle: "Next 30 Days Reservations",
+          cardDescription: "View and manage reservations for the next 30 days. {count} total.",
         },
       },
       reservations: {
@@ -681,7 +681,7 @@ export const translations = {
       dashboard: {
         title: "Panel",
         stats: {
-          total: "Toplam Rezervasyon",
+          total: "Bugünkü Rezervasyonlar",
           pending: "Beklemede",
           confirmed: "Onaylandı",
           cancelled: "İptal",
@@ -706,8 +706,8 @@ export const translations = {
           cardDescription: "Bugün planlanan rezervasyonları yönetin. Toplam {count}.",
         },
         upcoming: {
-          cardTitle: "Yaklaşan Rezervasyonlar",
-          cardDescription: "Yaklaşan rezervasyonları görüntüleyin ve yönetin. Toplam {count}.",
+          cardTitle: "Önümüzdeki 30 Gün Rezervasyonları",
+          cardDescription: "Önümüzdeki 30 gündeki rezervasyonları görüntüleyin ve yönetin. Toplam {count}.",
         },
       },
       reservations: {

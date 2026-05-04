@@ -389,7 +389,7 @@ export async function getNewReservations(restaurantId?: string) {
         restaurants (id, name),
         reservation_areas (id, name)
       `)
-    
+
     if (scope.type === "one" && scope.id) {
       query = query.eq("restaurant_id", scope.id)
     }
@@ -406,6 +406,49 @@ export async function getNewReservations(restaurantId?: string) {
     return { success: true, data: data || [] }
   } catch (error) {
     console.error("Error in getNewReservations:", error)
+    return { success: false, message: "An unexpected error occurred", data: [] }
+  }
+}
+
+export async function getTodayCreatedReservations(restaurantId?: string) {
+  try {
+    const supabase = createServiceRoleClient()
+    const scope = await coerceRestaurantFilter(restaurantId)
+    if (scope.type === "deny") {
+      return { success: true, data: [] }
+    }
+
+    const today = new Date()
+    const startOfToday = new Date(today.getFullYear(), today.getMonth(), today.getDate())
+    const startOfTomorrow = new Date(startOfToday)
+    startOfTomorrow.setDate(startOfTomorrow.getDate() + 1)
+    const startOfTodayStr = startOfToday.toISOString()
+    const startOfTomorrowStr = startOfTomorrow.toISOString()
+
+    let query = supabase
+      .from("reservations")
+      .select(`
+        *,
+        restaurants (id, name),
+        reservation_areas (id, name)
+      `)
+      .gte("created_at", startOfTodayStr)
+      .lt("created_at", startOfTomorrowStr)
+
+    if (scope.type === "one" && scope.id) {
+      query = query.eq("restaurant_id", scope.id)
+    }
+
+    const { data, error } = await query.order("created_at", { ascending: false })
+
+    if (error) {
+      console.error("Error fetching today's created reservations:", error)
+      return { success: false, message: error.message, data: [] }
+    }
+
+    return { success: true, data: data || [] }
+  } catch (error) {
+    console.error("Error in getTodayCreatedReservations:", error)
     return { success: false, message: "An unexpected error occurred", data: [] }
   }
 }
@@ -430,25 +473,25 @@ export async function getUpcomingReservations(restaurantId?: string, selectedDat
       // If a specific date is selected, get reservations for that date
       query = query.eq("reservation_date", selectedDate)
     } else {
-      // Use system date to avoid timezone issues for upcoming reservations
+      // Use the next 30 days starting from tomorrow
       const today = new Date()
       const tomorrow = new Date(today)
       tomorrow.setDate(tomorrow.getDate() + 1)
-      const nextWeek = new Date(today)
-      nextWeek.setDate(nextWeek.getDate() + 7)
+      const next30Days = new Date(tomorrow)
+      next30Days.setDate(next30Days.getDate() + 29)
 
-      const tomorrowStr = tomorrow.getFullYear() + '-' + 
-        String(tomorrow.getMonth() + 1).padStart(2, '0') + '-' + 
+      const tomorrowStr = tomorrow.getFullYear() + '-' +
+        String(tomorrow.getMonth() + 1).padStart(2, '0') + '-' +
         String(tomorrow.getDate()).padStart(2, '0')
-      const nextWeekStr = nextWeek.getFullYear() + '-' + 
-        String(nextWeek.getMonth() + 1).padStart(2, '0') + '-' + 
-        String(nextWeek.getDate()).padStart(2, '0')
+      const next30DaysStr = next30Days.getFullYear() + '-' +
+        String(next30Days.getMonth() + 1).padStart(2, '0') + '-' +
+        String(next30Days.getDate()).padStart(2, '0')
 
-      console.log('getUpcomingReservations: Looking from', tomorrowStr, 'to', nextWeekStr)
+      console.log('getUpcomingReservations: Looking from', tomorrowStr, 'to', next30DaysStr)
       
       query = query
         .gte("reservation_date", tomorrowStr)
-        .lt("reservation_date", nextWeekStr)
+        .lte("reservation_date", next30DaysStr)
     }
     
     if (scope.type === "one" && scope.id) {
