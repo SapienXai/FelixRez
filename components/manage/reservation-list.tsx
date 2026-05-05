@@ -24,7 +24,7 @@ import { CardFooter } from "@/components/ui/card"
 import { Textarea } from "@/components/ui/textarea"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Label } from "@/components/ui/label"
-import { CheckCircle, XCircle, Clock, Edit, List, Grid, User, Phone, Mail, Calendar, Utensils, Coffee, Copy } from "lucide-react"
+import { CheckCircle, XCircle, Clock, List, Grid, User, Phone, Mail, Calendar, Utensils, Coffee, Copy } from "lucide-react"
 import type { Reservation } from "@/types/supabase"
 import { updateReservationStatus, deleteReservation } from "@/app/manage/actions"
 import { toast } from "sonner"
@@ -38,21 +38,39 @@ interface ReservationWithRestaurant extends Reservation {
   restaurants?: {
     id: string
     name: string
-  }
+  } | null
   reservation_areas?: {
     id: string
     name: string
-  }
+  } | null
   booked_by_email?: string | null
 }
 
 interface ReservationListProps {
   reservations: ReservationWithRestaurant[]
   onStatusChange: () => void
+  onReservationChange?: (change: ReservationMutationChange) => void
   itemsPerPage?: number
+  restaurants?: { id: string; name: string; meal_only_reservations?: boolean }[]
+  defaultRestaurantId?: string
 }
 
-export function ReservationList({ reservations, onStatusChange, itemsPerPage = 5 }: ReservationListProps) {
+export type ReservationMutationChange = {
+  type: "create" | "update" | "delete"
+  reservation?: ReservationWithRestaurant | null
+  previousReservation?: ReservationWithRestaurant | null
+  reservationId?: string
+  statsDirty?: boolean
+}
+
+export function ReservationList({
+  reservations,
+  onStatusChange,
+  onReservationChange,
+  itemsPerPage = 5,
+  restaurants,
+  defaultRestaurantId,
+}: ReservationListProps) {
   const { getTranslation } = useLanguage()
   const [viewMode, setViewMode] = useState<"table" | "card">("card")
   const [actionDialog, setActionDialog] = useState<{
@@ -104,7 +122,16 @@ export function ReservationList({ reservations, onStatusChange, itemsPerPage = 5
 
       if (result.success) {
         toast.success(result.message)
-        onStatusChange()
+        if (onReservationChange) {
+          onReservationChange({
+            type: "update",
+            reservation: (result as any).data || null,
+            previousReservation: actionDialog.reservation,
+            statsDirty: true,
+          })
+        } else {
+          onStatusChange()
+        }
         setActionDialog({ isOpen: false, reservation: null, action: null })
         setNotes("")
         setSendEmail(true)
@@ -136,7 +163,16 @@ export function ReservationList({ reservations, onStatusChange, itemsPerPage = 5
 
       if (result.success) {
         toast.success(getTranslation("manage.reservations.list.deleteSuccess"))
-        onStatusChange()
+        if (onReservationChange) {
+          onReservationChange({
+            type: "delete",
+            reservationId: deleteDialog.reservation.id,
+            previousReservation: deleteDialog.reservation,
+            statsDirty: true,
+          })
+        } else {
+          onStatusChange()
+        }
         setDeleteDialog({ isOpen: false, reservation: null })
       } else {
         toast.error(getTranslation("manage.reservations.list.deleteError"))
@@ -156,8 +192,16 @@ export function ReservationList({ reservations, onStatusChange, itemsPerPage = 5
     setEditForm({ isOpen: false, reservation: null })
   }
 
-  const handleEditSuccess = () => {
-    onStatusChange()
+  const handleEditSuccess = (updatedReservation?: any, previousReservation?: any) => {
+    if (onReservationChange) {
+      onReservationChange({
+        type: "update",
+        reservation: updatedReservation || null,
+        previousReservation: previousReservation || editForm.reservation,
+      })
+    } else {
+      onStatusChange()
+    }
     closeEditForm()
   }
 
@@ -706,6 +750,8 @@ ${reservation.customer_phone}${reservation.special_requests ? `\n${reservation.s
         onSuccess={handleEditSuccess}
         reservation={editForm.reservation}
         mode="edit"
+        restaurants={restaurants}
+        defaultRestaurantId={defaultRestaurantId}
       />
     </>
   )

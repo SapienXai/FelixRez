@@ -2,25 +2,28 @@
 
 import type React from "react"
 
-import { useCallback, useEffect, useState } from "react"
+import { useCallback, useEffect, useRef, useState } from "react"
 import { getSupabaseBrowserClient } from "@/lib/supabase"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Plus } from "lucide-react"
-import { getReservations } from "../actions"
+import { getReservations, getRestaurants } from "../actions"
 import { ReservationTable } from "@/components/manage/reservation-table"
 import { ReservationForm } from "@/components/manage/reservation-form"
 import { useLanguage } from "@/context/language-context"
 import type { Database } from "@/types/supabase"
 
 type Reservation = Database['public']['Tables']['reservations']['Row']
+type RestaurantOption = { id: string; name: string; meal_only_reservations?: boolean }
 
 export default function ReservationsPage() {
   const { getTranslation } = useLanguage()
   const [isLoading, setIsLoading] = useState(true)
+  const [isRefreshing, setIsRefreshing] = useState(false)
   const [reservations, setReservations] = useState<Reservation[]>([])
+  const [restaurants, setRestaurants] = useState<RestaurantOption[]>([])
   const [showCreateForm, setShowCreateForm] = useState(false)
   const [filters, setFilters] = useState({
     status: "all",
@@ -29,27 +32,40 @@ export default function ReservationsPage() {
     searchQuery: "",
   })
   const supabase = getSupabaseBrowserClient()
+  const hasLoadedReservationsRef = useRef(false)
 
-  const fetchReservations = useCallback(async () => {
-    setIsLoading(true)
-    console.log('Fetching reservations with filters:', filters)
+  const fetchReservations = useCallback(async ({ fullLoader = false }: { fullLoader?: boolean } = {}) => {
+    const shouldUseFullLoader = fullLoader || !hasLoadedReservationsRef.current
+
+    if (shouldUseFullLoader) {
+      setIsLoading(true)
+    } else {
+      setIsRefreshing(true)
+    }
     try {
       const result = await getReservations(filters)
-      console.log('Reservation fetch result:', result)
       if (result.success) {
         setReservations(result.data)
       }
     } catch (error) {
       console.error("Error fetching reservations:", error)
     } finally {
-      setIsLoading(false)
+      hasLoadedReservationsRef.current = true
+      if (shouldUseFullLoader) {
+        setIsLoading(false)
+      } else {
+        setIsRefreshing(false)
+      }
     }
   }, [filters])
 
   useEffect(() => {
-    const checkSession = async () => {
+    const initializePage = async () => {
       await supabase.auth.getSession()
-      fetchReservations()
+      const restaurantsResult = await getRestaurants()
+      if (restaurantsResult.success) {
+        setRestaurants(restaurantsResult.data || [])
+      }
     }
 
     // Check URL parameters for auto-opening create form
@@ -60,8 +76,8 @@ export default function ReservationsPage() {
       window.history.replaceState({}, '', '/manage/reservations')
     }
 
-    checkSession()
-  }, [supabase, fetchReservations])
+    initializePage()
+  }, [supabase])
 
   // Auto-fetch reservations when filters change
   useEffect(() => {
@@ -78,11 +94,11 @@ export default function ReservationsPage() {
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault()
-    fetchReservations()
+    fetchReservations({ fullLoader: false })
   }
 
   const handleRefresh = () => {
-    fetchReservations()
+    fetchReservations({ fullLoader: false })
   }
 
   if (isLoading) {
@@ -192,6 +208,7 @@ export default function ReservationsPage() {
             <CardTitle>{getTranslation("manage.reservations.list.title")}</CardTitle>
             <CardDescription>
               {getTranslation("manage.reservations.list.showing", { count: String(reservations.length) })}
+              {isRefreshing ? ` · ${getTranslation("manage.common.loadingReservations")}` : ""}
             </CardDescription>
           </div>
           <Button onClick={() => setShowCreateForm(true)} size="sm" className="flex items-center gap-2">
@@ -208,10 +225,11 @@ export default function ReservationsPage() {
         <ReservationForm
           isOpen={showCreateForm}
           mode="create"
+          restaurants={restaurants}
           onClose={() => setShowCreateForm(false)}
           onSuccess={() => {
             setShowCreateForm(false)
-            fetchReservations()
+            fetchReservations({ fullLoader: false })
           }}
         />
       )}

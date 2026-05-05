@@ -7,6 +7,26 @@ import { sendEmail, generateStatusUpdateEmail } from "@/lib/email-service"
 import { generateICSFile } from "@/lib/calendar-invite"
 import { fetchManagedRestaurants, fetchPublicRestaurants } from "@/lib/services/manage/restaurant-service"
 
+async function attachBookedByEmail<T extends { booked_by_user_id?: string | null; booked_by_email?: string | null }>(
+  supabase: ReturnType<typeof createServiceRoleClient>,
+  row: T | null
+): Promise<T | null> {
+  if (!row?.booked_by_user_id) {
+    return row
+  }
+
+  try {
+    const { data, error } = await supabase.auth.admin.getUserById(row.booked_by_user_id)
+    if (!error && data.user?.email) {
+      return { ...row, booked_by_email: data.user.email }
+    }
+  } catch (error) {
+    console.warn(`Could not fetch auth user email for ${row.booked_by_user_id}:`, error)
+  }
+
+  return row
+}
+
 export async function getReservations(filters: {
   status?: string
   restaurantId?: string
@@ -151,8 +171,17 @@ export async function updateReservationStatus(id: string, status: string, notes?
       return { success: false, message: "Forbidden" }
     }
 
-    // Update the reservation status
-    const { error } = await supabase.from("reservations").update(updateData).eq("id", id)
+    // Update the reservation status and return the complete row for optimistic dashboard updates.
+    const { data: updatedReservation, error } = await supabase
+      .from("reservations")
+      .update(updateData)
+      .eq("id", id)
+      .select(`
+        *,
+        restaurants (id, name),
+        reservation_areas (id, name)
+      `)
+      .single()
 
     if (error) {
       console.error("Error updating reservation status:", error)
@@ -257,7 +286,11 @@ export async function updateReservationStatus(id: string, status: string, notes?
     }
 
     revalidatePath("/manage/reservations")
-    return { success: true, message: `Reservation ${status} successfully` }
+    return {
+      success: true,
+      data: await attachBookedByEmail(supabase, updatedReservation),
+      message: `Reservation ${status} successfully`,
+    }
   } catch (error) {
     console.error("Error in updateReservationStatus:", error)
     return { success: false, message: "An unexpected error occurred" }
@@ -344,8 +377,7 @@ export async function createReservation(reservationData: {
     }
 
     revalidatePath("/manage/reservations")
-    revalidatePath("/manage")
-    return { success: true, data, message: "Reservation created successfully" }
+    return { success: true, data: await attachBookedByEmail(supabase, data), message: "Reservation created successfully" }
   } catch (error) {
     console.error("Error in createReservation:", error)
     return { success: false, message: "An unexpected error occurred" }
@@ -424,8 +456,7 @@ export async function updateReservation(id: string, reservationData: {
     }
 
     revalidatePath("/manage/reservations")
-    revalidatePath("/manage")
-    return { success: true, data, message: "Reservation updated successfully" }
+    return { success: true, data: await attachBookedByEmail(supabase, data), message: "Reservation updated successfully" }
   } catch (error) {
     console.error("Error in updateReservation:", error)
     return { success: false, message: "An unexpected error occurred" }
@@ -469,8 +500,7 @@ export async function deleteReservation(id: string) {
     }
 
     revalidatePath("/manage/reservations")
-    revalidatePath("/manage")
-    return { success: true, message: "Reservation deleted successfully" }
+    return { success: true, id, message: "Reservation deleted successfully" }
   } catch (error) {
     console.error("Error in deleteReservation:", error)
     return { success: false, message: "An unexpected error occurred" }

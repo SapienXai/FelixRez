@@ -16,7 +16,7 @@ import {
 import { Textarea } from "@/components/ui/textarea"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Label } from "@/components/ui/label"
-import { Loader2, CheckCircle, XCircle, Clock, Calendar, Mail, Edit, Grid, List, Phone, User, Utensils, Coffee, Copy } from "lucide-react"
+import { Loader2, CheckCircle, XCircle, Clock, Calendar, Mail, Grid, List, Phone, User, Utensils, Coffee, Copy } from "lucide-react"
 import type { Reservation } from "@/types/supabase"
 import { updateReservationStatus } from "@/app/manage/actions"
 import { ReservationForm } from "./reservation-form"

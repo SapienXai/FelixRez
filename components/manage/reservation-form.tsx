@@ -57,7 +57,7 @@ interface ReservationWithRestaurant {
   restaurants?: {
     id: string
     name: string
-  }
+  } | null
 }
 
 type ReservationFormData = {
@@ -78,9 +78,11 @@ type ReservationFormData = {
 interface ReservationFormProps {
   isOpen: boolean
   onClose: () => void
-  onSuccess: () => void
+  onSuccess: (reservation?: ReservationWithRestaurant | null, previousReservation?: ReservationWithRestaurant | null) => void
   reservation?: ReservationWithRestaurant | null
   mode: "create" | "edit"
+  restaurants?: Restaurant[]
+  defaultRestaurantId?: string
 }
 
 const getTodayDate = () => {
@@ -106,6 +108,11 @@ const getCreateDefaultFormData = (): ReservationFormData => ({
   reservation_type: "meal",
 })
 
+const getCreateFormData = (defaultRestaurantId?: string): ReservationFormData => ({
+  ...getCreateDefaultFormData(),
+  restaurant_id: defaultRestaurantId || "",
+})
+
 const MAIN_HALL_AREA_VALUE = "__main_hall__"
 
 export function ReservationForm({
@@ -114,17 +121,29 @@ export function ReservationForm({
   onSuccess,
   reservation,
   mode,
+  restaurants: providedRestaurants,
+  defaultRestaurantId,
 }: ReservationFormProps) {
   const { getTranslation } = useLanguage()
   const [loading, setLoading] = useState(false)
-  const [restaurants, setRestaurants] = useState<Restaurant[]>([])
+  const [restaurants, setRestaurants] = useState<Restaurant[]>(providedRestaurants || [])
   const [areas, setAreas] = useState<{ id: string; name: string; is_active: boolean }[]>([])
   const [areasLoading, setAreasLoading] = useState(false)
   const [formData, setFormData] = useState<ReservationFormData>(getCreateDefaultFormData())
   const areaLoadRequestRef = useRef(0)
 
-  // Load restaurants on component mount
   useEffect(() => {
+    if (providedRestaurants) {
+      setRestaurants(providedRestaurants)
+    }
+  }, [providedRestaurants])
+
+  // Load restaurants only when the parent did not already provide them.
+  useEffect(() => {
+    if (providedRestaurants) {
+      return
+    }
+
     const loadRestaurants = async () => {
       const result = await getRestaurants()
       if (result.success) {
@@ -132,21 +151,25 @@ export function ReservationForm({
       }
     }
     loadRestaurants()
-  }, [])
+  }, [providedRestaurants])
 
-  const loadAreasForRestaurant = async (restaurantId: string, shouldSelectDefault: boolean) => {
+  const loadAreasForRestaurant = async (restaurantId: string, shouldResetArea: boolean) => {
     const requestId = ++areaLoadRequestRef.current
 
     if (!restaurantId) {
       setAreasLoading(false)
       setAreas([])
-      setFormData(prev => ({ ...prev, reservation_area_id: "" }))
+      if (shouldResetArea) {
+        setFormData(prev => ({ ...prev, reservation_area_id: "" }))
+      }
       return
     }
 
     setAreasLoading(true)
     setAreas([])
-    setFormData(prev => ({ ...prev, reservation_area_id: "" }))
+    if (shouldResetArea) {
+      setFormData(prev => ({ ...prev, reservation_area_id: "" }))
+    }
 
     const res = await getReservationAreas(restaurantId)
     if (areaLoadRequestRef.current !== requestId) {
@@ -160,7 +183,7 @@ export function ReservationForm({
         is_active: a.is_active,
       }))
       setAreas(loadedAreas)
-      if (shouldSelectDefault) {
+      if (shouldResetArea) {
         setFormData(prev => ({ ...prev, reservation_area_id: "" }))
       }
     } else {
@@ -189,9 +212,15 @@ export function ReservationForm({
       void loadAreasForRestaurant(reservation.restaurant_id, false)
     } else if (mode === "create") {
       // Reset form for create mode
-      setFormData(getCreateDefaultFormData())
+      const nextFormData = getCreateFormData(defaultRestaurantId)
+      setFormData(nextFormData)
+      if (nextFormData.restaurant_id) {
+        void loadAreasForRestaurant(nextFormData.restaurant_id, true)
+      } else {
+        setAreas([])
+      }
     }
-  }, [mode, reservation, isOpen])
+  }, [mode, reservation, isOpen, defaultRestaurantId])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -213,7 +242,7 @@ export function ReservationForm({
 
       if (result.success) {
         toast.success(result.message)
-        onSuccess()
+        onSuccess(result.data || null, reservation || null)
         onClose()
       } else {
         toast.error(result.message)
