@@ -235,15 +235,15 @@ function SeatingPrintPageInner() {
               </tbody>
             </table>
 
-            <footer className="mt-auto border-t-2 border-stone-950 pt-4">
-              <div className="grid grid-cols-2 gap-3">
-                <div className="rounded-2xl border border-stone-300 bg-white p-4">
+            <footer className="mt-auto border-t-2 border-stone-950 bg-white pt-4">
+              <div className="grid grid-cols-2 gap-3 bg-white">
+                <div className="rounded-2xl border border-stone-200 bg-stone-50 p-4">
                   <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-stone-500">
                     {getTranslation("manage.seating.totalReservations")}
                   </p>
                   <p className="mt-2 text-3xl font-semibold tracking-tight text-stone-950">{reservations.length}</p>
                 </div>
-                <div className="rounded-2xl border border-stone-300 bg-white p-4">
+                <div className="rounded-2xl border border-stone-200 bg-stone-50 p-4">
                   <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-stone-500">
                     {getTranslation("manage.seating.totalKuver")}
                   </p>
