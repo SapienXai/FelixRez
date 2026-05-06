@@ -143,7 +143,7 @@ export async function sendReservationPushNotification(
     body: bodyParts.join(" · "),
     icon: "/placeholder-logo.png",
     badge: "/placeholder-logo.png",
-    url: "/manage/reservations",
+    url: `/manage/reservations?reservationId=${encodeURIComponent(reservationId)}`,
     reservationId,
     event,
   })

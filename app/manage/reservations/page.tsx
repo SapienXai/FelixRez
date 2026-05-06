@@ -2,7 +2,8 @@
 
 import type React from "react"
 
-import { useCallback, useEffect, useRef, useState } from "react"
+import { Suspense, useCallback, useEffect, useRef, useState } from "react"
+import { useSearchParams } from "next/navigation"
 import { getSupabaseBrowserClient } from "@/lib/supabase"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -18,18 +19,20 @@ import type { Database } from "@/types/supabase"
 type Reservation = Database['public']['Tables']['reservations']['Row']
 type RestaurantOption = { id: string; name: string; meal_only_reservations?: boolean }
 
-export default function ReservationsPage() {
+function ReservationsPageContent() {
   const { getTranslation } = useLanguage()
   const [isLoading, setIsLoading] = useState(true)
   const [isRefreshing, setIsRefreshing] = useState(false)
   const [reservations, setReservations] = useState<Reservation[]>([])
   const [restaurants, setRestaurants] = useState<RestaurantOption[]>([])
   const [showCreateForm, setShowCreateForm] = useState(false)
+  const searchParams = useSearchParams()
   const [filters, setFilters] = useState({
     status: "all",
     restaurantId: "all",
     dateRange: "all",
     searchQuery: "",
+    reservationId: "",
   })
   const supabase = getSupabaseBrowserClient()
   const hasLoadedReservationsRef = useRef(false)
@@ -78,6 +81,19 @@ export default function ReservationsPage() {
 
     initializePage()
   }, [supabase])
+
+  useEffect(() => {
+    const reservationId = searchParams.get("reservationId")
+    if (reservationId) {
+      setFilters({
+        status: "all",
+        restaurantId: "all",
+        dateRange: "all",
+        searchQuery: "",
+        reservationId,
+      })
+    }
+  }, [searchParams])
 
   // Auto-fetch reservations when filters change
   useEffect(() => {
@@ -191,7 +207,9 @@ export default function ReservationsPage() {
                     restaurantId: "all",
                     dateRange: "all",
                     searchQuery: "",
+                    reservationId: "",
                   })
+                  window.history.replaceState({}, '', '/manage/reservations')
                   setTimeout(fetchReservations, 0)
                 }}
               >
@@ -234,5 +252,22 @@ export default function ReservationsPage() {
         />
       )}
     </div>
+  )
+}
+
+export default function ReservationsPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="fixed inset-0 flex items-center justify-center bg-white z-50">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900 mx-auto"></div>
+            <p className="mt-4 text-gray-700">Loading reservations...</p>
+          </div>
+        </div>
+      }
+    >
+      <ReservationsPageContent />
+    </Suspense>
   )
 }

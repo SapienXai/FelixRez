@@ -33,6 +33,7 @@ export async function getReservations(filters: {
   restaurantId?: string
   dateRange?: string
   searchQuery?: string
+  reservationId?: string
 }) {
   try {
     const supabase = createServiceRoleClient()
@@ -57,6 +58,10 @@ export async function getReservations(filters: {
 
     if (scope.type === "one" && scope.id) {
       query = query.eq("restaurant_id", scope.id)
+    }
+
+    if (filters.reservationId?.trim()) {
+      query = query.eq("id", filters.reservationId.trim())
     }
 
     // Handle date range filtering

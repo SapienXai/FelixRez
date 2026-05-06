@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
+import { useRouter } from "next/navigation"
 import { getSupabaseBrowserClient } from "@/lib/supabase"
 import { Bell, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -24,6 +25,7 @@ interface NotificationSystemProps {
 
 export function NotificationSystem({ onNewReservation }: NotificationSystemProps) {
   const { getTranslation } = useLanguage()
+  const router = useRouter()
   const [notifications, setNotifications] = useState<Notification[]>([])
   const [isOpen, setIsOpen] = useState(false)
   const [unreadCount, setUnreadCount] = useState(0)
@@ -192,7 +194,12 @@ export function NotificationSystem({ onNewReservation }: NotificationSystemProps
                     className={`p-3 border-b border-border hover:bg-muted/50 cursor-pointer ${
                       !notification.read ? 'bg-blue-50 dark:bg-blue-950/20' : ''
                     }`}
-                    onClick={() => markAsRead(notification.id)}
+                    onClick={() => {
+                      markAsRead(notification.id)
+                      if (notification.reservationId) {
+                        router.push(`/manage/reservations?reservationId=${encodeURIComponent(notification.reservationId)}`)
+                      }
+                    }}
                   >
                     <div className="flex items-start justify-between gap-2">
                       <div className="flex-1 min-w-0">

@@ -6,10 +6,10 @@ import { Bell, BellRing, CalendarDays, CheckCheck, Clock, LogOut, MapPin, Menu, 
 import { LanguageSelector } from "@/components/language-selector"
 import { getSupabaseBrowserClient } from "@/lib/supabase"
 import { useState, useEffect, useMemo, useRef } from "react"
+import { useRouter } from "next/navigation"
 import { useLanguage } from "@/context/language-context"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { cn } from "@/lib/utils"
 
 interface ManageHeaderProps {
@@ -114,6 +114,7 @@ function getNotificationId(reservation: any, eventType: "created" | "updated") {
 
 export function ManageHeader({ toggleSidebar }: ManageHeaderProps) {
   const supabase = getSupabaseBrowserClient()
+  const router = useRouter()
   const { getTranslation } = useLanguage()
   const [isSigningOut, setIsSigningOut] = useState(false)
   const [showNotifications, setShowNotifications] = useState(false)
@@ -121,8 +122,6 @@ export function ManageHeader({ toggleSidebar }: ManageHeaderProps) {
   const [popupNotifications, setPopupNotifications] = useState<PopupNotification[]>([])
   const audioContextRef = useRef<AudioContext | null>(null)
   const dropdownRef = useRef<HTMLDivElement>(null)
-  const [selectedNotification, setSelectedNotification] = useState<Notification | null>(null)
-  const [showConfirmDialog, setShowConfirmDialog] = useState(false)
   const readNotificationIdsRef = useRef<Set<string>>(new Set())
   const dismissedNotificationIdsRef = useRef<Set<string>>(new Set())
   const knownNotificationIdsRef = useRef<Set<string>>(new Set())
@@ -134,6 +133,10 @@ export function ManageHeader({ toggleSidebar }: ManageHeaderProps) {
   )
 
   const unreadLabel = unreadCount > 9 ? "9+" : String(unreadCount)
+
+  const goToReservation = (reservationId: string) => {
+    router.push(`/manage/reservations?reservationId=${encodeURIComponent(reservationId)}`)
+  }
 
   useEffect(() => {
     if (typeof window === "undefined") return
@@ -779,9 +782,8 @@ export function ManageHeader({ toggleSidebar }: ManageHeaderProps) {
                             )}
                             onClick={() => {
                               markAsRead(notification.id)
-                              setSelectedNotification({ ...notification, read: true })
-                              setShowConfirmDialog(true)
                               setShowNotifications(false)
+                              goToReservation(notification.reservation_id)
                             }}
                             role="button"
                             tabIndex={0}
@@ -859,30 +861,6 @@ export function ManageHeader({ toggleSidebar }: ManageHeaderProps) {
         </div>
       </div>
 
-      <Dialog open={showConfirmDialog} onOpenChange={setShowConfirmDialog}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>{getTranslation('manage.notifications.confirmTitle')}</DialogTitle>
-            <DialogDescription>
-              {selectedNotification && (
-                <div className="space-y-2">
-                  <p><strong>{getTranslation('manage.notifications.customer')}:</strong> {selectedNotification.customer_name}</p>
-                  <p><strong>{getTranslation('manage.notifications.restaurant')}:</strong> {selectedNotification.restaurant_name}{selectedNotification.reservation_area_name ? ` • ${selectedNotification.reservation_area_name}` : ''}</p>
-                  <p><strong>{getTranslation('manage.notifications.party')}:</strong> {selectedNotification.party_size}</p>
-                  <p><strong>{getTranslation('manage.notifications.time')}:</strong> {selectedNotification.reservation_time}</p>
-                   <p><strong>{getTranslation('manage.notifications.date')}:</strong> {new Date(selectedNotification.reservation_date).toLocaleDateString()}</p>
-                </div>
-              )}
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setShowConfirmDialog(false)}>
-              {getTranslation('common.close')}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
       {/* Popup Notifications */}
       {popupNotifications.map((popup, index) => (
         <div
@@ -890,7 +868,15 @@ export function ManageHeader({ toggleSidebar }: ManageHeaderProps) {
           className="fixed right-4 top-4 z-[9999] w-[min(calc(100vw-2rem),22rem)] animate-in slide-in-from-right-full fade-in-0 duration-300"
           style={{ transform: `translateY(${index * 126}px)` }}
         >
-          <Card className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-[0_22px_70px_rgba(15,23,42,0.22)]">
+          <Card
+            className="cursor-pointer overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-[0_22px_70px_rgba(15,23,42,0.22)]"
+            role="button"
+            tabIndex={0}
+            onClick={() => {
+              closePopupNotification(popup.id)
+              goToReservation(popup.reservation_id)
+            }}
+          >
             <div className="bg-slate-950 px-4 py-3 text-white">
               <div className="flex items-start justify-between gap-3">
                 <div>
@@ -908,7 +894,10 @@ export function ManageHeader({ toggleSidebar }: ManageHeaderProps) {
                 <Button
                   variant="ghost"
                   size="icon"
-                  onClick={() => closePopupNotification(popup.id)}
+                  onClick={(event) => {
+                    event.stopPropagation()
+                    closePopupNotification(popup.id)
+                  }}
                   className="h-8 w-8 rounded-full text-white/70 hover:bg-white/10 hover:text-white"
                 >
                   <X className="h-4 w-4" />
@@ -938,11 +927,15 @@ export function ManageHeader({ toggleSidebar }: ManageHeaderProps) {
               </div>
               <div className="border-t border-slate-100 pt-2">
                 <Button
-                  onClick={() => closePopupNotification(popup.id)}
+                  onClick={(event) => {
+                    event.stopPropagation()
+                    closePopupNotification(popup.id)
+                    goToReservation(popup.reservation_id)
+                  }}
                   className="w-full rounded-full bg-slate-950 hover:bg-slate-800"
                   size="sm"
                 >
-                  {getTranslation('common.close')}
+                  {getTranslation('manage.notifications.viewDetails')}
                 </Button>
               </div>
             </CardContent>
