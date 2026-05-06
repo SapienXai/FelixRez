@@ -95,15 +95,40 @@ export async function getSeatingReservations(filters: SeatingFilters) {
         .in("id", creatorIds)
 
       for (const profile of profiles || []) {
-        creatorMap.set(profile.id, profile.full_name || "Unknown")
+        const name = profile.full_name?.trim()
+        if (name) {
+          creatorMap.set(profile.id, name)
+        }
       }
+
+      const missingCreatorIds = creatorIds.filter((id) => !creatorMap.has(id))
+      await Promise.all(
+        missingCreatorIds.map(async (id) => {
+          const { data: authUser } = await supabase.auth.admin.getUserById(id)
+          const email = authUser.user?.email?.trim()
+          if (email) {
+            creatorMap.set(id, email)
+          }
+        })
+      )
+    }
+
+    function getBookedByName(row: Pick<SeatingRow, "booked_by_label" | "booked_by_user_id">) {
+      const manualLabel = row.booked_by_label?.trim()
+      if (manualLabel) {
+        return manualLabel
+      }
+
+      if (row.booked_by_user_id) {
+        return creatorMap.get(row.booked_by_user_id) || "Staff"
+      }
+
+      return "Online"
     }
 
     let mapped = (data || []).map((row) => ({
       ...row,
-      booked_by_name:
-        row.booked_by_label?.trim() ||
-        (row.booked_by_user_id ? creatorMap.get(row.booked_by_user_id) || "Unknown" : "Online"),
+      booked_by_name: getBookedByName(row),
     }))
 
     if (filters.searchQuery && filters.searchQuery.trim()) {
