@@ -117,10 +117,20 @@ export function generateReservationConfirmationEmail({
           margin: 0 auto;
         }
         .header {
-          background-color: #0d6efd;
-          color: white;
+          background-color: #ffc107;
+          color: #212529;
           padding: 20px;
           text-align: center;
+        }
+        .header h1 {
+          margin: 0;
+        }
+        .header .subtitle {
+          margin: 8px 0 0;
+          font-size: 14px;
+          font-weight: bold;
+          letter-spacing: 0.4px;
+          text-transform: uppercase;
         }
         .content {
           padding: 20px;
@@ -190,6 +200,7 @@ export function generateReservationConfirmationEmail({
     <body>
       <div class="header">
         <h1>${isEnglish ? "Reservation Received" : "Rezervasyon Alındı"}</h1>
+        <p class="subtitle">${isEnglish ? "Currently On Pending" : "Rezervasyonunuz şu anda beklemede"}</p>
       </div>
       <div class="content">
         <p>${isEnglish ? "Dear" : "Sayın"} ${customerName},</p>
@@ -364,6 +375,12 @@ export function generateManagementNotificationEmail({
       </div>
       <div class="content">
         <p>A reservation has been <strong>${action}</strong> and requires your attention.</p>
+
+        <div class="button-container">
+          <a href="https://reserve.felixsmile.com/manage" class="manage-button">
+            Manage Reservations
+          </a>
+        </div>
         
         <div class="reservation-details">
           <h3>Reservation Details</h3>
@@ -434,12 +451,6 @@ export function generateManagementNotificationEmail({
         </div>
         `
         }
-        
-        <div class="button-container">
-          <a href="https://reserve.felixsmile.com/manage" class="manage-button">
-            Manage Reservations
-          </a>
-        </div>
         
         <p>Please log in to the management dashboard to review this reservation and take appropriate action.</p>
         
@@ -571,6 +582,17 @@ export function generateStatusUpdateEmail({
                 : `${restaurantName} rezervasyonunuzun iptal edildiğini bildirmekten üzüntü duyarız.`
           }
         </p>
+
+        ${
+          notes
+            ? `
+        <div class="notes">
+          <h3>${isEnglish ? "Notes from the Restaurant" : "Restorandan Notlar"}</h3>
+          <p>${notes}</p>
+        </div>
+        `
+            : ""
+        }
         
         <div class="reservation-details">
           <h3>${isEnglish ? "Reservation Details" : "Rezervasyon Detayları"}</h3>
@@ -603,17 +625,6 @@ export function generateStatusUpdateEmail({
           </div>
           ` : ''}
         </div>
-        
-        ${
-          notes
-            ? `
-        <div class="notes">
-          <h3>${isEnglish ? "Notes from the Restaurant" : "Restorandan Notlar"}</h3>
-          <p>${notes}</p>
-        </div>
-        `
-            : ""
-        }
         
         ${
           isConfirmed
