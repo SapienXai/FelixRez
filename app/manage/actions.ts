@@ -6,6 +6,7 @@ import { revalidatePath } from "next/cache"
 import { sendEmail, generateStatusUpdateEmail } from "@/lib/email-service"
 import { generateICSFile } from "@/lib/calendar-invite"
 import { fetchManagedRestaurants, fetchPublicRestaurants } from "@/lib/services/manage/restaurant-service"
+import { sendReservationPushNotification } from "@/lib/push-service"
 
 async function attachBookedByEmail<T extends { booked_by_user_id?: string | null; booked_by_email?: string | null }>(
   supabase: ReturnType<typeof createServiceRoleClient>,
@@ -286,6 +287,10 @@ export async function updateReservationStatus(id: string, status: string, notes?
     }
 
     revalidatePath("/manage/reservations")
+    await sendReservationPushNotification(id, "status_changed").catch((error) => {
+      console.error("Failed to send reservation push notification:", error)
+    })
+
     return {
       success: true,
       data: await attachBookedByEmail(supabase, updatedReservation),
@@ -377,6 +382,10 @@ export async function createReservation(reservationData: {
     }
 
     revalidatePath("/manage/reservations")
+    await sendReservationPushNotification(data.id, "created").catch((error) => {
+      console.error("Failed to send reservation push notification:", error)
+    })
+
     return { success: true, data: await attachBookedByEmail(supabase, data), message: "Reservation created successfully" }
   } catch (error) {
     console.error("Error in createReservation:", error)
@@ -456,6 +465,10 @@ export async function updateReservation(id: string, reservationData: {
     }
 
     revalidatePath("/manage/reservations")
+    await sendReservationPushNotification(id, "updated").catch((error) => {
+      console.error("Failed to send reservation push notification:", error)
+    })
+
     return { success: true, data: await attachBookedByEmail(supabase, data), message: "Reservation updated successfully" }
   } catch (error) {
     console.error("Error in updateReservation:", error)

@@ -3,6 +3,7 @@
 import { createServiceRoleClient } from "@/lib/supabase"
 import { revalidatePath } from "next/cache"
 import { sendEmail, generateReservationConfirmationEmail, generateManagementNotificationEmail, MANAGEMENT_EMAIL } from "@/lib/email-service"
+import { sendReservationPushNotification } from "@/lib/push-service"
 import {
   fetchActiveReservationAreas,
   fetchRestaurantByName,
@@ -116,6 +117,12 @@ export async function createReservation(params: CreateReservationParams) {
 
     if (!mgmtEmailResult.success) {
       console.error("Failed to send management notification email:", mgmtEmailResult.error)
+    }
+
+    if (data?.[0]?.id) {
+      await sendReservationPushNotification(data[0].id, "created").catch((error) => {
+        console.error("Failed to send reservation push notification:", error)
+      })
     }
 
     let message =
@@ -246,6 +253,10 @@ export async function updateReservation(params: UpdateReservationParams) {
       if (!mgmtEmailResult.success) {
         console.error("Failed to send management notification email:", mgmtEmailResult.error)
       }
+
+      await sendReservationPushNotification(params.id, "updated").catch((error) => {
+        console.error("Failed to send reservation push notification:", error)
+      })
     }
 
     revalidatePath("/manage/reservations")

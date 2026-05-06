@@ -3,6 +3,7 @@ export const translations = {
     siteTitle: "Felix Restaurants",
     common: {
       close: "Close",
+      loading: "Loading...",
       locale: "en-US",
       status: {
         pending: "Pending",
@@ -427,6 +428,7 @@ export const translations = {
       notifications: {
         title: "Notifications",
         newReservation: "New reservation received!",
+        updatedReservation: "Reservation updated",
         from: "from",
         party: "party",
         at: "at",
@@ -442,6 +444,10 @@ export const translations = {
         restaurant: "Restaurant",
         time: "Time",
         date: "Date",
+        pushEnable: "Enable alerts",
+        pushBlocked: "Browser alerts are blocked",
+        pushUnsupported: "Browser alerts are not supported",
+        pushUnconfigured: "Web Push keys are not configured",
       },
       reservationForm: {
         title: "New Reservation",
@@ -500,6 +506,7 @@ export const translations = {
     siteTitle: "Felix Restoranları",
     common: {
       close: "Kapat",
+      loading: "Yükleniyor...",
       locale: "tr-TR",
       status: {
         pending: "Beklemede",
@@ -925,6 +932,7 @@ export const translations = {
       notifications: {
         title: "Bildirimler",
         newReservation: "Yeni rezervasyon alındı!",
+        updatedReservation: "Rezervasyon güncellendi",
         from: "şuradan",
         party: "kişilik",
         at: "saatinde",
@@ -940,6 +948,10 @@ export const translations = {
         restaurant: "Restoran",
         time: "Saat",
         date: "Tarih",
+        pushEnable: "Uyarıları aç",
+        pushBlocked: "Tarayıcı uyarıları engellendi",
+        pushUnsupported: "Tarayıcı uyarıları desteklenmiyor",
+        pushUnconfigured: "Web Push anahtarları tanımlı değil",
       },
       reservationForm: {
         title: "Yeni Rezervasyon",

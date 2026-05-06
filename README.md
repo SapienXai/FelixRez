@@ -47,6 +47,9 @@ Defined in `.env.example`:
 - `NEXT_PUBLIC_SUPABASE_ANON_KEY` - Supabase anon key (client-side)
 - `RESEND_API_KEY` - Resend API key for transactional email
 - `MANAGEMENT_EMAIL` - notification recipient for management emails
+- `WEB_PUSH_PUBLIC_KEY` - VAPID public key for admin browser push notifications
+- `WEB_PUSH_PRIVATE_KEY` - VAPID private key for admin browser push notifications
+- `WEB_PUSH_SUBJECT` - VAPID contact subject, usually `mailto:info@yourdomain.com`
 
 ## Deployment
 Build the app with `npm run build`, then run with `npm run start`. Ensure all environment variables are configured in your hosting platform.

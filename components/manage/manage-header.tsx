@@ -2,7 +2,7 @@
 
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
-import { Bell, CalendarDays, CheckCheck, Clock, LogOut, MapPin, Menu, Sparkles, Trash2, Users, X } from "lucide-react"
+import { Bell, BellRing, CalendarDays, CheckCheck, Clock, LogOut, MapPin, Menu, Sparkles, Trash2, Users, X } from "lucide-react"
 import { LanguageSelector } from "@/components/language-selector"
 import { getSupabaseBrowserClient } from "@/lib/supabase"
 import { useState, useEffect, useMemo, useRef } from "react"
@@ -22,6 +22,8 @@ interface ManageHeaderProps {
 
 interface Notification {
   id: string
+  reservation_id: string
+  event_type: "created" | "updated"
   customer_name: string
   restaurant_name: string
   reservation_area_name?: string | null
@@ -34,6 +36,8 @@ interface Notification {
 
 interface PopupNotification {
   id: string
+  reservation_id: string
+  event_type: "created" | "updated"
   customer_name: string
   restaurant_name: string
   reservation_area_name?: string | null
@@ -45,6 +49,8 @@ interface PopupNotification {
 
 const READ_NOTIFICATIONS_STORAGE_KEY = "felix-read-notifications"
 const DISMISSED_NOTIFICATIONS_STORAGE_KEY = "felix-dismissed-notifications"
+
+type PushStatus = "checking" | "unsupported" | "unconfigured" | "denied" | "unsubscribed" | "subscribed" | "loading"
 
 function readStoredIds(key: string) {
   if (typeof window === "undefined") {
@@ -88,6 +94,24 @@ function clearSupabaseAuthStorage() {
   }
 }
 
+function urlBase64ToUint8Array(base64String: string) {
+  const padding = "=".repeat((4 - (base64String.length % 4)) % 4)
+  const base64 = `${base64String}${padding}`.replace(/-/g, "+").replace(/_/g, "/")
+  const rawData = window.atob(base64)
+  const outputArray = new Uint8Array(rawData.length)
+
+  for (let index = 0; index < rawData.length; index += 1) {
+    outputArray[index] = rawData.charCodeAt(index)
+  }
+
+  return outputArray
+}
+
+function getNotificationId(reservation: any, eventType: "created" | "updated") {
+  const timestamp = eventType === "updated" ? reservation.updated_at || new Date().toISOString() : reservation.created_at
+  return `${reservation.id}-${eventType}-${timestamp}`
+}
+
 export function ManageHeader({ toggleSidebar }: ManageHeaderProps) {
   const supabase = getSupabaseBrowserClient()
   const { getTranslation } = useLanguage()
@@ -102,6 +126,7 @@ export function ManageHeader({ toggleSidebar }: ManageHeaderProps) {
   const readNotificationIdsRef = useRef<Set<string>>(new Set())
   const dismissedNotificationIdsRef = useRef<Set<string>>(new Set())
   const knownNotificationIdsRef = useRef<Set<string>>(new Set())
+  const [pushStatus, setPushStatus] = useState<PushStatus>("checking")
 
   const unreadCount = useMemo(
     () => notifications.reduce((count, notification) => count + (notification.read ? 0 : 1), 0),
@@ -109,6 +134,92 @@ export function ManageHeader({ toggleSidebar }: ManageHeaderProps) {
   )
 
   const unreadLabel = unreadCount > 9 ? "9+" : String(unreadCount)
+
+  useEffect(() => {
+    if (typeof window === "undefined") return
+
+    if (!("serviceWorker" in navigator) || !("PushManager" in window) || !("Notification" in window)) {
+      setPushStatus("unsupported")
+      return
+    }
+
+    if (Notification.permission === "denied") {
+      setPushStatus("denied")
+      return
+    }
+
+    fetch("/api/push-notifications/public-key")
+      .then(async (response) => {
+        if (!response.ok) {
+          setPushStatus("unconfigured")
+          return null
+        }
+
+        return navigator.serviceWorker.register("/sw.js")
+      })
+      .then((registration) => registration?.pushManager.getSubscription())
+      .then((subscription) => {
+        if (subscription === undefined) {
+          return
+        }
+
+        setPushStatus(subscription ? "subscribed" : "unsubscribed")
+      })
+      .catch((error) => {
+        console.error("Failed to initialize push notifications:", error)
+        setPushStatus("unsupported")
+      })
+  }, [])
+
+  const enablePushNotifications = async () => {
+    if (pushStatus === "loading") {
+      return
+    }
+
+    if (!("serviceWorker" in navigator) || !("PushManager" in window) || !("Notification" in window)) {
+      setPushStatus("unsupported")
+      return
+    }
+
+    setPushStatus("loading")
+
+    try {
+      const permission = await Notification.requestPermission()
+      if (permission !== "granted") {
+        setPushStatus(permission === "denied" ? "denied" : "unsubscribed")
+        return
+      }
+
+      const keyResponse = await fetch("/api/push-notifications/public-key")
+      const keyPayload = await keyResponse.json()
+      if (!keyResponse.ok || !keyPayload.publicKey) {
+        setPushStatus("unconfigured")
+        return
+      }
+
+      const registration = await navigator.serviceWorker.register("/sw.js")
+      const existingSubscription = await registration.pushManager.getSubscription()
+      const subscription = existingSubscription || await registration.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: urlBase64ToUint8Array(keyPayload.publicKey),
+      })
+
+      const saveResponse = await fetch("/api/push-notifications/subscribe", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(subscription),
+      })
+
+      if (!saveResponse.ok) {
+        throw new Error("Failed to save push subscription")
+      }
+
+      setPushStatus("subscribed")
+    } catch (error) {
+      console.error("Failed to enable push notifications:", error)
+      setPushStatus("unsubscribed")
+    }
+  }
 
 
   useEffect(() => {
@@ -154,6 +265,7 @@ export function ManageHeader({ toggleSidebar }: ManageHeaderProps) {
                 reservation_time,
                 reservation_date,
                 created_at,
+                updated_at,
                 restaurants(name),
                 reservation_areas(name)
               `)
@@ -191,7 +303,9 @@ export function ManageHeader({ toggleSidebar }: ManageHeaderProps) {
           }
 
           const notification: Notification = {
-            id: newReservation.id,
+            id: getNotificationId(newReservation, "created"),
+            reservation_id: newReservation.id,
+            event_type: "created",
             customer_name: newReservation.customer_name,
             restaurant_name: restaurantName,
             reservation_area_name: areaName,
@@ -216,7 +330,9 @@ export function ManageHeader({ toggleSidebar }: ManageHeaderProps) {
           
           // Create popup notification
           const popupNotification: PopupNotification = {
-            id: newReservation.id,
+            id: notification.id,
+            reservation_id: newReservation.id,
+            event_type: "created",
             customer_name: newReservation.customer_name,
             restaurant_name: restaurantName,
             reservation_area_name: areaName,
@@ -226,6 +342,99 @@ export function ManageHeader({ toggleSidebar }: ManageHeaderProps) {
             created_at: newReservation.created_at
           }
           
+          if (!notification.read) {
+            setPopupNotifications(prev => {
+              if (prev.some(item => item.id === popupNotification.id)) return prev
+              return [...prev, popupNotification]
+            })
+            playNotificationSound()
+          }
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'reservations'
+        },
+        async (payload) => {
+          const updatedReservation = payload.new as any
+
+          let restaurantName = 'Unknown Restaurant'
+          let areaName: string | null = null
+
+          try {
+            const { data: reservationWithRestaurant, error } = await supabase
+              .from('reservations')
+              .select(`
+                id,
+                customer_name,
+                party_size,
+                reservation_time,
+                reservation_date,
+                created_at,
+                updated_at,
+                restaurants(name),
+                reservation_areas(name)
+              `)
+              .eq('id', updatedReservation.id)
+              .single()
+
+            if (error) {
+              console.error('Error fetching updated reservation with restaurant:', JSON.stringify(error, null, 2))
+              const { data: restaurant } = await supabase
+                .from('restaurants')
+                .select('name')
+                .eq('id', updatedReservation.restaurant_id)
+                .single()
+
+              restaurantName = restaurant?.name || 'Unknown Restaurant'
+            } else {
+              restaurantName = (reservationWithRestaurant.restaurants as any)?.name || 'Unknown Restaurant'
+              areaName = (reservationWithRestaurant as any)?.reservation_areas?.name || null
+            }
+          } catch (fetchError) {
+            console.error('Failed to fetch updated reservation name:', fetchError)
+          }
+
+          const notification: Notification = {
+            id: getNotificationId(updatedReservation, "updated"),
+            reservation_id: updatedReservation.id,
+            event_type: "updated",
+            customer_name: updatedReservation.customer_name,
+            restaurant_name: restaurantName,
+            reservation_area_name: areaName,
+            party_size: updatedReservation.party_size,
+            reservation_time: updatedReservation.reservation_time,
+            reservation_date: updatedReservation.reservation_date,
+            created_at: updatedReservation.updated_at || new Date().toISOString(),
+            read: readNotificationIdsRef.current.has(getNotificationId(updatedReservation, "updated"))
+          }
+
+          if (dismissedNotificationIdsRef.current.has(notification.id)) {
+            return
+          }
+          if (knownNotificationIdsRef.current.has(notification.id)) {
+            return
+          }
+
+          knownNotificationIdsRef.current.add(notification.id)
+          setNotifications(prev => [notification, ...prev])
+
+          const popupNotification: PopupNotification = {
+            id: notification.id,
+            reservation_id: updatedReservation.id,
+            event_type: "updated",
+            customer_name: updatedReservation.customer_name,
+            restaurant_name: restaurantName,
+            reservation_area_name: areaName,
+            party_size: updatedReservation.party_size,
+            reservation_time: updatedReservation.reservation_time,
+            reservation_date: updatedReservation.reservation_date,
+            created_at: updatedReservation.updated_at || new Date().toISOString()
+          }
+
           if (!notification.read) {
             setPopupNotifications(prev => {
               if (prev.some(item => item.id === popupNotification.id)) return prev
@@ -257,7 +466,9 @@ export function ManageHeader({ toggleSidebar }: ManageHeaderProps) {
                   const isRead = readNotificationIdsRef.current.has(reservation.id)
 
                   const notification: Notification = {
-                    id: reservation.id,
+                    id: getNotificationId(reservation, "created"),
+                    reservation_id: reservation.id,
+                    event_type: "created",
                     customer_name: reservation.customer_name,
                     restaurant_name: restaurantName,
                     reservation_area_name: (reservation as any)?.reservation_areas?.name || null,
@@ -282,7 +493,9 @@ export function ManageHeader({ toggleSidebar }: ManageHeaderProps) {
                   
                   // Create popup notification
                   const popupNotification: PopupNotification = {
-                    id: reservation.id,
+                    id: notification.id,
+                    reservation_id: reservation.id,
+                    event_type: "created",
                     customer_name: reservation.customer_name,
                     restaurant_name: restaurantName,
                     reservation_area_name: (reservation as any)?.reservation_areas?.name || null,
@@ -442,6 +655,31 @@ export function ManageHeader({ toggleSidebar }: ManageHeaderProps) {
         <div className="flex items-center gap-4">
           <LanguageSelector />
 
+          {pushStatus !== "subscribed" && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={enablePushNotifications}
+              disabled={pushStatus === "loading" || pushStatus === "unsupported" || pushStatus === "unconfigured" || pushStatus === "denied"}
+              title={
+                pushStatus === "unsupported"
+                  ? getTranslation('manage.notifications.pushUnsupported')
+                  : pushStatus === "unconfigured"
+                    ? getTranslation('manage.notifications.pushUnconfigured')
+                  : pushStatus === "denied"
+                    ? getTranslation('manage.notifications.pushBlocked')
+                    : getTranslation('manage.notifications.pushEnable')
+              }
+              className="h-9 rounded-full border-slate-200 px-3 text-xs"
+            >
+              <BellRing className={cn("h-4 w-4 sm:mr-1.5", pushStatus === "loading" && "animate-pulse")} />
+              <span className="hidden sm:inline">
+                {pushStatus === "loading"
+                  ? getTranslation('common.loading')
+                  : getTranslation('manage.notifications.pushEnable')}
+              </span>
+            </Button>
+          )}
 
           <div className="relative" ref={dropdownRef}>
             <Button 
@@ -658,7 +896,9 @@ export function ManageHeader({ toggleSidebar }: ManageHeaderProps) {
                 <div>
                   <div className="inline-flex items-center gap-1.5 rounded-full bg-sky-400/15 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.16em] text-sky-100">
                     <Bell className="h-3 w-3" />
-                    {getTranslation('manage.notifications.newReservation')}
+                    {popup.event_type === "updated"
+                      ? getTranslation('manage.notifications.updatedReservation')
+                      : getTranslation('manage.notifications.newReservation')}
                   </div>
                   <p className="mt-2 text-sm font-semibold">{popup.customer_name}</p>
                   <p className="text-xs text-white/60">

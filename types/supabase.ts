@@ -256,6 +256,44 @@ export interface Database {
           updated_at?: string
         }
       }
+      admin_push_subscriptions: {
+        Row: {
+          id: string
+          user_id: string
+          restaurant_id: string | null
+          endpoint: string
+          p256dh: string
+          auth: string
+          user_agent: string | null
+          enabled: boolean
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          restaurant_id?: string | null
+          endpoint: string
+          p256dh: string
+          auth: string
+          user_agent?: string | null
+          enabled?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          restaurant_id?: string | null
+          endpoint?: string
+          p256dh?: string
+          auth?: string
+          user_agent?: string | null
+          enabled?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+      }
       notification_settings: {
         Row: {
           id: string
@@ -294,4 +332,5 @@ export type RestaurantMedia = Database["public"]["Tables"]["restaurant_media"]["
 export type ReservationArea = Database["public"]["Tables"]["reservation_areas"]["Row"]
 export type Reservation = Database["public"]["Tables"]["reservations"]["Row"]
 export type AdminProfile = Database["public"]["Tables"]["admin_profiles"]["Row"]
+export type AdminPushSubscription = Database["public"]["Tables"]["admin_push_subscriptions"]["Row"]
 export type NotificationSettings = Database["public"]["Tables"]["notification_settings"]["Row"]
