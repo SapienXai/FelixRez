@@ -49,6 +49,9 @@ type RestaurantOption = {
   meal_only_reservations?: boolean
 }
 
+type StatusFilter = "all" | "pending" | "confirmed" | "cancelled"
+type MetricFilter = "all" | "kuver" | "meal" | "deck" | "terrace"
+
 const EMPTY_STATS: DashboardStats = {
   total: 0,
   pending: 0,
@@ -126,6 +129,50 @@ function statsChanged(previous?: ReservationRecord | null, next?: ReservationRec
   return STATS_FIELDS.some((field) => previous[field] !== next[field])
 }
 
+function getReservationAreaName(reservation: ReservationRecord) {
+  return reservation.reservation_areas?.name?.toLowerCase() ?? ""
+}
+
+function matchesMetricFilter(reservation: ReservationRecord, metricFilter: MetricFilter) {
+  if (metricFilter === "all") {
+    return true
+  }
+
+  if (metricFilter === "meal") {
+    return reservation.reservation_type === "meal"
+  }
+
+  if (metricFilter === "kuver") {
+    return reservation.status === "confirmed"
+  }
+
+  const areaName = getReservationAreaName(reservation)
+  if (metricFilter === "deck") {
+    return reservation.status === "confirmed" && areaName.includes("deck")
+  }
+
+  if (metricFilter === "terrace") {
+    return reservation.status === "confirmed" && areaName.includes("terrace")
+  }
+
+  return true
+}
+
+function getStatusFilterLabel(statusFilter: StatusFilter) {
+  if (statusFilter === "pending") return "Pending"
+  if (statusFilter === "confirmed") return "Confirmed"
+  if (statusFilter === "cancelled") return "Cancelled"
+  return "All"
+}
+
+function getMetricFilterLabel(metricFilter: MetricFilter) {
+  if (metricFilter === "kuver") return "Total Kuver"
+  if (metricFilter === "meal") return "Meal Reservations"
+  if (metricFilter === "deck") return "Deck"
+  if (metricFilter === "terrace") return "Terrace"
+  return "All"
+}
+
 export default function ManageDashboard() {
   const { getTranslation } = useLanguage()
   const { role, isSuperAdmin, loading: roleLoading } = useManageContext()
@@ -142,7 +189,8 @@ export default function ManageDashboard() {
   const [upcomingReservations, setUpcomingReservations] = useState<ReservationRecord[]>([])
   const [selectedDateReservations, setSelectedDateReservations] = useState<ReservationRecord[]>([])
   const [restaurants, setRestaurants] = useState<RestaurantOption[]>([])
-  const [statusFilter, setStatusFilter] = useState("all")
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>("all")
+  const [metricFilter, setMetricFilter] = useState<MetricFilter>("all")
   const [selectedRestaurant, setSelectedRestaurant] = useState("")
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(undefined)
   const [timePeriod, setTimePeriod] = useState("daily")
@@ -506,6 +554,28 @@ export default function ManageDashboard() {
     }
   }, [])
 
+  const handleStatusFilter = useCallback((nextStatusFilter: StatusFilter) => {
+    setStatusFilter(nextStatusFilter)
+    setMetricFilter("all")
+  }, [])
+
+  const handleMetricFilter = useCallback((nextMetricFilter: MetricFilter) => {
+    setMetricFilter((currentMetricFilter) => (currentMetricFilter === nextMetricFilter ? "all" : nextMetricFilter))
+    setStatusFilter("all")
+  }, [])
+
+  const activeFilterLabel = useMemo(() => {
+    if (metricFilter !== "all") {
+      return getMetricFilterLabel(metricFilter)
+    }
+
+    if (statusFilter !== "all") {
+      return getStatusFilterLabel(statusFilter)
+    }
+
+    return null
+  }, [metricFilter, statusFilter])
+
   const filterReservations = useCallback((reservations: ReservationRecord[]) => {
     let filtered = reservations
     if (selectedRestaurant !== "all") {
@@ -514,8 +584,11 @@ export default function ManageDashboard() {
     if (statusFilter !== "all") {
       filtered = filtered.filter((reservation) => reservation.status === statusFilter)
     }
+    if (metricFilter !== "all") {
+      filtered = filtered.filter((reservation) => matchesMetricFilter(reservation, metricFilter))
+    }
     return filtered
-  }, [selectedRestaurant, statusFilter])
+  }, [metricFilter, selectedRestaurant, statusFilter])
 
   const filteredNewReservations = useMemo(
     () => filterReservations(newReservations),
@@ -537,14 +610,6 @@ export default function ManageDashboard() {
     () => filterReservations(selectedDateReservations),
     [filterReservations, selectedDateReservations]
   )
-  const todayTotalCount = useMemo(() => {
-    if (selectedRestaurant === "all") {
-      return todayReservations.length
-    }
-
-    return todayReservations.filter((reservation) => reservation.restaurant_id === selectedRestaurant).length
-  }, [selectedRestaurant, todayReservations])
-
   const newTabCount = filteredNewTodayReservations.length
   const todayTabCount = filteredTodayReservations.length
   const upcomingTabCount = filteredUpcomingReservations.length
@@ -636,8 +701,10 @@ export default function ManageDashboard() {
       <div className="mb-6">
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4 transition-all duration-300">
           <Card
-            className={`cursor-pointer transition-all hover:shadow-md ${statusFilter === "all" ? "ring-2 ring-blue-500" : ""}`}
-            onClick={() => setStatusFilter("all")}
+            className={`cursor-pointer transition-all hover:shadow-md ${statusFilter === "all" && metricFilter === "all" ? "ring-2 ring-blue-500" : ""}`}
+            onClick={() => handleStatusFilter("all")}
+            role="button"
+            aria-pressed={statusFilter === "all" && metricFilter === "all"}
           >
             <CardContent className="p-4 md:p-6">
               <div className="flex items-center justify-between">
@@ -645,7 +712,7 @@ export default function ManageDashboard() {
                   <p className="text-xs md:text-sm font-medium text-muted-foreground">
                     {getTranslation("manage.dashboard.stats.total")}
                   </p>
-                  <p className="text-2xl md:text-3xl font-bold">{todayTotalCount}</p>
+                  <p className="text-2xl md:text-3xl font-bold">{stats.total}</p>
                 </div>
                 <div className="rounded-full bg-blue-100 p-2 md:p-3 text-blue-600">
                   <CalendarClock className="h-4 w-4 md:h-6 md:w-6" />
@@ -656,7 +723,9 @@ export default function ManageDashboard() {
 
           <Card
             className={`cursor-pointer transition-all hover:shadow-md ${statusFilter === "pending" ? "ring-2 ring-yellow-500" : ""}`}
-            onClick={() => setStatusFilter("pending")}
+            onClick={() => handleStatusFilter("pending")}
+            role="button"
+            aria-pressed={statusFilter === "pending"}
           >
             <CardContent className="p-4 md:p-6">
               <div className="flex items-center justify-between">
@@ -675,7 +744,9 @@ export default function ManageDashboard() {
 
           <Card
             className={`cursor-pointer transition-all hover:shadow-md ${statusFilter === "confirmed" ? "ring-2 ring-green-500" : ""}`}
-            onClick={() => setStatusFilter("confirmed")}
+            onClick={() => handleStatusFilter("confirmed")}
+            role="button"
+            aria-pressed={statusFilter === "confirmed"}
           >
             <CardContent className="p-4 md:p-6">
               <div className="flex items-center justify-between">
@@ -694,7 +765,9 @@ export default function ManageDashboard() {
 
           <Card
             className={`cursor-pointer transition-all hover:shadow-md ${statusFilter === "cancelled" ? "ring-2 ring-red-500" : ""}`}
-            onClick={() => setStatusFilter("cancelled")}
+            onClick={() => handleStatusFilter("cancelled")}
+            role="button"
+            aria-pressed={statusFilter === "cancelled"}
           >
             <CardContent className="p-4 md:p-6">
               <div className="flex items-center justify-between">
@@ -714,7 +787,12 @@ export default function ManageDashboard() {
 
         {cardsExpanded ? (
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4 mt-3 md:mt-4 transition-all duration-300">
-            <Card className="cursor-default transition-all hover:shadow-md">
+            <Card
+              className={`cursor-pointer transition-all hover:shadow-md ${metricFilter === "kuver" ? "ring-2 ring-purple-500" : ""}`}
+              onClick={() => handleMetricFilter("kuver")}
+              role="button"
+              aria-pressed={metricFilter === "kuver"}
+            >
               <CardContent className="p-4 md:p-6">
                 <div className="flex items-center justify-between">
                   <div>
@@ -729,7 +807,12 @@ export default function ManageDashboard() {
               </CardContent>
             </Card>
 
-            <Card className="cursor-default transition-all hover:shadow-md">
+            <Card
+              className={`cursor-pointer transition-all hover:shadow-md ${metricFilter === "meal" ? "ring-2 ring-orange-500" : ""}`}
+              onClick={() => handleMetricFilter("meal")}
+              role="button"
+              aria-pressed={metricFilter === "meal"}
+            >
               <CardContent className="p-4 md:p-6">
                 <div className="flex items-center justify-between">
                   <div>
@@ -744,7 +827,12 @@ export default function ManageDashboard() {
               </CardContent>
             </Card>
 
-            <Card className="cursor-default transition-all hover:shadow-md">
+            <Card
+              className={`cursor-pointer transition-all hover:shadow-md ${metricFilter === "deck" ? "ring-2 ring-teal-500" : ""}`}
+              onClick={() => handleMetricFilter("deck")}
+              role="button"
+              aria-pressed={metricFilter === "deck"}
+            >
               <CardContent className="p-4 md:p-6">
                 <div className="flex items-center justify-between">
                   <div>
@@ -759,7 +847,12 @@ export default function ManageDashboard() {
               </CardContent>
             </Card>
 
-            <Card className="cursor-default transition-all hover:shadow-md">
+            <Card
+              className={`cursor-pointer transition-all hover:shadow-md ${metricFilter === "terrace" ? "ring-2 ring-emerald-500" : ""}`}
+              onClick={() => handleMetricFilter("terrace")}
+              role="button"
+              aria-pressed={metricFilter === "terrace"}
+            >
               <CardContent className="p-4 md:p-6">
                 <div className="flex items-center justify-between">
                   <div>
@@ -885,9 +978,9 @@ export default function ManageDashboard() {
                   {getTranslation("manage.dashboard.new.cardDescription", {
                     count: String(filteredNewReservations.length),
                   })}
-                  {statusFilter !== "all" ? (
+                  {activeFilterLabel ? (
                     <span className="ml-2 text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded-full">
-                      Filtered by: {statusFilter}
+                      Filtered by: {activeFilterLabel}
                     </span>
                   ) : null}
                 </p>
@@ -911,9 +1004,9 @@ export default function ManageDashboard() {
                   {getTranslation("manage.dashboard.today.cardDescription", {
                     count: String(filteredTodayReservations.length),
                   })}
-                  {statusFilter !== "all" ? (
+                  {activeFilterLabel ? (
                     <span className="ml-2 text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded-full">
-                      Filtered by: {statusFilter}
+                      Filtered by: {activeFilterLabel}
                     </span>
                   ) : null}
                 </p>
@@ -937,9 +1030,9 @@ export default function ManageDashboard() {
                   {getTranslation("manage.dashboard.upcoming.cardDescription", {
                     count: String(filteredUpcomingReservations.length),
                   })}
-                  {statusFilter !== "all" ? (
+                  {activeFilterLabel ? (
                     <span className="ml-2 text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded-full">
-                      Filtered by: {statusFilter}
+                      Filtered by: {activeFilterLabel}
                     </span>
                   ) : null}
                 </p>
@@ -962,9 +1055,9 @@ export default function ManageDashboard() {
                   <h3 className="text-lg font-semibold">Reservations for {format(selectedDate, "PPP")}</h3>
                   <p className="text-sm text-muted-foreground">
                     {filteredSelectedDateReservations.length} reservations for the selected date
-                    {statusFilter !== "all" ? (
+                    {activeFilterLabel ? (
                       <span className="ml-2 text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded-full">
-                        Filtered by: {statusFilter}
+                        Filtered by: {activeFilterLabel}
                       </span>
                     ) : null}
                   </p>
