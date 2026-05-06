@@ -126,14 +126,23 @@ function SeatingPrintPageInner() {
     }
   }, [pdfFileTitle])
 
+  const printServiceList = () => {
+    document.title = pdfFileTitle
+    window.print()
+  }
+
   useEffect(() => {
     if (!loading) {
       const timer = setTimeout(() => {
-        window.print()
-      }, 250)
+        document.title = pdfFileTitle
+        requestAnimationFrame(() => {
+          document.title = pdfFileTitle
+          window.print()
+        })
+      }, 650)
       return () => clearTimeout(timer)
     }
-  }, [loading])
+  }, [loading, pdfFileTitle])
 
   return (
     <div className="min-h-screen bg-stone-100 p-4 text-stone-950 print:bg-white print:p-0">
@@ -161,7 +170,7 @@ function SeatingPrintPageInner() {
         <Button variant="outline" onClick={() => window.close()}>
           {getTranslation("manage.seating.printClose")}
         </Button>
-        <Button onClick={() => window.print()}>{getTranslation("manage.seating.printNow")}</Button>
+        <Button onClick={printServiceList}>{getTranslation("manage.seating.printNow")}</Button>
       </div>
 
       <div className="a4-sheet mx-auto flex min-h-[297mm] w-[210mm] flex-col bg-white p-[14mm] shadow-2xl ring-1 ring-stone-200">
