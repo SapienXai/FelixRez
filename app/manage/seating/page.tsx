@@ -56,7 +56,7 @@ export default function SeatingPage() {
   const [restaurants, setRestaurants] = useState<RestaurantOption[]>([])
   const [filters, setFilters] = useState({
     date: todayAsYYYYMMDD(),
-    status: "all",
+    status: "confirmed",
     restaurantId: "all",
     searchQuery: "",
   })
@@ -232,10 +232,8 @@ export default function SeatingPage() {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">{getTranslation("manage.seating.statusAll")}</SelectItem>
                   <SelectItem value="pending">{getTranslation("manage.seating.statusPending")}</SelectItem>
                   <SelectItem value="confirmed">{getTranslation("manage.seating.statusConfirmed")}</SelectItem>
-                  <SelectItem value="cancelled">{getTranslation("manage.seating.statusCancelled")}</SelectItem>
                   <SelectItem value="completed">{getTranslation("manage.seating.statusCompleted")}</SelectItem>
                 </SelectContent>
               </Select>

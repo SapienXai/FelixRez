@@ -42,6 +42,7 @@ export async function getSeatingReservations(filters: SeatingFilters) {
   try {
     const supabase = createServiceRoleClient()
     const scope = await coerceRestaurantFilter(filters.restaurantId)
+    const statusFilter = filters.status && filters.status !== "all" ? filters.status : "confirmed"
     if (scope.type === "deny") {
       return { success: true, data: [] as SeatingRow[] }
     }
@@ -72,9 +73,7 @@ export async function getSeatingReservations(filters: SeatingFilters) {
       query = query.eq("reservation_date", filters.date)
     }
 
-    if (filters.status && filters.status !== "all") {
-      query = query.eq("status", filters.status)
-    }
+    query = query.eq("status", statusFilter)
 
     const { data, error } = await query
       .order("reservation_time", { ascending: true })
