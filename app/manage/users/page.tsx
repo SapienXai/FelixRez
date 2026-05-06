@@ -29,6 +29,7 @@ interface User {
 
 interface UserFormData {
   email: string
+  fullName: string
   password: string
   confirmPassword: string
   role: string
@@ -49,6 +50,7 @@ export default function UsersPage() {
   const [editingUser, setEditingUser] = useState<User | null>(null)
   const [formData, setFormData] = useState<UserFormData>({
     email: "",
+    fullName: "",
     password: "",
     confirmPassword: "",
     role: "staff",
@@ -160,6 +162,7 @@ export default function UsersPage() {
         const trimmedPassword = formData.password.trim()
         const result = await updateUser(editingUser.id, {
           email: formData.email,
+          fullName: formData.fullName,
           role: isManager ? "staff" : formData.role,
           restaurantId: (formData.role === 'admin' || formData.role === 'manager') ? null : (formData.restaurantId || null),
           password: trimmedPassword ? trimmedPassword : null,
@@ -183,6 +186,7 @@ export default function UsersPage() {
         // Add new user
         const result = await createUser({
           email: formData.email,
+          fullName: formData.fullName,
           password: formData.password,
           role: isManager ? "staff" : formData.role,
           restaurantId: (formData.role === 'admin' || formData.role === 'manager') ? null : (formData.restaurantId || null),
@@ -266,6 +270,7 @@ export default function UsersPage() {
     setEditingUser(user)
     setFormData({
       email: user.email,
+      fullName: user.full_name || "",
       password: "",
       confirmPassword: "",
       role: user.role,
@@ -279,6 +284,7 @@ export default function UsersPage() {
     setEditingUser(null)
     setFormData({
       email: "",
+      fullName: "",
       password: "",
       confirmPassword: "",
       role: "staff",
@@ -293,6 +299,7 @@ export default function UsersPage() {
     setEditingUser(null)
     setFormData({
       email: "",
+      fullName: "",
       password: "",
       confirmPassword: "",
       role: "staff",
@@ -344,6 +351,14 @@ export default function UsersPage() {
                   className={formErrors.email ? "border-red-500" : ""}
                 />
                 {formErrors.email && <p className="text-sm text-red-500">{formErrors.email}</p>}
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="fullName">{getTranslation("manage.users.form.fullName")}</Label>
+                <Input
+                  id="fullName"
+                  value={formData.fullName}
+                  onChange={(e) => setFormData({ ...formData, fullName: e.target.value })}
+                />
               </div>
               {!editingUser ? (
                 <>
@@ -464,6 +479,7 @@ export default function UsersPage() {
             <Table>
               <TableHeader>
                 <TableRow>
+                  <TableHead>{getTranslation("manage.users.table.fullName")}</TableHead>
                   <TableHead>{getTranslation("manage.users.table.email")}</TableHead>
                   <TableHead>{getTranslation("manage.users.table.role")}</TableHead>
                   <TableHead>{getTranslation("manage.users.table.createdAt")}</TableHead>
@@ -473,6 +489,7 @@ export default function UsersPage() {
               <TableBody>
                 {users.map((user) => (
                   <TableRow key={user.id}>
+                    <TableCell className="font-medium">{user.full_name || "-"}</TableCell>
                     <TableCell className="font-medium">{user.email}</TableCell>
                     <TableCell>
                       <span className="capitalize">

@@ -393,6 +393,7 @@ export const translations = {
         userAdded: "User added successfully",
         userUpdated: "User updated successfully",
         form: {
+          fullName: "Full Name",
           email: "Email",
           password: "Password",
           confirmPassword: "Confirm Password",
@@ -413,6 +414,7 @@ export const translations = {
           invalidEmail: "Invalid email format",
         },
         table: {
+          fullName: "Full Name",
           email: "Email",
           role: "Role",
           createdAt: "Created",
@@ -889,6 +891,7 @@ export const translations = {
         userAdded: "Kullanıcı başarıyla eklendi",
         userUpdated: "Kullanıcı başarıyla güncellendi",
         form: {
+          fullName: "Ad Soyad",
           email: "E-posta",
           password: "Şifre",
           confirmPassword: "Şifreyi Onayla",
@@ -909,6 +912,7 @@ export const translations = {
           invalidEmail: "Geçersiz e-posta formatı",
         },
         table: {
+          fullName: "Ad Soyad",
           email: "E-posta",
           role: "Rol",
           createdAt: "Oluşturulma",

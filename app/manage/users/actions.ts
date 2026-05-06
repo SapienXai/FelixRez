@@ -7,12 +7,14 @@ import { revalidatePath } from "next/cache"
 export interface CreateUserData {
   email: string
   password: string
+  fullName?: string | null
   role: string
   restaurantId?: string | null
 }
 
 export interface UpdateUserData {
   email: string
+  fullName?: string | null
   role: string
   restaurantId?: string | null
   password?: string | null
@@ -130,12 +132,16 @@ export async function createUser(userData: CreateUserData) {
     }
 
     const supabase = createServiceRoleClient()
+    const fullName = userData.fullName?.trim() || null
     
     // Create user in Supabase Auth
     const { data: authData, error: authError } = await supabase.auth.admin.createUser({
       email: userData.email,
       password: userData.password,
-      email_confirm: true
+      email_confirm: true,
+      user_metadata: {
+        full_name: fullName
+      }
     })
     
     if (authError) {
@@ -160,7 +166,7 @@ export async function createUser(userData: CreateUserData) {
         id: authData.user.id,
         role: userData.role,
         restaurant_id: targetRestaurantId,
-        full_name: null // Can be updated later
+        full_name: fullName
       })
     
     if (profileError) {
@@ -181,7 +187,7 @@ export async function createUser(userData: CreateUserData) {
       id: authData.user.id,
       email: authData.user.email || userData.email,
       role: userData.role,
-      full_name: null,
+      full_name: fullName,
       restaurant_id: targetRestaurantId,
       created_at: authData.user.created_at
     }
@@ -242,8 +248,12 @@ export async function updateUser(userId: string, userData: UpdateUserData) {
       return { success: false, error: "User must be assigned to a restaurant" }
     }
     
-    const authUpdates: { email: string; password?: string } = {
-      email: userData.email
+    const fullName = userData.fullName?.trim() || null
+    const authUpdates: { email: string; password?: string; user_metadata?: { full_name: string | null } } = {
+      email: userData.email,
+      user_metadata: {
+        full_name: fullName
+      }
     }
     const nextPassword = userData.password?.trim()
     if (nextPassword) {
@@ -266,7 +276,8 @@ export async function updateUser(userId: string, userData: UpdateUserData) {
       .from('admin_profiles')
       .update({
         role: userData.role,
-        restaurant_id: targetRestaurantId
+        restaurant_id: targetRestaurantId,
+        full_name: fullName
       })
       .eq('id', userId)
       .select()
