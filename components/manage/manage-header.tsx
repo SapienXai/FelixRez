@@ -5,7 +5,6 @@ import { Button } from "@/components/ui/button"
 import { Bell, CalendarDays, CheckCheck, Clock, LogOut, MapPin, Menu, Sparkles, Trash2, Users, X } from "lucide-react"
 import { LanguageSelector } from "@/components/language-selector"
 import { getSupabaseBrowserClient } from "@/lib/supabase"
-import { useRouter } from "next/navigation"
 import { useState, useEffect, useMemo, useRef } from "react"
 import { useLanguage } from "@/context/language-context"
 import { Card, CardContent } from "@/components/ui/card"
@@ -69,10 +68,30 @@ function storeIds(key: string, ids: Set<string>) {
   window.localStorage.setItem(key, JSON.stringify(Array.from(ids).slice(-200)))
 }
 
+function clearSupabaseAuthStorage() {
+  if (typeof window === "undefined") {
+    return
+  }
+
+  for (let index = window.localStorage.length - 1; index >= 0; index -= 1) {
+    const key = window.localStorage.key(index)
+    if (key?.startsWith("sb-") && key.endsWith("-auth-token")) {
+      window.localStorage.removeItem(key)
+    }
+  }
+
+  for (let index = window.sessionStorage.length - 1; index >= 0; index -= 1) {
+    const key = window.sessionStorage.key(index)
+    if (key?.startsWith("sb-") && key.endsWith("-auth-token")) {
+      window.sessionStorage.removeItem(key)
+    }
+  }
+}
+
 export function ManageHeader({ toggleSidebar }: ManageHeaderProps) {
-  const router = useRouter()
   const supabase = getSupabaseBrowserClient()
   const { getTranslation } = useLanguage()
+  const [isSigningOut, setIsSigningOut] = useState(false)
   const [showNotifications, setShowNotifications] = useState(false)
   const [notifications, setNotifications] = useState<Notification[]>([])
   const [popupNotifications, setPopupNotifications] = useState<PopupNotification[]>([])
@@ -377,15 +396,34 @@ export function ManageHeader({ toggleSidebar }: ManageHeaderProps) {
   }
 
   const handleSignOut = async () => {
-    await supabase.auth.signOut()
+    if (isSigningOut) {
+      return
+    }
+
+    setIsSigningOut(true)
+
+    try {
+      const { error } = await supabase.auth.signOut({ scope: "local" })
+      if (error) {
+        console.warn("Supabase sign out failed:", error)
+      }
+    } catch (error) {
+      console.warn("Supabase sign out failed:", error)
+    }
+
+    clearSupabaseAuthStorage()
+
     try {
       await fetch("/auth/callback", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ event: "SIGNED_OUT", session: null }),
       })
-    } catch {}
-    router.replace("/manage/login")
+    } catch (error) {
+      console.warn("Failed to clear auth cookie:", error)
+    }
+
+    window.location.replace("/manage/login?logged_out=1")
   }
 
   return (
@@ -576,8 +614,8 @@ export function ManageHeader({ toggleSidebar }: ManageHeaderProps) {
             )}
           </div>
 
-          <Button variant="ghost" size="icon" onClick={handleSignOut} title="Sign out">
-            <LogOut className="h-5 w-5" />
+          <Button variant="ghost" size="icon" onClick={handleSignOut} title="Sign out" disabled={isSigningOut}>
+            {isSigningOut ? <Clock className="h-5 w-5 animate-spin" /> : <LogOut className="h-5 w-5" />}
             <span className="sr-only">Sign out</span>
           </Button>
         </div>
