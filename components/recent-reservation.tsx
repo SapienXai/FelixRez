@@ -5,7 +5,10 @@ import { useEffect, useState } from "react"
 import type { ReactNode } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Calendar, Clock, Users, Edit, X, CheckCircle, XCircle } from "lucide-react"
+import { Badge } from "@/components/ui/badge"
+import { ScrollArea } from "@/components/ui/scroll-area"
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion"
+import { Calendar, Clock, Users, Edit, X, CheckCircle, XCircle, Loader2, MapPin, Sparkles } from "lucide-react"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -28,6 +31,16 @@ interface ReservationData {
   created_at: string
 }
 
+type EditReservationForm = {
+  customer_name: string
+  customer_email: string
+  customer_phone: string
+  party_size: number | ""
+  reservation_date: string
+  reservation_time: string
+  special_requests: string
+}
+
 export function RecentReservation() {
   const { getTranslation, currentLang } = useLanguage()
   const [reservations, setReservations] = useState<ReservationData[]>([])
@@ -35,7 +48,7 @@ export function RecentReservation() {
   const [showEditDialog, setShowEditDialog] = useState(false)
   const [isEditing, setIsEditing] = useState(false)
   const [selectedReservation, setSelectedReservation] = useState<ReservationData | null>(null)
-  const [editForm, setEditForm] = useState({
+  const [editForm, setEditForm] = useState<EditReservationForm>({
     customer_name: "",
     customer_email: "",
     customer_phone: "",
@@ -161,12 +174,13 @@ export function RecentReservation() {
     
     setIsEditing(true)
     try {
+      const normalizedPartySize = editForm.party_size === "" ? 1 : editForm.party_size
       const result = await updateReservation({
         id: selectedReservation.id,
         customer_name: editForm.customer_name,
         customer_email: editForm.customer_email,
         customer_phone: editForm.customer_phone,
-        party_size: editForm.party_size,
+        party_size: normalizedPartySize,
         reservation_date: editForm.reservation_date,
         reservation_time: editForm.reservation_time,
         special_requests: editForm.special_requests || undefined
@@ -177,6 +191,7 @@ export function RecentReservation() {
         const updatedReservation: ReservationData = {
           ...selectedReservation,
           ...editForm,
+          party_size: normalizedPartySize,
           status: 'pending',
         }
         setReservations((prev) => prev.map((r) => (r.id === selectedReservation.id ? updatedReservation : r)))
@@ -398,90 +413,229 @@ export function RecentReservation() {
       </div>
 
       <Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>
-        <DialogContent className="sm:max-w-md w-[calc(100vw-1rem)] sm:w-auto p-4 sm:p-6 overflow-y-auto max-h-[85vh]">
-          <DialogHeader>
-            <DialogTitle>{getTranslation('recentReservation.dialogTitle')}</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4">
-            <div>
-              <Label htmlFor="customer_name">{getTranslation('recentReservation.form.name')}</Label>
-              <Input
-                id="customer_name"
-                value={editForm.customer_name}
-                onChange={(e) => setEditForm(prev => ({ ...prev, customer_name: e.target.value }))}
-              />
+        <DialogContent className="w-[96vw] max-w-5xl overflow-hidden bg-[#eef3f8] p-0">
+          <div className="flex max-h-[92vh] min-h-0 flex-col">
+            <div className="border-b border-white/60 bg-white/65 px-4 pb-4 pt-6 shadow-sm backdrop-blur sm:px-5 sm:pt-4">
+              <DialogHeader className="gap-3">
+                <DialogTitle className="sr-only">{getTranslation('recentReservation.dialogTitle')}</DialogTitle>
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
+                  <div className="min-w-0">
+                    <div className="inline-flex max-w-full items-center gap-2 rounded-full bg-slate-900 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-white sm:tracking-[0.22em]">
+                      <Sparkles className="h-3.5 w-3.5" />
+                      <span className="truncate">{getTranslation('recentReservation.dialogTitle')}</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex flex-wrap gap-2">
+                  <Badge variant="outline" className="rounded-full border-white/70 bg-white px-2.5 py-0.5 text-[11px] text-slate-700 shadow-sm">
+                    {selectedReservation?.restaurant_name || getTranslation('recentReservation.title')}
+                  </Badge>
+                  <Badge variant="outline" className="rounded-full border-white/70 bg-white px-2.5 py-0.5 text-[11px] text-slate-700 shadow-sm">
+                    <Calendar className="mr-1 h-3 w-3" />
+                    {editForm.reservation_date ? formatDate(editForm.reservation_date) : getTranslation('recentReservation.form.date')}
+                  </Badge>
+                  <Badge variant="outline" className="rounded-full border-white/70 bg-white px-2.5 py-0.5 text-[11px] text-slate-700 shadow-sm">
+                    <Clock className="mr-1 h-3 w-3" />
+                    {editForm.reservation_time ? formatTime(editForm.reservation_time) : getTranslation('recentReservation.form.time')}
+                  </Badge>
+                  <Badge variant="outline" className="rounded-full border-white/70 bg-white px-2.5 py-0.5 text-[11px] text-slate-700 shadow-sm">
+                    <Users className="mr-1 h-3 w-3" />
+                    {editForm.party_size || 1} {getTranslation('recentReservation.guestsSuffix')}
+                  </Badge>
+                </div>
+              </DialogHeader>
             </div>
-            <div>
-              <Label htmlFor="customer_email">{getTranslation('recentReservation.form.email')}</Label>
-              <Input
-                id="customer_email"
-                type="email"
-                value={editForm.customer_email}
-                onChange={(e) => setEditForm(prev => ({ ...prev, customer_email: e.target.value }))}
-              />
-            </div>
-            <div>
-              <Label htmlFor="customer_phone">{getTranslation('recentReservation.form.phone')}</Label>
-              <Input
-                id="customer_phone"
-                value={editForm.customer_phone}
-                onChange={(e) => setEditForm(prev => ({ ...prev, customer_phone: e.target.value }))}
-              />
-            </div>
-            <div>
-              <Label htmlFor="party_size">{getTranslation('recentReservation.form.partySize')}</Label>
-              <Input
-                id="party_size"
-                type="number"
-                min="1"
-                max="20"
-                value={editForm.party_size}
-                onChange={(e) => setEditForm(prev => ({ ...prev, party_size: parseInt(e.target.value) || 1 }))}
-              />
-            </div>
-            <div>
-              <Label htmlFor="reservation_date">{getTranslation('recentReservation.form.date')}</Label>
-              <Input
-                id="reservation_date"
-                type="date"
-                value={editForm.reservation_date}
-                onChange={(e) => setEditForm(prev => ({ ...prev, reservation_date: e.target.value }))}
-              />
-            </div>
-            <div>
-              <Label htmlFor="reservation_time">{getTranslation('recentReservation.form.time')}</Label>
-              <Input
-                id="reservation_time"
-                type="time"
-                value={editForm.reservation_time}
-                onChange={(e) => setEditForm(prev => ({ ...prev, reservation_time: e.target.value }))}
-              />
-            </div>
-            <div>
-              <Label htmlFor="special_requests">{getTranslation('recentReservation.form.specialRequests')}</Label>
-              <Textarea
-                id="special_requests"
-                value={editForm.special_requests}
-                onChange={(e) => setEditForm(prev => ({ ...prev, special_requests: e.target.value }))}
-                rows={3}
-              />
-            </div>
-            <div className="flex gap-2 pt-4 sm:flex-row flex-col">
-              <Button
-                onClick={handleSaveEdit}
-                disabled={isEditing}
-                className="flex-1 w-full sm:w-auto"
+
+            <ScrollArea className="min-h-0 flex-1">
+              <form
+                id="recent-reservation-edit-form"
+                onSubmit={(event) => {
+                  event.preventDefault()
+                  void handleSaveEdit()
+                }}
+                className="px-4 py-4 sm:px-5"
               >
-                {isEditing ? getTranslation('recentReservation.actions.saving') : getTranslation('recentReservation.actions.save')}
-              </Button>
-              <Button
-                variant="outline"
-                onClick={() => setShowEditDialog(false)}
-                disabled={isEditing}
-                className="w-full sm:w-auto"
-              >
-                {getTranslation('recentReservation.actions.cancel')}
-              </Button>
+                <div className="grid gap-4 xl:grid-cols-2">
+                  <Card className="overflow-hidden rounded-2xl border border-white/70 bg-white shadow-[0_14px_35px_rgba(15,23,42,0.08)] ring-1 ring-black/5">
+                    <CardHeader className="border-b border-slate-100 bg-white/80 px-4 py-3">
+                      <CardTitle className="text-sm font-semibold text-slate-950">
+                        {getTranslation('recentReservation.title')}
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="grid gap-3 p-4">
+                      <div className="flex flex-col gap-1.5">
+                        <Label htmlFor="customer_name" className="text-xs font-medium text-slate-700">
+                          {getTranslation('recentReservation.form.name')}
+                        </Label>
+                        <Input
+                          id="customer_name"
+                          className="h-10 rounded-xl border-slate-200 bg-white shadow-sm transition-shadow focus-visible:shadow-md"
+                          value={editForm.customer_name}
+                          onChange={(e) => setEditForm(prev => ({ ...prev, customer_name: e.target.value }))}
+                          required
+                        />
+                      </div>
+
+                      <Accordion type="single" collapsible className="rounded-xl border border-slate-100 bg-slate-50 px-3">
+                        <AccordionItem value="contact" className="border-b-0">
+                          <AccordionTrigger className="py-3 text-xs font-medium text-slate-700 hover:no-underline">
+                            {getTranslation('recentReservation.form.email')} / {getTranslation('recentReservation.form.phone')}
+                          </AccordionTrigger>
+                          <AccordionContent className="grid gap-3 pb-3 pt-0 sm:grid-cols-2">
+                            <div className="flex flex-col gap-1.5">
+                              <Label htmlFor="customer_email" className="text-xs font-medium text-slate-700">
+                                {getTranslation('recentReservation.form.email')}
+                              </Label>
+                              <Input
+                                id="customer_email"
+                                type="email"
+                                className="h-10 rounded-xl border-slate-200 bg-white shadow-sm transition-shadow focus-visible:shadow-md"
+                                value={editForm.customer_email}
+                                onChange={(e) => setEditForm(prev => ({ ...prev, customer_email: e.target.value }))}
+                                required
+                              />
+                            </div>
+
+                            <div className="flex flex-col gap-1.5">
+                              <Label htmlFor="customer_phone" className="text-xs font-medium text-slate-700">
+                                {getTranslation('recentReservation.form.phone')}
+                              </Label>
+                              <Input
+                                id="customer_phone"
+                                className="h-10 rounded-xl border-slate-200 bg-white shadow-sm transition-shadow focus-visible:shadow-md"
+                                value={editForm.customer_phone}
+                                onChange={(e) => setEditForm(prev => ({ ...prev, customer_phone: e.target.value }))}
+                                required
+                              />
+                            </div>
+                          </AccordionContent>
+                        </AccordionItem>
+                      </Accordion>
+                    </CardContent>
+                  </Card>
+
+                  <Card className="overflow-hidden rounded-2xl border border-white/70 bg-white shadow-[0_14px_35px_rgba(15,23,42,0.08)] ring-1 ring-black/5">
+                    <CardHeader className="border-b border-slate-100 bg-white/80 px-4 py-3">
+                      <CardTitle className="text-sm font-semibold text-slate-950">
+                        {getTranslation('reserve.header.yourReservation')}
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="grid gap-3 p-4">
+                      <div className="rounded-xl border border-slate-100 bg-slate-50 p-3">
+                        <div className="flex items-start gap-3">
+                          <MapPin className="mt-0.5 h-4 w-4 text-slate-500" />
+                          <div className="min-w-0">
+                            <div className="text-[10px] uppercase tracking-[0.16em] text-slate-500">
+                              {getTranslation('reserve.confirmation.restaurant')}
+                            </div>
+                            <div className="mt-1 truncate text-sm font-medium text-slate-900">
+                              {selectedReservation?.restaurant_name}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="grid gap-3 sm:grid-cols-3">
+                        <div className="flex flex-col gap-1.5">
+                          <Label htmlFor="reservation_date" className="text-xs font-medium text-slate-700">
+                            {getTranslation('recentReservation.form.date')}
+                          </Label>
+                          <Input
+                            id="reservation_date"
+                            type="date"
+                            className="h-10 rounded-xl border-slate-200 bg-white shadow-sm transition-shadow focus-visible:shadow-md"
+                            value={editForm.reservation_date}
+                            onChange={(e) => setEditForm(prev => ({ ...prev, reservation_date: e.target.value }))}
+                            required
+                          />
+                        </div>
+
+                        <div className="flex flex-col gap-1.5">
+                          <Label htmlFor="reservation_time" className="text-xs font-medium text-slate-700">
+                            {getTranslation('recentReservation.form.time')}
+                          </Label>
+                          <Input
+                            id="reservation_time"
+                            type="time"
+                            className="h-10 rounded-xl border-slate-200 bg-white shadow-sm transition-shadow focus-visible:shadow-md"
+                            value={editForm.reservation_time}
+                            onChange={(e) => setEditForm(prev => ({ ...prev, reservation_time: e.target.value }))}
+                            required
+                          />
+                        </div>
+
+                        <div className="flex flex-col gap-1.5">
+                          <Label htmlFor="party_size" className="text-xs font-medium text-slate-700">
+                            {getTranslation('recentReservation.form.partySize')}
+                          </Label>
+                          <Input
+                            id="party_size"
+                            type="number"
+                            min="1"
+                            max="20"
+                            className="h-10 rounded-xl border-slate-200 bg-white shadow-sm transition-shadow focus-visible:shadow-md"
+                            value={editForm.party_size}
+                            onChange={(e) => {
+                              const value = e.target.value
+                              setEditForm(prev => ({
+                                ...prev,
+                                party_size: value === "" ? "" : parseInt(value, 10) || 1,
+                              }))
+                            }}
+                            required
+                          />
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  <Card className="overflow-hidden rounded-2xl border border-white/70 bg-white shadow-[0_14px_35px_rgba(15,23,42,0.08)] ring-1 ring-black/5 xl:col-span-2">
+                    <CardHeader className="border-b border-slate-100 bg-white/80 px-4 py-3">
+                      <CardTitle className="text-sm font-semibold text-slate-950">
+                        {getTranslation('recentReservation.form.specialRequests')}
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="p-4">
+                      <div className="flex flex-col gap-1.5">
+                        <Label htmlFor="special_requests" className="text-xs font-medium text-slate-700">
+                          {getTranslation('recentReservation.form.specialRequests')}
+                        </Label>
+                        <Textarea
+                          id="special_requests"
+                          value={editForm.special_requests}
+                          onChange={(e) => setEditForm(prev => ({ ...prev, special_requests: e.target.value }))}
+                          rows={3}
+                          className="min-h-[92px] rounded-xl border-slate-200 bg-white shadow-sm transition-shadow focus-visible:shadow-md"
+                        />
+                      </div>
+                    </CardContent>
+                  </Card>
+                </div>
+              </form>
+            </ScrollArea>
+
+            <div className="border-t border-white/60 bg-white/70 px-4 py-3 backdrop-blur sm:px-5">
+              <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setShowEditDialog(false)}
+                  disabled={isEditing}
+                  className="h-10 w-full rounded-xl sm:w-auto"
+                >
+                  {getTranslation('recentReservation.actions.cancel')}
+                </Button>
+                <Button
+                  type="submit"
+                  form="recent-reservation-edit-form"
+                  disabled={isEditing}
+                  className="h-10 w-full rounded-xl bg-slate-950 px-5 text-white hover:bg-slate-800 sm:w-auto"
+                >
+                  {isEditing && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                  {isEditing ? getTranslation('recentReservation.actions.saving') : getTranslation('recentReservation.actions.save')}
+                </Button>
+              </div>
             </div>
           </div>
         </DialogContent>
