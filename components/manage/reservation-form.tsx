@@ -529,7 +529,7 @@ export function ReservationForm({
                           id="party_size"
                           type="number"
                           min="1"
-                          max="20"
+                          max="150"
                           className={formFieldClassName}
                           value={formData.party_size}
                           onChange={(e) => {
