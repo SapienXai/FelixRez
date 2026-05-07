@@ -6,6 +6,13 @@ import { useEffect } from "react"
 import { useLanguage } from "@/context/language-context"
 import Image from "next/image"
 
+interface ReservationBlockedInterval {
+  date: string
+  start_time: string
+  end_time: string
+  message?: string
+}
+
 interface Restaurant {
   id: string
   name: string
@@ -19,6 +26,7 @@ interface Restaurant {
   max_party_size: number | null
   min_party_size: number | null
   reservation_start_date: string | null
+  reservation_blocked_intervals: unknown
   blocked_dates: string[] | null
   special_hours: any | null
 }
@@ -85,6 +93,7 @@ export function ReservationStep1({
     max_party_size: selectedArea?.max_party_size ?? (restaurant?.max_party_size ?? 8),
     min_party_size: selectedArea?.min_party_size ?? (restaurant?.min_party_size ?? 1),
     reservation_start_date: restaurant?.reservation_start_date || null,
+    reservation_blocked_intervals: normalizeBlockedIntervals(restaurant?.reservation_blocked_intervals),
     allowed_days_of_week: selectedArea?.allowed_days_of_week || restaurant?.allowed_days_of_week || [1,2,3,4,5,6,7],
     blocked_dates: selectedArea?.blocked_dates || restaurant?.blocked_dates || [],
   }
@@ -128,14 +137,9 @@ export function ReservationStep1({
     const openMinutes = openHour * 60 + openMinute
     const closeMinutes = closeHour * 60 + closeMinute
     
-    // If this is not today, all time slots are valid
     const today = new Date()
     today.setHours(0, 0, 0, 0)
-    if (date.getTime() !== today.getTime()) {
-      return true
-    }
     
-    // For today, check if any time slot is after the minimum advance time
     for (let minutes = openMinutes; minutes <= closeMinutes; minutes += slotDuration) {
       const hour = Math.floor(minutes / 60)
       const minute = minutes % 60
@@ -147,8 +151,11 @@ export function ReservationStep1({
       const slotDateTime = new Date(date)
       slotDateTime.setHours(hour, minute, 0, 0)
       
-      // If this slot is after the minimum advance time, the date is valid
-      if (slotDateTime >= minDateTime) {
+      if (date.getTime() === today.getTime() && slotDateTime < minDateTime) {
+        continue
+      }
+
+      if (!isTimeBlocked(date, timeFromMinutes(minutes))) {
         return true
       }
     }
@@ -180,12 +187,8 @@ export function ReservationStep1({
 
       if (reservationStartDate && dateOption < reservationStartDate) continue
       
-      // For today, check if there are any valid time slots after the minimum advance time
-      if (i === 0) {
-        // Check if today has any available time slots after the minimum advance time
-        const hasValidTimeSlots = checkIfDateHasValidTimeSlots(dateOption, minDateTime)
-        if (!hasValidTimeSlots) continue
-      }
+      const hasValidTimeSlots = checkIfDateHasValidTimeSlots(dateOption, minDateTime)
+      if (!hasValidTimeSlots) continue
       
       // Skip if day of week is not allowed (0 = Sunday, 1 = Monday, etc.)
       if (!allowedDaysOfWeek.includes(dateOption.getDay())) continue
@@ -253,6 +256,7 @@ export function ReservationStep1({
       if (slotDateTime < minDateTime) continue
 
       const timeStr = `${hour.toString().padStart(2, "0")}:${minute.toString().padStart(2, "0")}`
+      if (isTimeBlocked(selectedDate, timeStr)) continue
       times.push(timeStr)
     }
 
@@ -291,6 +295,68 @@ export function ReservationStep1({
     return parsed
   }
 
+  function normalizeBlockedIntervals(value: unknown): ReservationBlockedInterval[] {
+    if (!Array.isArray(value)) return []
+
+    return value
+      .filter((interval): interval is ReservationBlockedInterval => (
+        Boolean(interval) &&
+        typeof interval === "object" &&
+        typeof (interval as ReservationBlockedInterval).date === "string" &&
+        typeof (interval as ReservationBlockedInterval).start_time === "string" &&
+        typeof (interval as ReservationBlockedInterval).end_time === "string"
+      ))
+  }
+
+  function parseTimeToMinutes(value: string | null | undefined) {
+    if (!value) return null
+    const [hour, minute = 0] = value.split(":").map(Number)
+    if (!Number.isFinite(hour) || !Number.isFinite(minute)) return null
+    if (hour === 24 && minute === 0) return 24 * 60
+    if (hour < 0 || hour > 23 || minute < 0 || minute > 59) return null
+    return hour * 60 + minute
+  }
+
+  function timeFromMinutes(minutes: number) {
+    const hour = Math.floor(minutes / 60)
+    const minute = minutes % 60
+    return `${hour.toString().padStart(2, "0")}:${minute.toString().padStart(2, "0")}`
+  }
+
+  function getBlockedIntervalsForDate(date: Date) {
+    const dateStr = formatDateToYYYYMMDD(date)
+    return eff.reservation_blocked_intervals.filter((interval) => interval.date === dateStr)
+  }
+
+  function isTimeBlocked(date: Date, time: string) {
+    const slotMinutes = parseTimeToMinutes(time)
+    if (slotMinutes === null) return false
+
+    return getBlockedIntervalsForDate(date).some((interval) => {
+      const startMinutes = parseTimeToMinutes(interval.start_time)
+      const endMinutes = parseTimeToMinutes(interval.end_time)
+      if (startMinutes === null || endMinutes === null) return false
+      return slotMinutes >= startMinutes && slotMinutes < endMinutes
+    })
+  }
+
+  function formatBlockedInterval(interval: ReservationBlockedInterval) {
+    return `${interval.start_time} - ${interval.end_time}`
+  }
+
+  function getBlockedIntervalsMessage(date: Date) {
+    const intervals = getBlockedIntervalsForDate(date)
+    if (intervals.length === 0) return null
+
+    const customMessages = intervals.map((interval) => interval.message?.trim()).filter(Boolean)
+    if (customMessages.length > 0) return customMessages.join(" ")
+
+    const ranges = intervals.map(formatBlockedInterval).join(", ")
+    return currentLang === "tr"
+      ? `${ranges} saatleri arasında doluyuz.`
+      : `We are fully booked between ${ranges}.`
+  }
+
   const handleDateChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const dateParts = e.target.value.split("-")
     const newDate = new Date(
@@ -307,6 +373,7 @@ export function ReservationStep1({
   }
 
   const { times } = generateTimeSlots()
+  const blockedIntervalsMessage = getBlockedIntervalsMessage(selectedDate)
 
   // If current selectedDate is not in the available date options (e.g., today has no slots),
   // automatically move to the first available date and clear the selected time.
@@ -428,6 +495,11 @@ export function ReservationStep1({
         </div>
       </div>
 
+      {blockedIntervalsMessage && (
+        <div className="alert alert-warning mt-3" role="alert">
+          {blockedIntervalsMessage}
+        </div>
+      )}
 
 
       <div className="time-slots-container mt-3">

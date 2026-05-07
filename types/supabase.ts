@@ -24,6 +24,7 @@ export interface Database {
           max_party_size: number | null
           min_party_size: number | null
           reservation_start_date: string | null
+          reservation_blocked_intervals: Json | null
           blocked_dates: string[] | null
           special_hours: Json | null
           meal_only_reservations: boolean | null
@@ -50,6 +51,7 @@ export interface Database {
           max_party_size?: number | null
           min_party_size?: number | null
           reservation_start_date?: string | null
+          reservation_blocked_intervals?: Json | null
           blocked_dates?: string[] | null
           special_hours?: Json | null
           meal_only_reservations?: boolean | null
@@ -76,6 +78,7 @@ export interface Database {
           max_party_size?: number | null
           min_party_size?: number | null
           reservation_start_date?: string | null
+          reservation_blocked_intervals?: Json | null
           blocked_dates?: string[] | null
           special_hours?: Json | null
           meal_only_reservations?: boolean | null

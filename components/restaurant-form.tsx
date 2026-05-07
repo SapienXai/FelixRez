@@ -46,6 +46,13 @@ interface ReservationAreaFormData {
   useRestaurantDefaults: boolean
 }
 
+interface ReservationBlockedInterval {
+  date: string
+  start_time: string
+  end_time: string
+  message: string
+}
+
 const dayNames = [
   { value: 1, label: "Monday" },
   { value: 2, label: "Tuesday" },
@@ -55,6 +62,25 @@ const dayNames = [
   { value: 6, label: "Saturday" },
   { value: 7, label: "Sunday" }
 ]
+
+function normalizeBlockedIntervals(value: unknown): ReservationBlockedInterval[] {
+  if (!Array.isArray(value)) return []
+
+  return value
+    .map((item) => {
+      if (!item || typeof item !== "object") return null
+      const interval = item as Partial<ReservationBlockedInterval>
+      if (!interval.date || !interval.start_time || !interval.end_time) return null
+
+      return {
+        date: interval.date,
+        start_time: interval.start_time,
+        end_time: interval.end_time,
+        message: interval.message || "",
+      }
+    })
+    .filter((item): item is ReservationBlockedInterval => Boolean(item))
+}
 
 export function RestaurantForm({ restaurant, onSuccess, onClose, open = true }: RestaurantFormProps) {
   const [isLoading, setIsLoading] = useState(false);
@@ -79,6 +105,7 @@ export function RestaurantForm({ restaurant, onSuccess, onClose, open = true }: 
     max_party_size: restaurant?.max_party_size || 12,
     min_party_size: restaurant?.min_party_size || 1,
     reservation_start_date: restaurant?.reservation_start_date || '',
+    reservation_blocked_intervals: normalizeBlockedIntervals(restaurant?.reservation_blocked_intervals),
     allowed_days_of_week: restaurant?.allowed_days_of_week || [1, 2, 3, 4, 5, 6, 7],
     meal_only_reservations: (restaurant as any)?.meal_only_reservations ?? false,
   });
@@ -105,6 +132,7 @@ export function RestaurantForm({ restaurant, onSuccess, onClose, open = true }: 
         max_party_size: 12,
         min_party_size: 1,
         reservation_start_date: '',
+        reservation_blocked_intervals: [],
         allowed_days_of_week: [1, 2, 3, 4, 5, 6, 7],
         meal_only_reservations: false,
       })
@@ -175,6 +203,7 @@ export function RestaurantForm({ restaurant, onSuccess, onClose, open = true }: 
       max_party_size: restaurant.max_party_size || 12,
       min_party_size: restaurant.min_party_size || 1,
       reservation_start_date: restaurant.reservation_start_date || '',
+      reservation_blocked_intervals: normalizeBlockedIntervals(restaurant.reservation_blocked_intervals),
       allowed_days_of_week: restaurant.allowed_days_of_week || [1, 2, 3, 4, 5, 6, 7],
       meal_only_reservations: (restaurant as any)?.meal_only_reservations ?? false,
     });
@@ -194,11 +223,18 @@ export function RestaurantForm({ restaurant, onSuccess, onClose, open = true }: 
     setIsLoading(true);
 
     try {
+      const restaurantPayload = {
+        ...formData,
+        reservation_blocked_intervals: formData.reservation_blocked_intervals.filter(
+          (interval) => interval.date && interval.start_time && interval.end_time
+        ),
+      }
+
       let result;
       if (restaurant) {
-        result = await updateRestaurant(restaurant.id, formData);
+        result = await updateRestaurant(restaurant.id, restaurantPayload);
       } else {
-        result = await createRestaurant(formData);
+        result = await createRestaurant(restaurantPayload);
       }
 
       if (result.success) {
@@ -255,6 +291,32 @@ export function RestaurantForm({ restaurant, onSuccess, onClose, open = true }: 
   const handleAreasChange = (areas: ReservationAreaFormData[]) => {
     setReservationAreas(areas);
   };
+
+  const addBlockedInterval = () => {
+    setFormData({
+      ...formData,
+      reservation_blocked_intervals: [
+        ...formData.reservation_blocked_intervals,
+        { date: "", start_time: "21:00", end_time: "24:00", message: "" },
+      ],
+    })
+  }
+
+  const updateBlockedInterval = (index: number, updates: Partial<ReservationBlockedInterval>) => {
+    setFormData({
+      ...formData,
+      reservation_blocked_intervals: formData.reservation_blocked_intervals.map((interval, i) =>
+        i === index ? { ...interval, ...updates } : interval
+      ),
+    })
+  }
+
+  const removeBlockedInterval = (index: number) => {
+    setFormData({
+      ...formData,
+      reservation_blocked_intervals: formData.reservation_blocked_intervals.filter((_, i) => i !== index),
+    })
+  }
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
@@ -496,6 +558,77 @@ export function RestaurantForm({ restaurant, onSuccess, onClose, open = true }: 
                       ))}
                     </div>
                   </div>
+
+                  <div className="space-y-3 rounded-md border p-3">
+                    <div className="flex items-center justify-between gap-3">
+                      <div>
+                        <Label>Blocked Time Windows</Label>
+                        <p className="text-sm text-muted-foreground">
+                          Close specific hours for a date, such as 2026-05-09 from 21:00 to 24:00.
+                        </p>
+                      </div>
+                      <Button type="button" variant="outline" size="sm" onClick={addBlockedInterval}>
+                        Add Window
+                      </Button>
+                    </div>
+
+                    {formData.reservation_blocked_intervals.length > 0 && (
+                      <div className="space-y-3">
+                        {formData.reservation_blocked_intervals.map((interval, index) => (
+                          <div key={index} className="grid grid-cols-1 md:grid-cols-[1fr_0.8fr_0.8fr_1.6fr_auto] gap-2 items-end">
+                            <div className="space-y-1">
+                              <Label htmlFor={`blocked-date-${index}`}>Date</Label>
+                              <Input
+                                id={`blocked-date-${index}`}
+                                type="date"
+                                value={interval.date}
+                                onChange={(e) => updateBlockedInterval(index, { date: e.target.value })}
+                              />
+                            </div>
+                            <div className="space-y-1">
+                              <Label htmlFor={`blocked-start-${index}`}>Start</Label>
+                              <Input
+                                id={`blocked-start-${index}`}
+                                type="time"
+                                step="900"
+                                value={interval.start_time}
+                                onChange={(e) => updateBlockedInterval(index, { start_time: e.target.value })}
+                              />
+                            </div>
+                            <div className="space-y-1">
+                              <Label htmlFor={`blocked-end-${index}`}>End</Label>
+                              <Input
+                                id={`blocked-end-${index}`}
+                                type="time"
+                                step="900"
+                                value={interval.end_time === "24:00" ? "23:59" : interval.end_time}
+                                onChange={(e) => updateBlockedInterval(index, { end_time: e.target.value })}
+                              />
+                              <label className="flex items-center gap-2 text-xs text-muted-foreground">
+                                <Checkbox
+                                  checked={interval.end_time === "24:00"}
+                                  onCheckedChange={(checked) => updateBlockedInterval(index, { end_time: checked ? "24:00" : "23:59" })}
+                                />
+                                End at midnight
+                              </label>
+                            </div>
+                            <div className="space-y-1">
+                              <Label htmlFor={`blocked-message-${index}`}>Message</Label>
+                              <Input
+                                id={`blocked-message-${index}`}
+                                value={interval.message}
+                                placeholder="Fully booked between 21:00 - 24:00"
+                                onChange={(e) => updateBlockedInterval(index, { message: e.target.value })}
+                              />
+                            </div>
+                            <Button type="button" variant="outline" onClick={() => removeBlockedInterval(index)}>
+                              Remove
+                            </Button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
                 </div>
               )}
             </TabsContent>
@@ -508,6 +641,7 @@ export function RestaurantForm({ restaurant, onSuccess, onClose, open = true }: 
                     id: restaurant.id,
                     created_at: restaurant.created_at,
                     updated_at: restaurant.updated_at,
+                    reservation_blocked_intervals: formData.reservation_blocked_intervals as any,
                     blocked_dates: [],
                     special_hours: null
                   }}

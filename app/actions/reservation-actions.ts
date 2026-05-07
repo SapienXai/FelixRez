@@ -29,6 +29,51 @@ interface CreateReservationParams {
   lang?: string
 }
 
+interface ReservationBlockedInterval {
+  date: string
+  start_time: string
+  end_time: string
+  message?: string
+}
+
+function normalizeBlockedIntervals(value: unknown): ReservationBlockedInterval[] {
+  if (!Array.isArray(value)) return []
+
+  return value.filter((interval): interval is ReservationBlockedInterval => (
+    Boolean(interval) &&
+    typeof interval === "object" &&
+    typeof (interval as ReservationBlockedInterval).date === "string" &&
+    typeof (interval as ReservationBlockedInterval).start_time === "string" &&
+    typeof (interval as ReservationBlockedInterval).end_time === "string"
+  ))
+}
+
+function parseTimeToMinutes(value: string | null | undefined) {
+  if (!value) return null
+  const [hour, minute = 0] = value.split(":").map(Number)
+  if (!Number.isFinite(hour) || !Number.isFinite(minute)) return null
+  if (hour === 24 && minute === 0) return 24 * 60
+  if (hour < 0 || hour > 23 || minute < 0 || minute > 59) return null
+  return hour * 60 + minute
+}
+
+function findBlockedIntervalForReservation(
+  intervals: ReservationBlockedInterval[],
+  reservationDate: string,
+  reservationTime: string
+) {
+  const reservationMinutes = parseTimeToMinutes(reservationTime)
+  if (reservationMinutes === null) return null
+
+  return intervals.find((interval) => {
+    if (interval.date !== reservationDate) return false
+    const startMinutes = parseTimeToMinutes(interval.start_time)
+    const endMinutes = parseTimeToMinutes(interval.end_time)
+    if (startMinutes === null || endMinutes === null) return false
+    return reservationMinutes >= startMinutes && reservationMinutes < endMinutes
+  }) || null
+}
+
 export async function createReservation(params: CreateReservationParams) {
   try {
     // Use service role to ensure inserts succeed regardless of RLS on public form
@@ -36,7 +81,7 @@ export async function createReservation(params: CreateReservationParams) {
 
     const { data: restaurantSettings, error: restaurantSettingsError } = await supabase
       .from("restaurants")
-      .select("reservation_enabled, reservation_start_date")
+      .select("reservation_enabled, reservation_start_date, reservation_blocked_intervals")
       .eq("id", params.restaurantId)
       .single()
 
@@ -56,6 +101,21 @@ export async function createReservation(params: CreateReservationParams) {
       return {
         success: false,
         message: `This restaurant accepts reservations starting from ${restaurantSettings.reservation_start_date}.`,
+      }
+    }
+
+    const blockedInterval = findBlockedIntervalForReservation(
+      normalizeBlockedIntervals(restaurantSettings.reservation_blocked_intervals),
+      params.reservationDate,
+      params.reservationTime
+    )
+
+    if (blockedInterval) {
+      return {
+        success: false,
+        message:
+          blockedInterval.message ||
+          `We are fully booked between ${blockedInterval.start_time} - ${blockedInterval.end_time}.`,
       }
     }
 
