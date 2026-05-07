@@ -34,6 +34,31 @@ export async function createReservation(params: CreateReservationParams) {
     // Use service role to ensure inserts succeed regardless of RLS on public form
     const supabase = createServiceRoleClient()
 
+    const { data: restaurantSettings, error: restaurantSettingsError } = await supabase
+      .from("restaurants")
+      .select("reservation_enabled, reservation_start_date")
+      .eq("id", params.restaurantId)
+      .single()
+
+    if (restaurantSettingsError || !restaurantSettings) {
+      console.error("Error fetching restaurant settings:", restaurantSettingsError)
+      return { success: false, message: "Restaurant information not found" }
+    }
+
+    if (restaurantSettings.reservation_enabled === false) {
+      return { success: false, message: "This restaurant is not accepting reservations right now." }
+    }
+
+    if (
+      restaurantSettings.reservation_start_date &&
+      params.reservationDate < restaurantSettings.reservation_start_date
+    ) {
+      return {
+        success: false,
+        message: `This restaurant accepts reservations starting from ${restaurantSettings.reservation_start_date}.`,
+      }
+    }
+
     const { data, error } = await supabase
       .from("reservations")
       .insert({

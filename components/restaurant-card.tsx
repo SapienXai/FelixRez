@@ -16,6 +16,7 @@ interface Restaurant {
   atmosphere: string
   phone: string
   location: string
+  reservation_start_date: string | null
 }
 
 interface RestaurantCardProps {
@@ -42,10 +43,42 @@ function getLocationHref(restaurant: Restaurant) {
   return `https://maps.google.com/?q=${encodeURIComponent(restaurant.location)}`
 }
 
+function parseYYYYMMDD(value: string | null | undefined) {
+  if (!value) return null
+  const [year, month, day] = value.split("-").map(Number)
+  if (!year || !month || !day) return null
+
+  const date = new Date(year, month - 1, day)
+  date.setHours(0, 0, 0, 0)
+  return date
+}
+
+function getReservationOpeningLabel(value: string | null, lang: string) {
+  const openingDate = parseYYYYMMDD(value)
+  if (!openingDate) return null
+
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+  if (openingDate <= today) return null
+
+  const locale = lang === "tr" ? "tr-TR" : "en-US"
+  const formattedDate = openingDate.toLocaleDateString(locale, {
+    day: "numeric",
+    month: "long",
+  })
+
+  return lang === "tr"
+    ? `${formattedDate}'tan itibaren rezervasyon`
+    : `Reserve from ${formattedDate}`
+}
+
 export function RestaurantCard({ restaurant }: RestaurantCardProps) {
   const { getTranslation, currentLang } = useLanguage()
   const [currentSlide, setCurrentSlide] = useState(0)
   const videoRef = useRef<HTMLVideoElement>(null)
+  const reservationOpeningLabel = getReservationOpeningLabel(restaurant.reservation_start_date, currentLang)
+  const defaultReserveLabel = getTranslation("card.reserveButton")
+  const reserveButtonLabel = reservationOpeningLabel || defaultReserveLabel
 
   useEffect(() => {
     if (restaurant.mediaType === "slideshow" && restaurant.media.length > 1) {
@@ -85,7 +118,7 @@ export function RestaurantCard({ restaurant }: RestaurantCardProps) {
       <a href={`tel:${restaurant.phone}`} className="call-btn-corner">
         <i className="fas fa-phone"></i>
       </a>
-      
+
       <div className="card-overlay">
         <div className="card-content">
           <div className="card-top">
@@ -110,9 +143,11 @@ export function RestaurantCard({ restaurant }: RestaurantCardProps) {
             <div className="action-row">
               <Link
                 href={`/reserve?restaurant=${encodeURIComponent(restaurant.name)}&lang=${currentLang}`}
-                className="reserve-btn"
+                className={`reserve-btn ${reservationOpeningLabel ? "reserve-btn-opening" : ""}`}
+                aria-label={reserveButtonLabel}
               >
-                {getTranslation("card.reserveButton")}
+                {reservationOpeningLabel && <i className="fas fa-calendar-check"></i>}
+                <span>{reserveButtonLabel}</span>
               </Link>
               <div className="button-group">
                 <a

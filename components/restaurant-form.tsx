@@ -78,6 +78,7 @@ export function RestaurantForm({ restaurant, onSuccess, onClose, open = true }: 
     min_advance_hours: restaurant?.min_advance_hours || 2,
     max_party_size: restaurant?.max_party_size || 12,
     min_party_size: restaurant?.min_party_size || 1,
+    reservation_start_date: restaurant?.reservation_start_date || '',
     allowed_days_of_week: restaurant?.allowed_days_of_week || [1, 2, 3, 4, 5, 6, 7],
     meal_only_reservations: (restaurant as any)?.meal_only_reservations ?? false,
   });
@@ -103,6 +104,7 @@ export function RestaurantForm({ restaurant, onSuccess, onClose, open = true }: 
         min_advance_hours: 2,
         max_party_size: 12,
         min_party_size: 1,
+        reservation_start_date: '',
         allowed_days_of_week: [1, 2, 3, 4, 5, 6, 7],
         meal_only_reservations: false,
       })
@@ -172,6 +174,7 @@ export function RestaurantForm({ restaurant, onSuccess, onClose, open = true }: 
       min_advance_hours: restaurant.min_advance_hours || 2,
       max_party_size: restaurant.max_party_size || 12,
       min_party_size: restaurant.min_party_size || 1,
+      reservation_start_date: restaurant.reservation_start_date || '',
       allowed_days_of_week: restaurant.allowed_days_of_week || [1, 2, 3, 4, 5, 6, 7],
       meal_only_reservations: (restaurant as any)?.meal_only_reservations ?? false,
     });
@@ -465,6 +468,16 @@ export function RestaurantForm({ restaurant, onSuccess, onClose, open = true }: 
                       max="72"
                       value={formData.min_advance_hours}
                       onChange={(e) => setFormData({ ...formData, min_advance_hours: parseInt(e.target.value) })}
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="reservation-start-date">First Reservation Date</Label>
+                    <Input
+                      id="reservation-start-date"
+                      type="date"
+                      value={formData.reservation_start_date}
+                      onChange={(e) => setFormData({ ...formData, reservation_start_date: e.target.value })}
                     />
                   </div>
 

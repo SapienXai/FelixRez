@@ -282,6 +282,80 @@ body {
   color: #333;
 }
 
+.reserve-btn-opening {
+  gap: 8px;
+  overflow: hidden;
+  position: relative;
+  background: linear-gradient(110deg, #ffffff 0%, #ffffff 38%, #d9fff8 50%, #ffffff 62%, #ffffff 100%);
+  background-size: 260% 100%;
+  border: 1px solid rgba(255, 255, 255, 0.55);
+  color: #1f2937;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18), 0 0 0 0 rgba(15, 118, 110, 0.3);
+  animation: reserveOpeningPulse 2.8s ease-in-out infinite, reserveOpeningShine 2.4s linear infinite;
+}
+
+.reserve-btn-opening i {
+  flex: 0 0 auto;
+  color: #0f766e;
+  font-size: 1rem;
+  animation: reserveOpeningIcon 1.4s ease-in-out infinite;
+}
+
+.reserve-btn-opening span {
+  position: relative;
+  z-index: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  animation: reserveOpeningTextWiggle 1.6s ease-in-out infinite;
+}
+
+.reserve-btn-opening:hover {
+  background: linear-gradient(110deg, #ffffff 0%, #ffffff 38%, #d9fff8 50%, #ffffff 62%, #ffffff 100%);
+}
+
+@keyframes reserveOpeningPulse {
+  0%, 100% {
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18), 0 0 0 0 rgba(15, 118, 110, 0.3);
+  }
+  50% {
+    box-shadow: 0 12px 30px rgba(0, 0, 0, 0.24), 0 0 0 8px rgba(15, 118, 110, 0);
+  }
+}
+
+@keyframes reserveOpeningShine {
+  0% {
+    background-position: 130% 0;
+  }
+  100% {
+    background-position: -130% 0;
+  }
+}
+
+@keyframes reserveOpeningIcon {
+  0%, 100% {
+    transform: translateY(0) scale(1);
+  }
+  50% {
+    transform: translateY(-1px) scale(1.08);
+  }
+}
+
+@keyframes reserveOpeningTextWiggle {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  25% {
+    transform: translateY(-1px);
+  }
+  50% {
+    transform: translateY(0);
+  }
+  75% {
+    transform: translateY(1px);
+  }
+}
+
 .events-btn {
   background: linear-gradient(45deg, #ff6b6b, #4ecdc4, #45b7d1, #96ceb4, #ffeaa7, #fd79a8);
   background-size: 300% 300%;

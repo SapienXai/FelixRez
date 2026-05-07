@@ -18,6 +18,7 @@ interface Restaurant {
   min_advance_hours: number | null
   max_party_size: number | null
   min_party_size: number | null
+  reservation_start_date: string | null
   blocked_dates: string[] | null
   special_hours: any | null
 }
@@ -83,6 +84,7 @@ export function ReservationStep1({
     min_advance_hours: selectedArea?.min_advance_hours ?? (restaurant?.min_advance_hours ?? 0),
     max_party_size: selectedArea?.max_party_size ?? (restaurant?.max_party_size ?? 8),
     min_party_size: selectedArea?.min_party_size ?? (restaurant?.min_party_size ?? 1),
+    reservation_start_date: restaurant?.reservation_start_date || null,
     allowed_days_of_week: selectedArea?.allowed_days_of_week || restaurant?.allowed_days_of_week || [1,2,3,4,5,6,7],
     blocked_dates: selectedArea?.blocked_dates || restaurant?.blocked_dates || [],
   }
@@ -159,6 +161,7 @@ export function ReservationStep1({
     const options = []
     const today = new Date()
     today.setHours(0, 0, 0, 0)
+    const reservationStartDate = parseYYYYMMDD(eff.reservation_start_date)
     
     const advanceBookingDays = eff.advance_booking_days
     const minAdvanceHours = eff.min_advance_hours
@@ -174,6 +177,8 @@ export function ReservationStep1({
     for (let i = 0; i < advanceBookingDays; i++) {
       const dateOption = new Date(today)
       dateOption.setDate(today.getDate() + i)
+
+      if (reservationStartDate && dateOption < reservationStartDate) continue
       
       // For today, check if there are any valid time slots after the minimum advance time
       if (i === 0) {
@@ -216,6 +221,11 @@ export function ReservationStep1({
     const closingTime = eff.closing_time
     const slotDuration = eff.time_slot_duration
     const minAdvanceHours = eff.min_advance_hours
+    const reservationStartDate = parseYYYYMMDD(eff.reservation_start_date)
+
+    if (reservationStartDate && selectedDate < reservationStartDate) {
+      return { times }
+    }
 
     // Parse opening and closing times
     const [openHour, openMinute] = openingTime.split(":").map(Number)
@@ -269,6 +279,16 @@ export function ReservationStep1({
     const month = (date.getMonth() + 1).toString().padStart(2, "0")
     const day = date.getDate().toString().padStart(2, "0")
     return `${year}-${month}-${day}`
+  }
+
+  const parseYYYYMMDD = (value: string | null | undefined) => {
+    if (!value) return null
+    const [year, month, day] = value.split("-").map(Number)
+    if (!year || !month || !day) return null
+
+    const parsed = new Date(year, month - 1, day)
+    parsed.setHours(0, 0, 0, 0)
+    return parsed
   }
 
   const handleDateChange = (e: React.ChangeEvent<HTMLSelectElement>) => {

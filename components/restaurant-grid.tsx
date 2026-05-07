@@ -17,6 +17,7 @@ interface RestaurantWithMedia {
   atmosphere: string;
   mediaType: "slideshow" | "video";
   media: string[];
+  reservation_start_date: string | null;
 }
 
 export function RestaurantGrid() {
@@ -40,7 +41,8 @@ export function RestaurantGrid() {
              hours: restaurant.hours || '',
              atmosphere: restaurant.atmosphere || '',
              mediaType: (restaurant.media?.[0]?.media_url?.endsWith('.mp4') || restaurant.media?.[0]?.media_url?.endsWith('.webm') || restaurant.media?.[0]?.media_url?.endsWith('.mov')) ? 'video' as const : 'slideshow' as const,
-             media: restaurant.media?.map((m: any) => m.media_url) || []
+             media: restaurant.media?.map((m: any) => m.media_url) || [],
+             reservation_start_date: restaurant.reservation_start_date || null
            }))
           setRestaurants(transformedRestaurants)
         }

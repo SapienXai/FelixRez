@@ -585,6 +585,7 @@ export async function createRestaurant(data: {
   min_advance_hours?: number;
   max_party_size?: number;
   min_party_size?: number;
+  reservation_start_date?: string;
   meal_only_reservations?: boolean;
 }) {
   try {
@@ -615,6 +616,7 @@ export async function createRestaurant(data: {
         min_advance_hours: data.min_advance_hours,
         max_party_size: data.max_party_size,
         min_party_size: data.min_party_size,
+        reservation_start_date: data.reservation_start_date === undefined ? undefined : data.reservation_start_date || null,
         meal_only_reservations: data.meal_only_reservations,
       })
       .select()
@@ -668,6 +670,7 @@ export async function updateRestaurant(id: string, data: {
   min_advance_hours?: number;
   max_party_size?: number;
   min_party_size?: number;
+  reservation_start_date?: string;
   meal_only_reservations?: boolean;
 }) {
   try {
@@ -698,6 +701,7 @@ export async function updateRestaurant(id: string, data: {
         min_advance_hours: data.min_advance_hours,
         max_party_size: data.max_party_size,
         min_party_size: data.min_party_size,
+        reservation_start_date: data.reservation_start_date === undefined ? undefined : data.reservation_start_date || null,
         meal_only_reservations: data.meal_only_reservations,
         updated_at: new Date().toISOString(),
       })
