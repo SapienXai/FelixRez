@@ -644,6 +644,10 @@ export function ManageHeader({ toggleSidebar }: ManageHeaderProps) {
     ].filter(Boolean).join(" - ")
   }
 
+  const getNotificationTitle = (eventType: "created" | "updated") => {
+    return eventType === "updated" ? "Update Reservation" : "New Reservation"
+  }
+
   const formatShortReservationDate = (date: string) => {
     return new Date(`${date}T00:00:00`).toLocaleDateString(getTranslation("common.locale") || "tr-TR", {
       day: "numeric",
@@ -850,7 +854,7 @@ export function ManageHeader({ toggleSidebar }: ManageHeaderProps) {
                                   <div className="min-w-0">
                                     <div className="flex items-center gap-2">
                                       <p className="truncate text-sm font-semibold text-slate-950">
-                                        New/Updated Reservation
+                                        {getNotificationTitle(notification.event_type)}
                                       </p>
                                       {!notification.read ? (
                                         <span className="h-2 w-2 shrink-0 rounded-full bg-sky-500 shadow-[0_0_0_4px_rgba(14,165,233,0.12)]" />
@@ -929,9 +933,9 @@ export function ManageHeader({ toggleSidebar }: ManageHeaderProps) {
                 <div>
                   <div className="inline-flex items-center gap-1.5 rounded-full bg-sky-400/15 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.16em] text-sky-100">
                     <Bell className="h-3 w-3" />
-                    New/Updated Reservation
+                    {getNotificationTitle(popup.event_type)}
                   </div>
-                  <p className="mt-2 text-sm font-semibold">New/Updated Reservation</p>
+                  <p className="mt-2 text-sm font-semibold">{getNotificationTitle(popup.event_type)}</p>
                   <p className="text-xs text-white/60">
                     {formatNotificationBody(popup)}
                   </p>

@@ -68,6 +68,10 @@ function formatReservationDate(date: string) {
   return [part("weekday"), part("day"), part("month")].filter(Boolean).join(" ")
 }
 
+function getReservationNotificationTitle(event: ReservationPushEvent) {
+  return event === "updated" ? "Update Reservation" : "New Reservation"
+}
+
 export async function sendReservationPushNotification(
   reservationId: string,
   event: ReservationPushEvent
@@ -125,7 +129,7 @@ export async function sendReservationPushNotification(
   ].filter(Boolean).join(" - ")
 
   const payload = JSON.stringify({
-    title: "New/Updated Reservation",
+    title: getReservationNotificationTitle(event),
     body,
     icon: "/placeholder-logo.png",
     badge: "/placeholder-logo.png",
