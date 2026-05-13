@@ -131,8 +131,8 @@ export async function sendReservationPushNotification(
   const payload = JSON.stringify({
     title: getReservationNotificationTitle(event),
     body,
-    icon: "/placeholder-logo.png",
-    badge: "/placeholder-logo.png",
+    icon: "/felixlogo.png",
+    badge: "/felixlogo.png",
     url: `/manage/reservations?reservationId=${encodeURIComponent(reservationId)}`,
     reservationId,
     event,

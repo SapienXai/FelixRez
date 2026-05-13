@@ -10,8 +10,8 @@ self.addEventListener("push", (event) => {
   const title = data.title || "Felix Reservations"
   const options = {
     body: data.body || "Reservation activity received.",
-    icon: data.icon || "/placeholder-logo.png",
-    badge: data.badge || "/placeholder-logo.png",
+    icon: data.icon || "/felixlogo.png",
+    badge: data.badge || "/felixlogo.png",
     data: {
       url: data.url || "/manage/reservations",
       reservationId: data.reservationId,
