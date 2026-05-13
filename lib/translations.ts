@@ -112,6 +112,10 @@ export const translations = {
         timeLabel: "Time",
         dateToday: "Today",
         dateTomorrow: "Tomorrow",
+        planTitle: "Reservation details",
+        planHeading: "Choose your visit",
+        pickerCancel: "Cancel",
+        pickerSet: "Set",
         partySizeOptions: {
           one: "{count} person",
           other: "{count} people",
@@ -621,6 +625,10 @@ export const translations = {
         timeLabel: "Saat",
         dateToday: "Bugün",
         dateTomorrow: "Yarın",
+        planTitle: "Rezervasyon detayları",
+        planHeading: "Ziyaretinizi seçin",
+        pickerCancel: "İptal",
+        pickerSet: "Seç",
         partySizeOptions: {
           one: "{count} kişi",
           other: "{count} kişi",

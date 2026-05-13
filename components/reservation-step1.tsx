@@ -1,10 +1,10 @@
 "use client"
 
-import type React from "react"
-import { useEffect } from "react"
+import { useEffect, useState } from "react"
 
 import { useLanguage } from "@/context/language-context"
-import Image from "next/image"
+
+type Step1Picker = "party" | "date" | "time" | "area" | null
 
 interface ReservationBlockedInterval {
   date: string
@@ -79,6 +79,7 @@ export function ReservationStep1({
   setSelectedAreaId,
 }: ReservationStep1Props) {
   const { getTranslation, currentLang } = useLanguage()
+  const [activePicker, setActivePicker] = useState<Step1Picker>(null)
 
 
   const selectedArea: ReservationArea | undefined = areas?.find(a => a.id === selectedAreaId || "")
@@ -357,8 +358,8 @@ export function ReservationStep1({
       : `We are fully booked between ${ranges}.`
   }
 
-  const handleDateChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const dateParts = e.target.value.split("-")
+  const handleDateSelect = (value: string) => {
+    const dateParts = value.split("-")
     const newDate = new Date(
       Number.parseInt(dateParts[0]),
       Number.parseInt(dateParts[1]) - 1,
@@ -368,12 +369,91 @@ export function ReservationStep1({
     setSelectedDate(newDate)
   }
 
-  const handleTimeSlotClick = (time: string) => {
-    setSelectedTime(time)
-  }
-
+  const partyOptions = partySizeOptions()
+  const availableDates = dateOptions()
   const { times } = generateTimeSlots()
   const blockedIntervalsMessage = getBlockedIntervalsMessage(selectedDate)
+  const selectedDateValue = formatDateToYYYYMMDD(selectedDate)
+  const selectedPartyLabel = partyOptions.find((option) => option.value === partySize)?.label || partySize
+  const selectedDateLabel = availableDates.find((option) => option.value === selectedDateValue)?.label || getDisplayDate(selectedDate, true)
+  const selectedAreaLabel = areas?.find((area) => area.id === selectedAreaId)?.name || getTranslation("reserve.step1.anyArea") || "Any area"
+  const areaOptions = [
+    { value: "", label: getTranslation("reserve.step1.anyArea") || "Any area" },
+    ...(areas || []).map((area) => ({ value: area.id, label: area.name })),
+  ]
+
+  const closePicker = () => setActivePicker(null)
+
+  const renderPickerSheet = () => {
+    if (!activePicker) return null
+
+    const pickerTitle = activePicker === "party"
+      ? getTranslation("reserve.step1.partyLabel")
+      : activePicker === "date"
+        ? getTranslation("reserve.step1.dateLabel")
+        : activePicker === "time"
+          ? getTranslation("reserve.step1.timeLabel")
+          : getTranslation("reserve.step1.areaLabel") || "Area"
+
+    const options = activePicker === "party"
+      ? partyOptions.map((option) => ({
+          value: option.value,
+          label: option.label,
+          selected: option.value === partySize,
+          onSelect: () => setPartySize(option.value),
+        }))
+      : activePicker === "date"
+        ? availableDates.map((option) => ({
+            value: option.value,
+            label: option.label,
+            selected: option.value === selectedDateValue,
+            onSelect: () => handleDateSelect(option.value),
+          }))
+        : activePicker === "time"
+          ? times.map((time) => ({
+              value: time,
+              label: time,
+              selected: time === selectedTime,
+              onSelect: () => setSelectedTime(time),
+            }))
+          : areaOptions.map((option) => ({
+              value: option.value,
+              label: option.label,
+              selected: option.value === (selectedAreaId || ""),
+              onSelect: () => setSelectedAreaId(option.value || null),
+            }))
+
+    return (
+      <div className="reservation-picker-overlay" role="dialog" aria-modal="true" aria-labelledby="reservationPickerTitle">
+        <button
+          type="button"
+          className="reservation-picker-backdrop"
+          aria-label={getTranslation("reserve.step1.pickerCancel")}
+          onClick={closePicker}
+        />
+        <div className="reservation-picker-sheet">
+          <div className="reservation-picker-handle" aria-hidden="true" />
+          <h3 className="reservation-picker-title" id="reservationPickerTitle">{pickerTitle}</h3>
+          <div className="reservation-picker-options">
+            {options.map((option) => (
+              <button
+                key={`${activePicker}-${option.value}`}
+                type="button"
+                className={`reservation-picker-option ${option.selected ? "selected" : ""}`}
+                onClick={() => {
+                  option.onSelect()
+                  closePicker()
+                }}
+              >
+                <span>{option.label}</span>
+                {option.selected && <i className="bi bi-check-lg" aria-hidden="true" />}
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+    )
+  }
 
   // If current selectedDate is not in the available date options (e.g., today has no slots),
   // automatically move to the first available date and clear the selected time.
@@ -416,120 +496,44 @@ export function ReservationStep1({
   }, [areas])
 
   return (
-    <div id="step1">
-      <div className="row g-3 step-1-selectors">
-        <div className="col">
-          <label htmlFor="partySize" className="form-label">
-            {getTranslation("reserve.step1.partyLabel")}
-          </label>
-          <select
-            className="form-select"
-            id="partySize"
-            value={partySize}
-            onChange={(e) => setPartySize(e.target.value)}
-          >
-            {partySizeOptions().map((option) => (
-              <option key={option.value} value={option.value}>
-                {option.label}
-              </option>
-            ))}
-          </select>
+    <div id="step1" className="reservation-step reservation-step-one">
+      <section className="booking-panel">
+        <div className="booking-panel-header">
+          <p>{getTranslation("reserve.step1.planTitle")}</p>
+          <h2>{getTranslation("reserve.step1.planHeading")}</h2>
         </div>
-        <div className="col">
-          <label htmlFor="reservationDay" className="form-label">
-            {getTranslation("reserve.step1.dateLabel")}
-          </label>
-          <select
-            className="form-select"
-            id="reservationDay"
-            value={formatDateToYYYYMMDD(selectedDate)}
-            onChange={handleDateChange}
-          >
-            {dateOptions().map((option) => (
-              <option key={option.value} value={option.value}>
-                {option.label}
-              </option>
-            ))}
-          </select>
+        <div className="booking-field-grid">
+          <button type="button" className="booking-field" onClick={() => setActivePicker("party")}>
+            <span>{getTranslation("reserve.step1.partyLabel")}</span>
+            <strong>{selectedPartyLabel}</strong>
+            <i className="bi bi-chevron-down" aria-hidden="true" />
+          </button>
+          <button type="button" className="booking-field" onClick={() => setActivePicker("date")}>
+            <span>{getTranslation("reserve.step1.dateLabel")}</span>
+            <strong>{selectedDateLabel}</strong>
+            <i className="bi bi-chevron-down" aria-hidden="true" />
+          </button>
+          <button type="button" className="booking-field" onClick={() => setActivePicker("time")}>
+            <span>{getTranslation("reserve.step1.timeLabel")}</span>
+            <strong>{selectedTime || "-"}</strong>
+            <i className="bi bi-chevron-down" aria-hidden="true" />
+          </button>
+          {areas && areas.length > 0 && (
+            <button type="button" className="booking-field" onClick={() => setActivePicker("area")}>
+              <span>{getTranslation("reserve.step1.areaLabel") || "Area"}</span>
+              <strong>{selectedAreaLabel}</strong>
+              <i className="bi bi-chevron-down" aria-hidden="true" />
+            </button>
+          )}
         </div>
-        <div className="col">
-          <div style={{ display: 'flex', gap: '8px', alignItems: 'flex-end' }}>
-            <div style={{ flex: 1 }}>
-              <label htmlFor="reservationTimeMain" className="form-label">
-                {getTranslation("reserve.step1.timeLabel")}
-              </label>
-              <select
-                className="form-select"
-                id="reservationTimeMain"
-                value={selectedTime}
-                onChange={(e) => setSelectedTime(e.target.value)}
-              >
-                <optgroup label={getTranslation("reserve.step1.availableTimesLabel")}>
-                  {times.map((time) => (
-                    <option key={`time-${time}`} value={time}>
-                      {time}
-                    </option>
-                  ))}
-                </optgroup>
-              </select>
-            </div>
-            {areas && areas.length > 0 && (
-              <div style={{ flex: 1 }}>
-                <label htmlFor="reservationArea" className="form-label">
-                  {getTranslation("reserve.step1.areaLabel") || "Area"}
-                </label>
-                <select
-                  className="form-select"
-                  id="reservationArea"
-                  value={selectedAreaId || ""}
-                  onChange={(e) => setSelectedAreaId(e.target.value || null)}
-                >
-                  <option value="">{getTranslation("reserve.step1.anyArea") || "Any area"}</option>
-                  {areas.map((a) => (
-                    <option key={a.id} value={a.id}>{a.name}</option>
-                  ))}
-                </select>
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
+      </section>
 
       {blockedIntervalsMessage && (
         <div className="alert alert-warning mt-3" role="alert">
           {blockedIntervalsMessage}
         </div>
       )}
-
-
-      <div className="time-slots-container mt-3">
-        <div className="mb-3">
-          <h6 className="text-black mb-2">{getTranslation("reserve.step1.availableTimesLabel")}</h6>
-          
-          {times.length > 0 && (
-            <div className="time-slots-grid">
-              {times.map((time) => (
-                <button
-                  key={`slot-${time}`}
-                  type="button"
-                  className={`time-slot-btn ${selectedTime === time ? "selected" : ""}`}
-                  data-time={time}
-                  onClick={() => handleTimeSlotClick(time)}
-                >
-                  {time}
-                </button>
-              ))}
-            </div>
-          )}
-        </div>
-      </div>
-
-      <div className="partnership-text mt-3">
-        <a href="https://sapienx.app" target="_blank" rel="noopener noreferrer" aria-label="Visit SapienX AI">
-          <Image src="/assets/sapienx.png" alt="SapienX AI Logo" width={50} height={50} />
-        </a>
-        <span>{getTranslation("reserve.step1.bookingEngineText")}</span>
-      </div>
+      {renderPickerSheet()}
     </div>
   )
 }

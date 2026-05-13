@@ -1,7 +1,7 @@
 "use client"
 
 import { useLanguage } from "@/context/language-context"
-import { useEffect, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { AppHeader } from "./app-header"
 import { ReservationStep1 } from "./reservation-step1"
 import { ReservationStep2 } from "./reservation-step2"
@@ -13,6 +13,7 @@ import { Loader2, XCircle } from 'lucide-react'
 import { ReservationConfirmation } from "./reservation-confirmation"
 import { translations } from "@/lib/translations"
 import Link from "next/link"
+import Image from "next/image"
 interface ReservationAppProps {
   initialRestaurant: string
   initialLang: string
@@ -74,6 +75,7 @@ export function ReservationApp({ initialRestaurant, initialLang }: ReservationAp
   const [reservationComplete, setReservationComplete] = useState(false)
   const [isClient, setIsClient] = useState(false)
   const [showStep2Errors, setShowStep2Errors] = useState(false)
+  const appContentRef = useRef<HTMLDivElement | null>(null)
 
   // Check if we're on the client side
   useEffect(() => {
@@ -86,6 +88,18 @@ export function ReservationApp({ initialRestaurant, initialLang }: ReservationAp
       setLanguage(initialLang)
     }
   }, [initialLang, setLanguage])
+
+  useEffect(() => {
+    if (!isClient) return
+
+    const container = appContentRef.current
+    window.requestAnimationFrame(() => {
+      container?.scrollTo({ top: 0, behavior: "auto" })
+      window.scrollTo({ top: 0, behavior: "auto" })
+      document.documentElement.scrollTop = 0
+      document.body.scrollTop = 0
+    })
+  }, [currentStep, isClient])
 
   // Fetch restaurant data early to get reservation settings
   useEffect(() => {
@@ -337,7 +351,7 @@ export function ReservationApp({ initialRestaurant, initialLang }: ReservationAp
           subtitle={restaurantName}
           showBackButton={false}
         />
-        <div className="app-content">
+        <div className="app-content" ref={appContentRef}>
           <ReservationConfirmation
             restaurantName={restaurantName}
             date={getDisplayDate(selectedDate, currentLang, true)}
@@ -360,7 +374,7 @@ export function ReservationApp({ initialRestaurant, initialLang }: ReservationAp
           currentStep={1}
         />
 
-        <div className="app-content">
+        <div className="app-content" ref={appContentRef}>
           <div className="max-w-xl mx-auto">
             <Alert className="bg-white text-center">
               <XCircle className="inline-block mr-2 h-5 w-5" />
@@ -383,7 +397,7 @@ export function ReservationApp({ initialRestaurant, initialLang }: ReservationAp
   }
 
   return (
-    <main className="px-4 pb-8">
+    <main className="pb-8">
       <div className="reservation-app">
         <AppHeader
           restaurantName={getHeaderTitle()}
@@ -459,6 +473,14 @@ export function ReservationApp({ initialRestaurant, initialLang }: ReservationAp
               getTranslation("reserve.footer.confirmButton")
             )}
           </button>
+          {currentStep === 1 && (
+            <div className="partnership-text partnership-text-footer">
+              <a href="https://sapienx.app" target="_blank" rel="noopener noreferrer" aria-label="Visit SapienX AI">
+                <Image src="/assets/sapienx.png" alt="SapienX AI Logo" width={32} height={32} />
+              </a>
+              <span>{getTranslation("reserve.step1.bookingEngineText")}</span>
+            </div>
+          )}
         </div>
       </div>
     </main>
