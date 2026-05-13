@@ -1,7 +1,7 @@
 import webpush, { type PushSubscription } from "web-push"
 import { createServiceRoleClient } from "@/lib/supabase"
 
-type ReservationPushEvent = "created" | "updated" | "status_changed"
+type ReservationPushEvent = "created" | "updated"
 
 type AdminPushSubscriptionRow = {
   id: string
@@ -57,25 +57,15 @@ function canReceiveRestaurantPush(profile: AdminProfileRow | undefined, restaura
   return profile.restaurant_id === restaurantId
 }
 
-function getEventCopy(event: ReservationPushEvent, status?: string | null) {
-  if (event === "created") {
-    return {
-      title: "New reservation",
-      prefix: "New reservation from",
-    }
-  }
+function formatReservationDate(date: string) {
+  const parts = new Intl.DateTimeFormat("en-GB", {
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+  }).formatToParts(new Date(`${date}T00:00:00`))
+  const part = (type: Intl.DateTimeFormatPartTypes) => parts.find((item) => item.type === type)?.value
 
-  if (event === "status_changed") {
-    return {
-      title: "Reservation status updated",
-      prefix: `Reservation ${status || "status"} for`,
-    }
-  }
-
-  return {
-    title: "Reservation updated",
-    prefix: "Reservation updated for",
-  }
+  return [part("weekday"), part("day"), part("month")].filter(Boolean).join(" ")
 }
 
 export async function sendReservationPushNotification(
@@ -98,7 +88,6 @@ export async function sendReservationPushNotification(
       party_size,
       reservation_date,
       reservation_time,
-      status,
       restaurants(name),
       reservation_areas(name)
     `)
@@ -127,20 +116,17 @@ export async function sendReservationPushNotification(
   }
 
   const profilesById = new Map((profiles as AdminProfileRow[]).map((profile) => [profile.id, profile]))
-  const copy = getEventCopy(event, reservation.status)
   const restaurantName = (reservation.restaurants as any)?.name || "Felix"
-  const areaName = (reservation as any)?.reservation_areas?.name
-  const bodyParts = [
-    `${copy.prefix} ${reservation.customer_name}`,
-    `${reservation.party_size} guests`,
-    `${reservation.reservation_date} ${String(reservation.reservation_time).slice(0, 5)}`,
+  const body = [
     restaurantName,
-    areaName,
-  ].filter(Boolean)
+    formatReservationDate(reservation.reservation_date),
+    `${reservation.party_size} Pax`,
+    reservation.customer_name,
+  ].filter(Boolean).join(" - ")
 
   const payload = JSON.stringify({
-    title: copy.title,
-    body: bodyParts.join(" · "),
+    title: "New/Updated Reservation",
+    body,
     icon: "/placeholder-logo.png",
     badge: "/placeholder-logo.png",
     url: `/manage/reservations?reservationId=${encodeURIComponent(reservationId)}`,

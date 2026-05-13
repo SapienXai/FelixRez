@@ -356,9 +356,6 @@ export async function updateReservationStatus(id: string, status: string, notes?
     }
 
     revalidatePath("/manage/reservations")
-    await sendReservationPushNotification(id, "status_changed").catch((error) => {
-      console.error("Failed to send reservation push notification:", error)
-    })
 
     return {
       success: true,
@@ -567,9 +564,6 @@ export async function updateReservation(id: string, reservationData: {
     }
 
     revalidatePath("/manage/reservations")
-    await sendReservationPushNotification(id, "updated").catch((error) => {
-      console.error("Failed to send reservation push notification:", error)
-    })
 
     return { success: true, data: await attachBookedByEmail(supabase, updatedReservation), message: "Reservation updated successfully" }
   } catch (error) {

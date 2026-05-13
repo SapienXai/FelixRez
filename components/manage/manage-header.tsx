@@ -112,6 +112,23 @@ function getNotificationId(reservation: any, eventType: "created" | "updated") {
   return `${reservation.id}-${eventType}-${timestamp}`
 }
 
+function isCustomerUpdateNotification(reservation: any, previousReservation?: any) {
+  const summary = reservation.last_update_summary as { source?: string; updatedAt?: string } | null
+  if (summary?.source !== "customer" || !summary.updatedAt || reservation.last_updated_by_user_id) {
+    return false
+  }
+
+  const updatedAt = new Date(reservation.updated_at).getTime()
+  const summaryAt = new Date(summary.updatedAt).getTime()
+  const previousUpdatedAt = previousReservation?.updated_at ? new Date(previousReservation.updated_at).getTime() : null
+
+  if (previousUpdatedAt && Number.isFinite(previousUpdatedAt) && summaryAt <= previousUpdatedAt) {
+    return false
+  }
+
+  return Number.isFinite(updatedAt) && Number.isFinite(summaryAt) && Math.abs(updatedAt - summaryAt) < 30000
+}
+
 export function ManageHeader({ toggleSidebar }: ManageHeaderProps) {
   const supabase = getSupabaseBrowserClient()
   const router = useRouter()
@@ -269,6 +286,10 @@ export function ManageHeader({ toggleSidebar }: ManageHeaderProps) {
                 reservation_date,
                 created_at,
                 updated_at,
+                booked_by_user_id,
+                booked_by_label,
+                last_update_summary,
+                last_updated_by_user_id,
                 restaurants(name),
                 reservation_areas(name)
               `)
@@ -363,6 +384,9 @@ export function ManageHeader({ toggleSidebar }: ManageHeaderProps) {
         },
         async (payload) => {
           const updatedReservation = payload.new as any
+          if (!isCustomerUpdateNotification(updatedReservation, payload.old)) {
+            return
+          }
 
           let restaurantName = 'Unknown Restaurant'
           let areaName: string | null = null
@@ -378,6 +402,10 @@ export function ManageHeader({ toggleSidebar }: ManageHeaderProps) {
                 reservation_date,
                 created_at,
                 updated_at,
+                booked_by_user_id,
+                booked_by_label,
+                last_update_summary,
+                last_updated_by_user_id,
                 restaurants(name),
                 reservation_areas(name)
               `)
@@ -597,7 +625,27 @@ export function ManageHeader({ toggleSidebar }: ManageHeaderProps) {
   }
 
   const formatReservationDate = (date: string) => {
-    return new Date(date).toLocaleDateString(getTranslation("common.locale") || "tr-TR", {
+    const parts = new Intl.DateTimeFormat("en-GB", {
+      day: "numeric",
+      month: "long",
+      weekday: "long",
+    }).formatToParts(new Date(`${date}T00:00:00`))
+    const part = (type: Intl.DateTimeFormatPartTypes) => parts.find((item) => item.type === type)?.value
+
+    return [part("weekday"), part("day"), part("month")].filter(Boolean).join(" ")
+  }
+
+  const formatNotificationBody = (notification: Pick<Notification | PopupNotification, "restaurant_name" | "reservation_date" | "party_size" | "customer_name">) => {
+    return [
+      notification.restaurant_name,
+      formatReservationDate(notification.reservation_date),
+      `${notification.party_size} Pax`,
+      notification.customer_name,
+    ].filter(Boolean).join(" - ")
+  }
+
+  const formatShortReservationDate = (date: string) => {
+    return new Date(`${date}T00:00:00`).toLocaleDateString(getTranslation("common.locale") || "tr-TR", {
       day: "numeric",
       month: "short",
       weekday: "short",
@@ -691,13 +739,13 @@ export function ManageHeader({ toggleSidebar }: ManageHeaderProps) {
               onClick={() => setShowNotifications(!showNotifications)}
               title="Notifications"
               className={cn(
-                "relative rounded-full border border-transparent transition-all",
+                "relative h-11 w-11 rounded-full border border-transparent transition-all sm:h-10 sm:w-10",
                 showNotifications
                   ? "border-slate-200 bg-slate-950 text-white hover:bg-slate-900 hover:text-white"
                   : "hover:border-slate-200 hover:bg-slate-100"
               )}
             >
-              <Bell className="h-5 w-5" />
+              <Bell className="h-6 w-6 sm:h-5 sm:w-5" />
               {unreadCount > 0 && (
                 <span className="absolute -right-1.5 -top-1.5 flex h-5 min-w-5 items-center justify-center rounded-full border-2 border-white bg-rose-500 px-1 text-[10px] font-bold leading-none text-white shadow-sm">
                   {unreadLabel}
@@ -802,15 +850,14 @@ export function ManageHeader({ toggleSidebar }: ManageHeaderProps) {
                                   <div className="min-w-0">
                                     <div className="flex items-center gap-2">
                                       <p className="truncate text-sm font-semibold text-slate-950">
-                                        {notification.customer_name}
+                                        New/Updated Reservation
                                       </p>
                                       {!notification.read ? (
                                         <span className="h-2 w-2 shrink-0 rounded-full bg-sky-500 shadow-[0_0_0_4px_rgba(14,165,233,0.12)]" />
                                       ) : null}
                                     </div>
                                     <p className="mt-0.5 truncate text-xs font-medium text-slate-600">
-                                      {notification.restaurant_name}
-                                      {notification.reservation_area_name ? ` • ${notification.reservation_area_name}` : ''}
+                                      {formatNotificationBody(notification)}
                                     </p>
                                   </div>
                                   <span className="shrink-0 rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-medium text-slate-500">
@@ -828,7 +875,7 @@ export function ManageHeader({ toggleSidebar }: ManageHeaderProps) {
                                   </span>
                                   <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2 py-1">
                                     <MapPin className="h-3 w-3" />
-                                    {formatReservationDate(notification.reservation_date)}
+                                    {formatShortReservationDate(notification.reservation_date)}
                                   </span>
                                 </div>
                               </div>
@@ -882,13 +929,11 @@ export function ManageHeader({ toggleSidebar }: ManageHeaderProps) {
                 <div>
                   <div className="inline-flex items-center gap-1.5 rounded-full bg-sky-400/15 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.16em] text-sky-100">
                     <Bell className="h-3 w-3" />
-                    {popup.event_type === "updated"
-                      ? getTranslation('manage.notifications.updatedReservation')
-                      : getTranslation('manage.notifications.newReservation')}
+                    New/Updated Reservation
                   </div>
-                  <p className="mt-2 text-sm font-semibold">{popup.customer_name}</p>
+                  <p className="mt-2 text-sm font-semibold">New/Updated Reservation</p>
                   <p className="text-xs text-white/60">
-                    {popup.restaurant_name}{popup.reservation_area_name ? ` • ${popup.reservation_area_name}` : ''}
+                    {formatNotificationBody(popup)}
                   </p>
                 </div>
                 <Button
@@ -922,7 +967,7 @@ export function ManageHeader({ toggleSidebar }: ManageHeaderProps) {
                   <div className="text-[10px] font-medium uppercase tracking-wide text-slate-400">
                     {getTranslation('manage.notifications.date')}
                   </div>
-                  <div className="mt-1 text-sm font-semibold text-slate-950">{formatReservationDate(popup.reservation_date)}</div>
+                  <div className="mt-1 text-sm font-semibold text-slate-950">{formatShortReservationDate(popup.reservation_date)}</div>
                 </div>
               </div>
               <div className="border-t border-slate-100 pt-2">
