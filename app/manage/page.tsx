@@ -18,7 +18,6 @@ import {
 import { getSupabaseBrowserClient } from "@/lib/supabase"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { Calendar as CalendarComponent } from "@/components/ui/calendar"
@@ -53,6 +52,7 @@ type RestaurantOption = {
 
 type StatusFilter = "all" | "pending" | "confirmed" | "cancelled"
 type MetricFilter = "all" | "kuver" | "meal" | "deck" | "terrace"
+type OperationFilter = "latest" | "date"
 
 const EMPTY_STATS: DashboardStats = {
   total: 0,
@@ -81,6 +81,29 @@ function normalizeRestaurantFilter(restaurantId?: string) {
 
 function getLocalDateKey(date = new Date()) {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`
+}
+
+function getDateWithOffset(offset: number) {
+  const date = new Date()
+  date.setHours(12, 0, 0, 0)
+  date.setDate(date.getDate() + offset)
+  return date
+}
+
+function getCompactDateLabel(date: Date, locale?: string) {
+  return date.toLocaleDateString(locale || "en-US", {
+    month: "short",
+    day: "numeric",
+  })
+}
+
+function getDayFilterLabel(date: Date, offset: number, locale?: string) {
+  const dayNumber = date.getDate()
+  if (offset === 0) return `Today ${dayNumber}`
+  if (offset === 1) return `Tomorrow ${dayNumber}`
+
+  const weekday = date.toLocaleDateString(locale || "en-US", { weekday: "short" })
+  return `${weekday} ${dayNumber}`
 }
 
 function isCreatedToday(reservation: ReservationRecord) {
@@ -184,19 +207,19 @@ export default function ManageDashboard() {
   const [isLoading, setIsLoading] = useState(true)
   const [isRefreshing, setIsRefreshing] = useState(false)
   const [isStatsLoading, setIsStatsLoading] = useState(false)
+  const [dashboardError, setDashboardError] = useState<string | null>(null)
   const [stats, setStats] = useState<DashboardStats>(EMPTY_STATS)
   const [newReservations, setNewReservations] = useState<ReservationRecord[]>([])
   const [newTodayReservations, setNewTodayReservations] = useState<ReservationRecord[]>([])
-  const [todayReservations, setTodayReservations] = useState<ReservationRecord[]>([])
-  const [upcomingReservations, setUpcomingReservations] = useState<ReservationRecord[]>([])
+  const [, setTodayReservations] = useState<ReservationRecord[]>([])
+  const [, setUpcomingReservations] = useState<ReservationRecord[]>([])
   const [selectedDateReservations, setSelectedDateReservations] = useState<ReservationRecord[]>([])
   const [restaurants, setRestaurants] = useState<RestaurantOption[]>([])
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all")
   const [metricFilter, setMetricFilter] = useState<MetricFilter>("all")
   const [selectedRestaurant, setSelectedRestaurant] = useState("")
-  const [selectedDate, setSelectedDate] = useState<Date | undefined>(undefined)
-  const [timePeriod, setTimePeriod] = useState("daily")
-  const [activeTab, setActiveTab] = useState("new")
+  const [selectedDate, setSelectedDate] = useState<Date>(() => getDateWithOffset(0))
+  const [operationFilter, setOperationFilter] = useState<OperationFilter>("date")
   const [datePopoverOpen, setDatePopoverOpen] = useState(false)
   const [cardsExpanded, setCardsExpanded] = useState(false)
   const [showCreateForm, setShowCreateForm] = useState(false)
@@ -209,18 +232,36 @@ export default function ManageDashboard() {
   const statsRefreshTimerRef = useRef<number | null>(null)
   const dashboardFiltersRef = useRef<{
     restaurantId: string
-    dateKey?: string
-    period: string
+    dateKey: string
   }>({
     restaurantId: "",
-    dateKey: undefined,
-    period: "daily",
+    dateKey: getLocalDateKey(),
   })
 
   const selectedDateKey = useMemo(
-    () => (selectedDate ? format(selectedDate, "yyyy-MM-dd") : undefined),
+    () => format(selectedDate, "yyyy-MM-dd"),
     [selectedDate]
   )
+
+  const dayFilterOptions = useMemo(() => (
+    [0, 1, 2, 3].map((offset) => {
+      const date = getDateWithOffset(offset)
+      return {
+        date,
+        dateKey: getLocalDateKey(date),
+        label: getDayFilterLabel(date, offset, getTranslation("common.locale")),
+      }
+    })
+  ), [getTranslation])
+
+  const operationFilterLabel = useMemo(() => {
+    if (operationFilter === "latest") {
+      return "Latest"
+    }
+
+    const preset = dayFilterOptions.find((option) => option.dateKey === selectedDateKey)
+    return preset?.label ?? getCompactDateLabel(selectedDate, getTranslation("common.locale"))
+  }, [dayFilterOptions, getTranslation, operationFilter, selectedDate, selectedDateKey])
 
   const setDashboardSnapshot = useCallback((snapshot: DashboardSnapshot) => {
     setStats(snapshot.stats)
@@ -235,24 +276,21 @@ export default function ManageDashboard() {
     dashboardFiltersRef.current = {
       restaurantId: selectedRestaurant,
       dateKey: selectedDateKey,
-      period: timePeriod,
     }
-  }, [selectedRestaurant, selectedDateKey, timePeriod])
+  }, [selectedRestaurant, selectedDateKey])
 
   const refreshStats = useCallback(async (
     restaurantId?: string,
-    dateKey?: string,
-    period?: string
+    dateKey?: string
   ) => {
     const filters = dashboardFiltersRef.current
     const targetRestaurantId = restaurantId ?? filters.restaurantId
     const targetDateKey = dateKey ?? filters.dateKey
-    const targetPeriod = period ?? filters.period
     const requestId = ++statsRequestIdRef.current
     setIsStatsLoading(true)
 
     try {
-      const result = await getDashboardStats(normalizeRestaurantFilter(targetRestaurantId), targetDateKey, targetPeriod)
+      const result = await getDashboardStats(normalizeRestaurantFilter(targetRestaurantId), targetDateKey, "daily")
       if (statsRequestIdRef.current !== requestId) {
         return
       }
@@ -282,18 +320,15 @@ export default function ManageDashboard() {
   const fetchDashboardSnapshot = useCallback(async ({
     restaurantId,
     dateKey,
-    period,
     fullLoader = false,
   }: {
     restaurantId?: string
     dateKey?: string
-    period?: string
     fullLoader?: boolean
   } = {}) => {
     const filters = dashboardFiltersRef.current
     const targetRestaurantId = restaurantId ?? filters.restaurantId
     const targetDateKey = dateKey ?? filters.dateKey
-    const targetPeriod = period ?? filters.period
     const requestId = ++dashboardRequestIdRef.current
 
     if (fullLoader) {
@@ -303,16 +338,20 @@ export default function ManageDashboard() {
     }
 
     try {
-      const result = await getDashboardData(normalizeRestaurantFilter(targetRestaurantId), targetDateKey, targetPeriod)
+      setDashboardError(null)
+      const result = await getDashboardData(normalizeRestaurantFilter(targetRestaurantId), targetDateKey, "daily")
       if (dashboardRequestIdRef.current !== requestId) {
         return
       }
 
       if (result.success && result.data) {
         setDashboardSnapshot(result.data)
+      } else {
+        setDashboardError(result.message || "Could not load dashboard data.")
       }
     } catch (error) {
       console.error("Error fetching dashboard data:", error)
+      setDashboardError("Could not load dashboard data.")
     } finally {
       if (dashboardRequestIdRef.current === requestId) {
         setIsLoading(false)
@@ -414,6 +453,7 @@ export default function ManageDashboard() {
     const loadInitialDashboard = async () => {
       setIsLoading(true)
       try {
+        setDashboardError(null)
         const { data } = await supabase.auth.getSession()
         const restaurantResult = await getRestaurants()
         const restaurantData = restaurantResult.success ? (restaurantResult.data || []) : []
@@ -426,16 +466,19 @@ export default function ManageDashboard() {
         setRestaurants(restaurantData)
         setSelectedRestaurant(initialRestaurant)
 
-        const dashboardResult = await getDashboardData(normalizeRestaurantFilter(initialRestaurant), undefined, "daily")
+        const dashboardResult = await getDashboardData(normalizeRestaurantFilter(initialRestaurant), getLocalDateKey(), "daily")
         if (cancelled) return
 
         if (dashboardResult.success && dashboardResult.data) {
           setDashboardSnapshot(dashboardResult.data)
+        } else {
+          setDashboardError(dashboardResult.message || "Could not load dashboard data.")
         }
 
         hasLoadedInitialDataRef.current = true
       } catch (error) {
         console.error("Error loading dashboard:", error)
+        setDashboardError("Could not load dashboard data.")
       } finally {
         if (!cancelled) {
           setIsLoading(false)
@@ -480,20 +523,6 @@ export default function ManageDashboard() {
 
     void fetchDashboardSnapshot()
   }, [selectedRestaurant, selectedDateKey, fetchDashboardSnapshot])
-
-  useEffect(() => {
-    if (!hasLoadedInitialDataRef.current) {
-      return
-    }
-
-    void refreshStats()
-  }, [timePeriod, refreshStats])
-
-  useEffect(() => {
-    if (!selectedDate && activeTab === "selected-date") {
-      setActiveTab("new")
-    }
-  }, [selectedDate, activeTab])
 
   useEffect(() => {
     const channel = supabase
@@ -566,6 +595,18 @@ export default function ManageDashboard() {
     setStatusFilter("all")
   }, [])
 
+  const handleLatestFilter = useCallback(() => {
+    setSelectedDate(getDateWithOffset(0))
+    setOperationFilter("latest")
+    setDatePopoverOpen(false)
+  }, [])
+
+  const handleDateFilter = useCallback((date: Date) => {
+    setSelectedDate(date)
+    setOperationFilter("date")
+    setDatePopoverOpen(false)
+  }, [])
+
   const activeFilterLabel = useMemo(() => {
     if (metricFilter !== "all") {
       return getMetricFilterLabel(metricFilter)
@@ -600,21 +641,20 @@ export default function ManageDashboard() {
     () => filterReservations(newTodayReservations),
     [filterReservations, newTodayReservations]
   )
-  const filteredTodayReservations = useMemo(
-    () => filterReservations(todayReservations),
-    [filterReservations, todayReservations]
-  )
-  const filteredUpcomingReservations = useMemo(
-    () => filterReservations(upcomingReservations),
-    [filterReservations, upcomingReservations]
-  )
   const filteredSelectedDateReservations = useMemo(
     () => filterReservations(selectedDateReservations),
     [filterReservations, selectedDateReservations]
   )
-  const newTabCount = filteredNewTodayReservations.length
-  const todayTabCount = filteredTodayReservations.length
-  const upcomingTabCount = filteredUpcomingReservations.length
+  const operationReservations = operationFilter === "latest"
+    ? filteredNewReservations
+    : filteredSelectedDateReservations
+  const operationCount = operationReservations.length
+  const operationTitle = operationFilter === "latest"
+    ? "Latest reservations"
+    : `Reservations for ${operationFilterLabel}`
+  const operationDescription = operationFilter === "latest"
+    ? `${filteredNewTodayReservations.length} created today, ${filteredNewReservations.length} latest reservations shown`
+    : `${operationCount} reservations for ${operationFilterLabel}`
   const defaultFormRestaurantId = normalizeRestaurantFilter(selectedRestaurant)
 
   if (isLoading) {
@@ -642,45 +682,60 @@ export default function ManageDashboard() {
           </Button>
         </div>
 
-        <div className="flex items-center space-x-4">
-          <div className="w-full sm:min-w-[180px]">
-            <Select value={timePeriod} onValueChange={setTimePeriod}>
-              <SelectTrigger className="text-sm">
-                <SelectValue placeholder={getTranslation("manage.dashboard.filter.timePeriod")} />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="daily">
-                  <div className="flex items-center justify-between w-full">
-                    <span>{getTranslation("manage.dashboard.filter.daily")}</span>
-                    <span className="text-xs text-muted-foreground ml-2">
-                      ({new Date().toLocaleDateString(getTranslation("common.locale"), { weekday: "long" })})
-                    </span>
-                  </div>
-                </SelectItem>
-                <SelectItem value="weekly">
-                  <div className="flex items-center justify-between w-full">
-                    <span>{getTranslation("manage.dashboard.filter.weekly")}</span>
-                    <span className="text-xs text-muted-foreground ml-2">(Mon-Sun)</span>
-                  </div>
-                </SelectItem>
-                <SelectItem value="monthly">
-                  <div className="flex items-center justify-between w-full">
-                    <span>{getTranslation("manage.dashboard.filter.monthly")}</span>
-                    <span className="text-xs text-muted-foreground ml-2">
-                      ({new Date().toLocaleDateString("en", { month: "short" })})
-                    </span>
-                  </div>
-                </SelectItem>
-                <SelectItem value="yearly">
-                  <div className="flex items-center justify-between w-full">
-                    <span>{getTranslation("manage.dashboard.filter.yearly")}</span>
-                    <span className="text-xs text-muted-foreground ml-2">({new Date().getFullYear()})</span>
-                  </div>
-                </SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="w-full sm:min-w-[200px]">
+        <div className="grid w-full grid-cols-2 gap-2 sm:w-auto sm:min-w-[420px] sm:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)]">
+          <Popover open={datePopoverOpen} onOpenChange={setDatePopoverOpen}>
+            <PopoverTrigger asChild>
+              <Button
+                variant="outline"
+                className="w-full min-w-0 justify-between px-3 text-sm font-normal"
+                aria-label="Operation filter"
+              >
+                <span className="truncate">{operationFilterLabel}</span>
+                <ChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-60" />
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-[min(92vw,340px)] p-2" align="end">
+              <div className="flex flex-col gap-1">
+                <Button
+                  type="button"
+                  variant={operationFilter === "latest" ? "default" : "ghost"}
+                  className="h-9 justify-start text-sm"
+                  onClick={handleLatestFilter}
+                >
+                  Latest
+                </Button>
+                {dayFilterOptions.map((option) => (
+                  <Button
+                    key={option.dateKey}
+                    type="button"
+                    variant={operationFilter === "date" && selectedDateKey === option.dateKey ? "default" : "ghost"}
+                    className="h-9 justify-start text-sm"
+                    onClick={() => handleDateFilter(option.date)}
+                  >
+                    {option.label}
+                  </Button>
+                ))}
+              </div>
+              <div className="mt-2 border-t pt-2">
+                <div className="mb-2 flex items-center gap-2 px-2 text-xs font-medium text-muted-foreground">
+                  <Calendar className="h-3.5 w-3.5" />
+                  Pick date
+                </div>
+                <CalendarComponent
+                  mode="single"
+                  selected={selectedDate}
+                  onSelect={(date) => {
+                    if (date) {
+                      handleDateFilter(date)
+                    }
+                  }}
+                  initialFocus
+                />
+              </div>
+            </PopoverContent>
+          </Popover>
+
+          <div className="min-w-0">
             <Select value={selectedRestaurant} onValueChange={setSelectedRestaurant}>
               <SelectTrigger className="text-sm">
                 <SelectValue placeholder={getTranslation("manage.dashboard.filter.allRestaurants")} />
@@ -883,180 +938,29 @@ export default function ManageDashboard() {
         </div>
       </div>
 
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-          <TabsList className="grid w-full grid-cols-4 lg:w-auto lg:grid-cols-none lg:flex">
-            <TabsTrigger value="new" className="text-xs sm:text-sm gap-1.5">
-              <span>{getTranslation("manage.dashboard.tabs.new")}</span>
-              <span className="text-[9px] text-muted-foreground leading-none">({newTabCount})</span>
-            </TabsTrigger>
-            <TabsTrigger value="today" className="text-xs sm:text-sm gap-1.5">
-              <span>{getTranslation("manage.dashboard.tabs.today")}</span>
-              <span className="text-[9px] text-muted-foreground leading-none">({todayTabCount})</span>
-            </TabsTrigger>
-            <TabsTrigger value="upcoming" className="text-xs sm:text-sm gap-1.5">
-              <span>{getTranslation("manage.dashboard.tabs.upcoming")}</span>
-              <span className="text-[9px] text-muted-foreground leading-none">({upcomingTabCount})</span>
-            </TabsTrigger>
-            {selectedDate ? (
-              <Popover open={datePopoverOpen} onOpenChange={setDatePopoverOpen}>
-                <PopoverTrigger asChild>
-                  <TabsTrigger value="selected-date" className="text-xs sm:text-sm gap-1.5">
-                    <Calendar className="mr-2 h-4 w-4" />
-                    <span>{format(selectedDate, "MMM dd")}</span>
-                    <span className="text-[9px] text-muted-foreground leading-none">
-                      ({filteredSelectedDateReservations.length})
-                    </span>
-                  </TabsTrigger>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0" align="start">
-                  <CalendarComponent
-                    mode="single"
-                    selected={selectedDate}
-                    onSelect={(date) => {
-                      setSelectedDate(date)
-                      if (date) {
-                        setActiveTab("selected-date")
-                      }
-                      setDatePopoverOpen(false)
-                    }}
-                    initialFocus
-                  />
-                  <div className="p-3 border-t">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => {
-                        setSelectedDate(undefined)
-                        setActiveTab("new")
-                        setDatePopoverOpen(false)
-                      }}
-                      className="w-full"
-                    >
-                      {getTranslation("manage.dashboard.clearDate")}
-                    </Button>
-                  </div>
-                </PopoverContent>
-              </Popover>
-            ) : (
-              <Popover open={datePopoverOpen} onOpenChange={setDatePopoverOpen}>
-                <PopoverTrigger asChild>
-                  <TabsTrigger value="select-date" className="text-xs sm:text-sm">
-                    <Calendar className="mr-2 h-4 w-4" />
-                    {getTranslation("manage.dashboard.tabs.selectDate")}
-                  </TabsTrigger>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0" align="start">
-                  <CalendarComponent
-                    mode="single"
-                    selected={selectedDate}
-                    onSelect={(date) => {
-                      setSelectedDate(date)
-                      if (date) {
-                        setActiveTab("selected-date")
-                      }
-                      setDatePopoverOpen(false)
-                    }}
-                    initialFocus
-                  />
-                </PopoverContent>
-              </Popover>
-            )}
-          </TabsList>
-        </div>
+      {dashboardError ? (
+        <Card className="mb-4 border-red-200 bg-red-50">
+          <CardContent className="p-3 text-sm text-red-700">
+            {dashboardError}
+          </CardContent>
+        </Card>
+      ) : null}
 
-        <div className="relative">
-          {isStatsLoading || isRefreshing ? (
-            <div className="absolute inset-0 bg-gray-100/70 backdrop-blur-[1px] flex items-start justify-center z-10 rounded-lg pt-12 pointer-events-none">
-              <TriangleLoader />
-            </div>
-          ) : null}
+      <div className="relative">
+        {isStatsLoading || isRefreshing ? (
+          <div className="absolute inset-0 bg-gray-100/70 backdrop-blur-[1px] flex items-start justify-center z-10 rounded-lg pt-12 pointer-events-none">
+            <TriangleLoader />
+          </div>
+        ) : null}
 
-          <TabsContent value="new" className="space-y-4">
-            <div>
-              <div className="mb-4">
-                <h3 className="text-lg font-semibold">{getTranslation("manage.dashboard.new.cardTitle")}</h3>
-                <p className="text-sm text-muted-foreground">
-                  {getTranslation("manage.dashboard.new.cardDescription", {
-                    count: String(filteredNewReservations.length),
-                  })}
-                  {activeFilterLabel ? (
-                    <span className="ml-2 text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded-full">
-                      Filtered by: {activeFilterLabel}
-                    </span>
-                  ) : null}
-                </p>
-              </div>
-              <ReservationList
-                reservations={filteredNewReservations}
-                onStatusChange={() => void fetchDashboardSnapshot()}
-                onReservationChange={handleReservationChange}
-                itemsPerPage={10}
-                restaurants={restaurants}
-                defaultRestaurantId={defaultFormRestaurantId}
-              />
-            </div>
-          </TabsContent>
-
-          <TabsContent value="today" className="space-y-4">
-            <div>
-              <div className="mb-4">
-                <h3 className="text-lg font-semibold">{getTranslation("manage.dashboard.today.cardTitle")}</h3>
-                <p className="text-sm text-muted-foreground">
-                  {getTranslation("manage.dashboard.today.cardDescription", {
-                    count: String(filteredTodayReservations.length),
-                  })}
-                  {activeFilterLabel ? (
-                    <span className="ml-2 text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded-full">
-                      Filtered by: {activeFilterLabel}
-                    </span>
-                  ) : null}
-                </p>
-              </div>
-              <ReservationList
-                reservations={filteredTodayReservations}
-                onStatusChange={() => void fetchDashboardSnapshot()}
-                onReservationChange={handleReservationChange}
-                itemsPerPage={10}
-                restaurants={restaurants}
-                defaultRestaurantId={defaultFormRestaurantId}
-              />
-            </div>
-          </TabsContent>
-
-          <TabsContent value="upcoming" className="space-y-4">
-            <div>
-              <div className="mb-4">
-                <h3 className="text-lg font-semibold">{getTranslation("manage.dashboard.upcoming.cardTitle")}</h3>
-                <p className="text-sm text-muted-foreground">
-                  {getTranslation("manage.dashboard.upcoming.cardDescription", {
-                    count: String(filteredUpcomingReservations.length),
-                  })}
-                  {activeFilterLabel ? (
-                    <span className="ml-2 text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded-full">
-                      Filtered by: {activeFilterLabel}
-                    </span>
-                  ) : null}
-                </p>
-              </div>
-              <ReservationList
-                reservations={filteredUpcomingReservations}
-                onStatusChange={() => void fetchDashboardSnapshot()}
-                onReservationChange={handleReservationChange}
-                itemsPerPage={10}
-                restaurants={restaurants}
-                defaultRestaurantId={defaultFormRestaurantId}
-              />
-            </div>
-          </TabsContent>
-
-          {selectedDate ? (
-            <TabsContent value="selected-date" className="space-y-4">
-              <div>
-                <div className="mb-4">
-                  <h3 className="text-lg font-semibold">Reservations for {format(selectedDate, "PPP")}</h3>
+        <div className="flex flex-col gap-4">
+          <div>
+            <div className="mb-4">
+              <div className="flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
+                <div>
+                  <h3 className="text-lg font-semibold">{operationTitle}</h3>
                   <p className="text-sm text-muted-foreground">
-                    {filteredSelectedDateReservations.length} reservations for the selected date
+                    {operationDescription}
                     {activeFilterLabel ? (
                       <span className="ml-2 text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded-full">
                         Filtered by: {activeFilterLabel}
@@ -1064,19 +968,36 @@ export default function ManageDashboard() {
                     ) : null}
                   </p>
                 </div>
-                <ReservationList
-                  reservations={filteredSelectedDateReservations}
-                  onStatusChange={() => void fetchDashboardSnapshot()}
-                  onReservationChange={handleReservationChange}
-                  itemsPerPage={10}
-                  restaurants={restaurants}
-                  defaultRestaurantId={defaultFormRestaurantId}
-                />
+                <div className="text-xs text-muted-foreground">
+                  Showing {operationCount} result{operationCount === 1 ? "" : "s"}
+                </div>
               </div>
-            </TabsContent>
-          ) : null}
+            </div>
+            {operationCount > 0 ? (
+              <ReservationList
+                reservations={operationReservations}
+                onStatusChange={() => void fetchDashboardSnapshot()}
+                onReservationChange={handleReservationChange}
+                itemsPerPage={10}
+                restaurants={restaurants}
+                defaultRestaurantId={defaultFormRestaurantId}
+              />
+            ) : (
+              <Card>
+                <CardContent className="flex min-h-[180px] flex-col items-center justify-center gap-2 p-6 text-center">
+                  <CalendarClock className="h-8 w-8 text-muted-foreground" />
+                  <h4 className="text-sm font-medium">No reservations found</h4>
+                  <p className="max-w-sm text-sm text-muted-foreground">
+                    {operationFilter === "latest"
+                      ? "No recent reservations match the current filters."
+                      : `No reservations match ${operationFilterLabel} with the current filters.`}
+                  </p>
+                </CardContent>
+              </Card>
+            )}
+          </div>
         </div>
-      </Tabs>
+      </div>
 
       <div className="mt-6">
         <Button onClick={() => void fetchDashboardSnapshot()} variant="outline" disabled={isRefreshing}>
