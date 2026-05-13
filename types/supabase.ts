@@ -192,6 +192,8 @@ export interface Database {
           booked_by_label: string | null
           reservation_area_id: string | null
           reservation_type: string | null
+          last_update_summary: Json | null
+          last_updated_by_user_id: string | null
           created_at: string
           updated_at: string
         }
@@ -212,6 +214,8 @@ export interface Database {
           booked_by_label?: string | null
           reservation_area_id?: string | null
           reservation_type?: string | null
+          last_update_summary?: Json | null
+          last_updated_by_user_id?: string | null
           created_at?: string
           updated_at?: string
         }
@@ -232,6 +236,8 @@ export interface Database {
           booked_by_label?: string | null
           reservation_area_id?: string | null
           reservation_type?: string | null
+          last_update_summary?: Json | null
+          last_updated_by_user_id?: string | null
           created_at?: string
           updated_at?: string
         }

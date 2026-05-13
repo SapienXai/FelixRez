@@ -9,6 +9,7 @@ import {
   fetchRestaurantByName,
   fetchRestaurantMedia,
 } from "@/lib/services/public/restaurant-service"
+import { buildReservationUpdateSummary } from "@/lib/reservation-update-summary"
 
 /**
  * Create a reservation (server action).
@@ -276,6 +277,21 @@ export async function updateReservation(params: UpdateReservationParams) {
   try {
     const supabase = createServiceRoleClient()
 
+    const { data: existingReservation, error: existingReservationError } = await supabase
+      .from("reservations")
+      .select(`
+        *,
+        restaurants (name),
+        reservation_areas (name)
+      `)
+      .eq("id", params.id)
+      .single()
+
+    if (existingReservationError || !existingReservation) {
+      console.error("Error fetching reservation before update:", existingReservationError)
+      return { success: false, message: "Reservation not found" }
+    }
+
     const { data, error } = await supabase
       .from("reservations")
       .update({
@@ -303,8 +319,34 @@ export async function updateReservation(params: UpdateReservationParams) {
     }
 
     // Get updated reservation data
-    const updatedReservation = data?.[0]
+    let updatedReservation = data?.[0]
     if (updatedReservation) {
+      const updateSummary = buildReservationUpdateSummary(existingReservation, updatedReservation, {
+        source: "customer",
+      })
+
+      if (updateSummary) {
+        const { data: summaryData, error: summaryError } = await supabase
+          .from("reservations")
+          .update({
+            last_update_summary: updateSummary,
+            last_updated_by_user_id: null,
+          })
+          .eq("id", params.id)
+          .select(`
+            *,
+            restaurants (name),
+            reservation_areas (name)
+          `)
+
+        if (summaryError) {
+          console.error("Error saving customer reservation update summary:", summaryError)
+          updatedReservation = { ...updatedReservation, last_update_summary: updateSummary, last_updated_by_user_id: null }
+        } else {
+          updatedReservation = summaryData?.[0] || updatedReservation
+        }
+      }
+
       // Format date for email
       const reservationDate = new Date(params.reservation_date)
       const formattedDate = reservationDate.toLocaleDateString("en-US", {

@@ -21,6 +21,7 @@ import type { Reservation } from "@/types/supabase"
 import { updateReservationStatus } from "@/app/manage/actions"
 import { ReservationForm } from "./reservation-form"
 import { ReservationActionsMenu } from "@/components/manage/reservation-actions-menu"
+import { ReservationUpdateIndicator } from "@/components/manage/reservation-update-indicator"
 import { usePagination } from "@/hooks/use-pagination"
 import { PaginationControls } from "@/components/ui/pagination-controls"
 import { toast } from "sonner"
@@ -194,8 +195,9 @@ ${reservation.customer_phone}${reservation.special_requests ? `\n${reservation.s
             <div className="flex items-start justify-between">
               <div className="space-y-1">
                 <CardTitle className="text-lg text-gray-900">{reservation.restaurants?.name || "Unknown Restaurant"}</CardTitle>
-                <div className="flex items-center gap-2">
+                <div className="flex flex-wrap items-center gap-2">
                   {getStatusBadge(reservation.status || "pending")}
+                  <ReservationUpdateIndicator summary={reservation.last_update_summary} compact />
                 </div>
               </div>
               <div className="flex items-center gap-1 shrink-0">
@@ -310,6 +312,7 @@ ${reservation.customer_phone}${reservation.special_requests ? `\n${reservation.s
                 )}
               </div>
             )}
+            <ReservationUpdateIndicator summary={reservation.last_update_summary} />
           </CardContent>
           <CardFooter className="flex items-center justify-between gap-3 border-t pt-3">
             <div className="min-w-0 text-[10px] text-gray-500 leading-none text-left">
@@ -399,6 +402,9 @@ ${reservation.customer_phone}${reservation.special_requests ? `\n${reservation.s
                          Note: {reservation.special_requests}
                        </div>
                      )}
+                     <div className="mt-2">
+                       <ReservationUpdateIndicator summary={reservation.last_update_summary} compact />
+                     </div>
                    </TableCell>
                    <TableCell className="hidden md:table-cell">
                      <div className="font-medium">Party: {reservation.party_size}</div>
@@ -436,7 +442,12 @@ ${reservation.customer_phone}${reservation.special_requests ? `\n${reservation.s
                        )}
                      </Badge>
                    </TableCell>
-                   <TableCell>{getStatusBadge(reservation.status || "pending")}</TableCell>
+                   <TableCell>
+                     <div className="flex flex-col items-start gap-2">
+                       {getStatusBadge(reservation.status || "pending")}
+                       <ReservationUpdateIndicator summary={reservation.last_update_summary} compact />
+                     </div>
+                   </TableCell>
                    <TableCell className="text-right">
                      <ReservationActionsMenu
                        onEdit={() => setEditingReservation(reservation)}

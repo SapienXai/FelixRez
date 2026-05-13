@@ -7,6 +7,7 @@ import { sendEmail, generateStatusUpdateEmail } from "@/lib/email-service"
 import { generateICSFile } from "@/lib/calendar-invite"
 import { fetchManagedRestaurants, fetchPublicRestaurants } from "@/lib/services/manage/restaurant-service"
 import { sendReservationPushNotification } from "@/lib/push-service"
+import { buildReservationUpdateSummary } from "@/lib/reservation-update-summary"
 
 async function attachBookedByEmail<T extends { booked_by_user_id?: string | null; booked_by_email?: string | null }>(
   supabase: ReturnType<typeof createServiceRoleClient>,
@@ -485,7 +486,11 @@ export async function updateReservation(id: string, reservationData: {
     const normalizedSpecialRequests = reservationData.special_requests?.trim() || null
     const { data: existingReservation, error: existingReservationError } = await supabase
       .from("reservations")
-      .select("id, restaurant_id")
+      .select(`
+        *,
+        restaurants (id, name),
+        reservation_areas (id, name)
+      `)
       .eq("id", id)
       .single()
 
@@ -532,12 +537,41 @@ export async function updateReservation(id: string, reservationData: {
       return { success: false, message: error.message }
     }
 
+    const updateSummary = buildReservationUpdateSummary(existingReservation, data, {
+      updatedByUserId: access?.userId ?? null,
+      source: "staff",
+    })
+    let updatedReservation = data
+
+    if (updateSummary) {
+      const { data: summaryData, error: summaryError } = await supabase
+        .from("reservations")
+        .update({
+          last_update_summary: updateSummary,
+          last_updated_by_user_id: access?.userId ?? null,
+        })
+        .eq("id", id)
+        .select(`
+          *,
+          restaurants (id, name),
+          reservation_areas (id, name)
+        `)
+        .single()
+
+      if (summaryError) {
+        console.error("Error saving reservation update summary:", summaryError)
+        updatedReservation = { ...data, last_update_summary: updateSummary, last_updated_by_user_id: access?.userId ?? null }
+      } else {
+        updatedReservation = summaryData
+      }
+    }
+
     revalidatePath("/manage/reservations")
     await sendReservationPushNotification(id, "updated").catch((error) => {
       console.error("Failed to send reservation push notification:", error)
     })
 
-    return { success: true, data: await attachBookedByEmail(supabase, data), message: "Reservation updated successfully" }
+    return { success: true, data: await attachBookedByEmail(supabase, updatedReservation), message: "Reservation updated successfully" }
   } catch (error) {
     console.error("Error in updateReservation:", error)
     return { success: false, message: "An unexpected error occurred" }
