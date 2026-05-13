@@ -447,9 +447,10 @@ export function ReservationStep2({
       </section>
 
       <div className="special-request-section">
-        <h2 className="section-title">{getTranslation("reserve.step2.specialRequestTitle")}</h2>
+        <h2 className="special-request-title">{getTranslation("reserve.step2.specialRequestTitle")}</h2>
         <textarea
           id="specialRequests"
+          className="special-request-input"
           placeholder={getTranslation("reserve.step2.specialRequestPlaceholder")}
           value={specialRequests}
           onChange={(e) => setSpecialRequests(e.target.value)}

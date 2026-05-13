@@ -1226,6 +1226,26 @@ footer {
   box-shadow: 0 6px 16px rgba(15, 23, 42, 0.04);
 }
 
+.special-request-title {
+  color: #111827;
+  font-size: 0.86rem;
+  font-weight: 700;
+  line-height: 1.25;
+  margin-bottom: 10px;
+}
+
+.special-request-input {
+  font-size: 0.86rem;
+  font-weight: 500;
+  line-height: 1.45;
+}
+
+.special-request-input::placeholder {
+  color: rgba(107, 114, 128, 0.72);
+  font-size: 0.82rem;
+  font-weight: 500;
+}
+
 .special-request-section textarea:focus {
   border-color: rgba(13, 110, 253, 0.34);
   outline: none;
