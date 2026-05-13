@@ -41,6 +41,8 @@ type ReservationRecord = Database["public"]["Tables"]["reservations"]["Row"] & {
   restaurants?: { id: string; name: string } | null
   reservation_areas?: { id: string; name: string } | null
   booked_by_email?: string | null
+  booked_by_label?: string | null
+  booked_by_name?: string | null
 }
 
 type RestaurantOption = {
@@ -627,7 +629,7 @@ export default function ManageDashboard() {
   }
 
   return (
-    <div className="max-w-5xl lg:max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    <div className="w-full max-w-[1400px] mx-auto">
       <div className="flex flex-col space-y-4 sm:flex-row sm:items-center sm:justify-between sm:space-y-0 mb-6">
         <div className="flex items-center space-x-3">
           <h1 className="text-xl md:text-2xl font-semibold">{getTranslation("manage.dashboard.title")}</h1>

@@ -44,6 +44,8 @@ interface ReservationWithRestaurant extends Reservation {
     name: string
   } | null
   booked_by_email?: string | null
+  booked_by_label: string | null
+  booked_by_name?: string | null
 }
 
 interface ReservationListProps {
@@ -242,6 +244,10 @@ ${reservation.customer_phone}${reservation.special_requests ? `\n${reservation.s
     }
   }
 
+  const getBookedByDisplay = (reservation: ReservationWithRestaurant) => {
+    return reservation.booked_by_name?.trim() || reservation.booked_by_label?.trim() || getTranslation("manage.seating.online")
+  }
+
   const getStatusBadge = (status: string) => {
     switch (status) {
       case "confirmed":
@@ -421,14 +427,8 @@ ${reservation.customer_phone}${reservation.special_requests ? `\n${reservation.s
           </CardContent>
           <CardFooter className="flex items-center justify-between gap-3 border-t pt-3">
             <div className="min-w-0 text-[10px] text-gray-500 leading-none text-left">
-              {reservation.booked_by_email ? (
-                <>
-                  {getTranslation("manage.reservations.card.createdBy")}:{" "}
-                  <span className="truncate">{reservation.booked_by_email}</span>
-                </>
-              ) : (
-                getTranslation("manage.reservations.card.createdBy")
-              )}
+              {getTranslation("manage.reservations.card.createdBy")}:{" "}
+              <span className="truncate">{getBookedByDisplay(reservation)}</span>
             </div>
             <div className="shrink-0 text-[10px] text-gray-500 leading-none text-right">
               {new Date(reservation.created_at).toLocaleDateString('tr-TR', {
@@ -520,9 +520,9 @@ ${reservation.customer_phone}${reservation.special_requests ? `\n${reservation.s
                           {reservation.customer_email}
                         </div>
                       )}
-                      {reservation.booked_by_email && (
+                      {(reservation.booked_by_name || reservation.booked_by_label || reservation.booked_by_email) && (
                         <div className="text-xs text-muted-foreground mt-1 truncate">
-                          {getTranslation("manage.reservations.card.createdBy")}: {reservation.booked_by_email}
+                          {getTranslation("manage.reservations.card.createdBy")}: {getBookedByDisplay(reservation)}
                         </div>
                       )}
                     </TableCell>

@@ -129,16 +129,12 @@ function ReservationsPageContent() {
   }
 
   return (
-    <div className="max-w-7xl mx-auto">
+    <div className="w-full max-w-[1400px] mx-auto">
       <h1 className="text-2xl font-semibold mb-6">{getTranslation("manage.reservations.title")}</h1>
 
       <Card className="mb-6">
-        <CardHeader>
-          <CardTitle>{getTranslation("manage.reservations.filters.title")}</CardTitle>
-          <CardDescription>{getTranslation("manage.reservations.filters.description")}</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={handleSearch} className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <CardContent className="pt-6">
+          <form onSubmit={handleSearch} className="grid grid-cols-2 gap-3 md:grid-cols-4 md:gap-4">
             <div>
               <label className="text-sm font-medium mb-1 block">
                 {getTranslation("manage.reservations.filters.status")}
@@ -183,7 +179,7 @@ function ReservationsPageContent() {
               </Select>
             </div>
 
-            <div>
+            <div className="col-span-2 md:col-span-1">
               <label className="text-sm font-medium mb-1 block">
                 {getTranslation("manage.reservations.filters.search")}
               </label>
@@ -194,7 +190,7 @@ function ReservationsPageContent() {
               />
             </div>
 
-            <div className="flex items-end">
+            <div className="col-span-2 flex items-end">
               <Button type="submit" className="mr-2">
                 {getTranslation("manage.reservations.filters.apply")}
               </Button>

@@ -14,6 +14,8 @@ type ReservationRow = {
   created_at: string
   booked_by_user_id?: string | null
   booked_by_email?: string | null
+  booked_by_label?: string | null
+  booked_by_name?: string | null
   [key: string]: any
 }
 
@@ -52,6 +54,8 @@ const ZERO_STATS: DashboardStats = {
 
 const RESERVATION_SELECT = `
   *,
+  booked_by_user_id,
+  booked_by_label,
   restaurants (id, name),
   reservation_areas (id, name)
 `
@@ -169,6 +173,48 @@ async function attachBookedByEmails<T extends { booked_by_user_id?: string | nul
   return rows.map((row) => ({
     ...row,
     booked_by_email: row.booked_by_user_id ? emailMap.get(row.booked_by_user_id) || null : null,
+  }))
+}
+
+async function attachBookedByNames<T extends { booked_by_user_id?: string | null; booked_by_label?: string | null }>(
+  supabase: SupabaseClient,
+  rows: T[]
+): Promise<(T & { booked_by_name: string | null })[]> {
+  const userIds = Array.from(new Set(rows.map((row) => row.booked_by_user_id).filter((id): id is string => Boolean(id))))
+  const nameMap = new Map<string, string>()
+
+  if (userIds.length > 0) {
+    const { data: profiles } = await supabase
+      .from("admin_profiles")
+      .select("id, full_name")
+      .in("id", userIds)
+
+    for (const profile of profiles || []) {
+      const name = profile.full_name?.trim()
+      if (name) {
+        nameMap.set(profile.id, name)
+      }
+    }
+
+    const missingUserIds = userIds.filter((id) => !nameMap.has(id))
+    await Promise.all(
+      missingUserIds.map(async (id) => {
+        try {
+          const { data } = await supabase.auth.admin.getUserById(id)
+          const email = data.user?.email?.trim()
+          if (email) {
+            nameMap.set(id, email)
+          }
+        } catch (error) {
+          console.warn(`Could not fetch auth user name for ${id}:`, error)
+        }
+      })
+    )
+  }
+
+  return rows.map((row) => ({
+    ...row,
+    booked_by_name: row.booked_by_label?.trim() || (row.booked_by_user_id ? nameMap.get(row.booked_by_user_id) || null : null),
   }))
 }
 
@@ -339,7 +385,8 @@ async function fetchReservationsForDate(supabase: SupabaseClient, scope: Restaur
     throw new Error(error.message)
   }
 
-  return attachBookedByEmails(supabase, data || [])
+  const withEmails = await attachBookedByEmails(supabase, data || [])
+  return attachBookedByNames(supabase, withEmails)
 }
 
 async function fetchNewReservations(supabase: SupabaseClient, scope: RestaurantScope) {
@@ -361,7 +408,8 @@ async function fetchNewReservations(supabase: SupabaseClient, scope: RestaurantS
     throw new Error(error.message)
   }
 
-  return attachBookedByEmails(supabase, data || [])
+  const withEmails = await attachBookedByEmails(supabase, data || [])
+  return attachBookedByNames(supabase, withEmails)
 }
 
 async function fetchTodayCreatedReservations(supabase: SupabaseClient, scope: RestaurantScope) {
@@ -388,7 +436,8 @@ async function fetchTodayCreatedReservations(supabase: SupabaseClient, scope: Re
     throw new Error(error.message)
   }
 
-  return attachBookedByEmails(supabase, data || [])
+  const withEmails = await attachBookedByEmails(supabase, data || [])
+  return attachBookedByNames(supabase, withEmails)
 }
 
 async function fetchUpcomingReservations(supabase: SupabaseClient, scope: RestaurantScope) {
@@ -414,7 +463,8 @@ async function fetchUpcomingReservations(supabase: SupabaseClient, scope: Restau
     throw new Error(error.message)
   }
 
-  return attachBookedByEmails(supabase, data || [])
+  const withEmails = await attachBookedByEmails(supabase, data || [])
+  return attachBookedByNames(supabase, withEmails)
 }
 
 async function getScope(restaurantId?: string) {

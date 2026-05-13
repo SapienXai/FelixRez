@@ -134,6 +134,7 @@ export async function createReservation(params: CreateReservationParams) {
         table_number: params.tableNumber || null,
         reservation_type: params.reservationType || "meal",
         status: "pending",
+        booked_by_label: "Online",
       })
       .select(`*, reservation_areas ( name )`)
 

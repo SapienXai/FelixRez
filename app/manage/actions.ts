@@ -28,6 +28,13 @@ async function attachBookedByEmail<T extends { booked_by_user_id?: string | null
   return row
 }
 
+type ReservationRow = {
+  booked_by_user_id?: string | null
+  booked_by_label?: string | null
+  booked_by_name?: string | null
+  [key: string]: any
+}
+
 export async function getReservations(filters: {
   status?: string
   restaurantId?: string
@@ -96,8 +103,11 @@ export async function getReservations(filters: {
         .lte("reservation_date", formatDateToYYYYMMDD(endOfMonth))
     }
 
-    // Execute the initial query to get all filtered data
-    const { data: allData, error: initialError } = await query.order("reservation_date", { ascending: true })
+    // Show newest reservations first, then keep date/time as a secondary sort for same-day entries.
+    const { data: allData, error: initialError } = await query
+      .order("created_at", { ascending: false })
+      .order("reservation_date", { ascending: false })
+      .order("reservation_time", { ascending: false })
     
     if (initialError) {
       console.error("Error fetching reservations:", initialError)
@@ -128,7 +138,60 @@ export async function getReservations(filters: {
       console.log('Filtered results:', filteredData.length, 'out of', allData.length)
     }
 
-    return { success: true, data: filteredData }
+    // Resolve display names for the creator/booking source.
+    const creatorIds = Array.from(
+      new Set(
+        (filteredData || [])
+          .map((row) => row.booked_by_user_id)
+          .filter((id): id is string => Boolean(id))
+      )
+    )
+
+    const creatorMap = new Map<string, string>()
+    if (creatorIds.length > 0) {
+      const { data: profiles } = await supabase
+        .from("admin_profiles")
+        .select("id, full_name")
+        .in("id", creatorIds)
+
+      for (const profile of profiles || []) {
+        const name = profile.full_name?.trim()
+        if (name) {
+          creatorMap.set(profile.id, name)
+        }
+      }
+
+      const missingCreatorIds = creatorIds.filter((id) => !creatorMap.has(id))
+      await Promise.all(
+        missingCreatorIds.map(async (id) => {
+          const { data: authUser } = await supabase.auth.admin.getUserById(id)
+          const email = authUser.user?.email?.trim()
+          if (email) {
+            creatorMap.set(id, email)
+          }
+        })
+      )
+    }
+
+    const getBookedByName = (row: ReservationRow) => {
+      const manualLabel = row.booked_by_label?.trim()
+      if (manualLabel) {
+        return manualLabel
+      }
+
+      if (row.booked_by_user_id) {
+        return creatorMap.get(row.booked_by_user_id) || "Staff"
+      }
+
+      return "Online"
+    }
+
+    const mappedData = (filteredData || []).map((row) => ({
+      ...row,
+      booked_by_name: getBookedByName(row),
+    }))
+
+    return { success: true, data: mappedData }
   } catch (error) {
     console.error("Error in getReservations:", error)
     return { success: false, message: "An unexpected error occurred", data: [] }
