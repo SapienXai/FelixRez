@@ -65,6 +65,8 @@ export function ReservationApp({ initialRestaurant, initialLang }: ReservationAp
   const [customerPhone, setCustomerPhone] = useState("")
   const [customerEmail, setCustomerEmail] = useState("")
   const [specialRequests, setSpecialRequests] = useState("")
+  const [minGuestAge, setMinGuestAge] = useState(18)
+  const [maxGuestAge, setMaxGuestAge] = useState(18)
   const [reservationType, setReservationType] = useState("meal")
   const [message, setMessage] = useState("")
   const [isSuccess, setIsSuccess] = useState(false)
@@ -202,6 +204,11 @@ export function ReservationApp({ initialRestaurant, initialLang }: ReservationAp
         return `${year}-${month}-${day}`
       }
       const formattedDate = formatDateToYYYYMMDD(selectedDate)
+      const ageRangeLabel =
+        currentLang === "tr"
+          ? `Misafir yaş aralığı: ${minGuestAge}-${maxGuestAge}`
+          : `Guest age range: ${minGuestAge}-${maxGuestAge}`
+      const specialRequestsWithAgeRange = [ageRangeLabel, specialRequests.trim()].filter(Boolean).join("\n")
 
       const result = await createReservation({
         restaurantId: effectiveRestaurant!.id,
@@ -212,7 +219,7 @@ export function ReservationApp({ initialRestaurant, initialLang }: ReservationAp
         customerName,
         customerPhone,
         customerEmail,
-        specialRequests: specialRequests || undefined,
+        specialRequests: specialRequestsWithAgeRange || undefined,
         reservationType,
         lang: currentLang,
       })
@@ -233,7 +240,7 @@ export function ReservationApp({ initialRestaurant, initialLang }: ReservationAp
             party_size: Number.parseInt(partySize),
             reservation_date: formattedDate,
             reservation_time: selectedTime,
-            special_requests: specialRequests || undefined,
+            special_requests: specialRequestsWithAgeRange || undefined,
             status: "pending" as const,
             notes: null as string | null,
             created_at: new Date().toISOString()
@@ -413,6 +420,10 @@ export function ReservationApp({ initialRestaurant, initialLang }: ReservationAp
               setCustomerEmail={setCustomerEmail}
               specialRequests={specialRequests}
               setSpecialRequests={setSpecialRequests}
+              minGuestAge={minGuestAge}
+              setMinGuestAge={setMinGuestAge}
+              maxGuestAge={maxGuestAge}
+              setMaxGuestAge={setMaxGuestAge}
               reservationType={reservationType}
               setReservationType={setReservationType}
               mealOnlyReservations={restaurantData?.meal_only_reservations || false}

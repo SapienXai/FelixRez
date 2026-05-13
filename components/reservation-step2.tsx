@@ -1,10 +1,11 @@
 "use client"
 
 import { useLanguage } from "@/context/language-context"
-import { useEffect, useMemo, useState } from "react"
-import { Users, Calendar } from "lucide-react"
+import { useEffect, useMemo, useRef, useState, type RefObject } from "react"
+import { Calendar, Users } from "lucide-react"
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+const GUEST_AGE_OPTIONS = Array.from({ length: 48 }, (_, index) => index + 18)
 
 interface ReservationArea {
   id: string
@@ -41,6 +42,10 @@ interface ReservationStep2Props {
   setCustomerEmail: (email: string) => void
   specialRequests: string
   setSpecialRequests: (requests: string) => void
+  minGuestAge: number
+  setMinGuestAge: (age: number) => void
+  maxGuestAge: number
+  setMaxGuestAge: (age: number) => void
   reservationType: string
   setReservationType: (type: string) => void
   mealOnlyReservations: boolean
@@ -63,6 +68,10 @@ export function ReservationStep2({
   setCustomerEmail,
   specialRequests,
   setSpecialRequests,
+  minGuestAge,
+  setMinGuestAge,
+  maxGuestAge,
+  setMaxGuestAge,
   reservationType,
   setReservationType,
   mealOnlyReservations,
@@ -73,6 +82,11 @@ export function ReservationStep2({
 }: ReservationStep2Props) {
   const { getTranslation, currentLang } = useLanguage()
   const [showContactFields, setShowContactFields] = useState(false)
+  const [showAgeRangePicker, setShowAgeRangePicker] = useState(false)
+  const [draftMinGuestAge, setDraftMinGuestAge] = useState(minGuestAge)
+  const [draftMaxGuestAge, setDraftMaxGuestAge] = useState(maxGuestAge)
+  const minAgeListRef = useRef<HTMLDivElement | null>(null)
+  const maxAgeListRef = useRef<HTMLDivElement | null>(null)
   const [touched, setTouched] = useState<{ name: boolean; email: boolean; phone: boolean }>({
     name: false,
     email: false,
@@ -140,6 +154,83 @@ export function ReservationStep2({
   const toggleContactFields = () => {
     setShowContactFields(!showContactFields)
   }
+
+  const scrollAgeListToValue = (container: HTMLDivElement | null, age: number, behavior: ScrollBehavior = "smooth") => {
+    const option = container?.querySelector<HTMLButtonElement>(`[data-age="${age}"]`)
+    if (!container || !option) return
+
+    const top = option.offsetTop - (container.clientHeight - option.clientHeight) / 2
+    container.scrollTo({ top, behavior })
+  }
+
+  const openAgeRangePicker = () => {
+    setDraftMinGuestAge(minGuestAge)
+    setDraftMaxGuestAge(maxGuestAge)
+    setShowAgeRangePicker(true)
+  }
+
+  const cancelAgeRangePicker = () => {
+    setDraftMinGuestAge(minGuestAge)
+    setDraftMaxGuestAge(maxGuestAge)
+    setShowAgeRangePicker(false)
+  }
+
+  const confirmAgeRangePicker = () => {
+    setMinGuestAge(draftMinGuestAge)
+    setMaxGuestAge(draftMaxGuestAge)
+    setShowAgeRangePicker(false)
+  }
+
+  const updateDraftMinGuestAge = (age: number) => {
+    const nextAge = Math.min(65, Math.max(18, age))
+    setDraftMinGuestAge(nextAge)
+    if (draftMaxGuestAge < nextAge) {
+      setDraftMaxGuestAge(nextAge)
+    }
+  }
+
+  const updateDraftMaxGuestAge = (age: number) => {
+    setDraftMaxGuestAge(Math.min(65, Math.max(18, draftMinGuestAge, age)))
+  }
+
+  useEffect(() => {
+    if (!showAgeRangePicker) return
+
+    window.requestAnimationFrame(() => {
+      scrollAgeListToValue(minAgeListRef.current, draftMinGuestAge, "auto")
+      scrollAgeListToValue(maxAgeListRef.current, draftMaxGuestAge, "auto")
+    })
+  }, [showAgeRangePicker, draftMinGuestAge, draftMaxGuestAge])
+
+  const renderAgeList = (
+    label: string,
+    value: number,
+    onChange: (age: number) => void,
+    listRef: RefObject<HTMLDivElement | null>,
+    isDisabled?: (age: number) => boolean
+  ) => (
+    <div className="age-list-column" role="group" aria-label={label}>
+      <div className="age-list-label">{label}</div>
+      <div className="age-scroll-list" ref={listRef}>
+        {GUEST_AGE_OPTIONS.map((age) => {
+          const disabled = isDisabled?.(age) || false
+          return (
+            <button
+              key={`${label}-${age}`}
+              type="button"
+              className={`age-option ${value === age ? "selected" : ""}`}
+              onClick={() => onChange(age)}
+              disabled={disabled}
+              aria-pressed={value === age}
+              data-age={age}
+            >
+              {age}
+            </button>
+          )
+        })}
+      </div>
+    </div>
+  )
 
   return (
     <div id="step2">
@@ -231,9 +322,67 @@ export function ReservationStep2({
                 <p className="text-red-600 text-xs mt-1">{errors.email}</p>
               )}
             </div>
+            <div className="mb-2">
+              <label htmlFor="guestAgeRange" className="form-label">
+                {getTranslation("reserve.step2.guestAgeRangeTitle")}
+              </label>
+              <button
+                id="guestAgeRange"
+                type="button"
+                className={`age-range-field ${showAgeRangePicker ? "open" : ""}`}
+                onClick={openAgeRangePicker}
+                aria-expanded={showAgeRangePicker}
+                aria-controls="guestAgeRangeSheet"
+              >
+                <span>{minGuestAge} - {maxGuestAge}</span>
+                <i className="bi bi-chevron-down"></i>
+              </button>
+            </div>
           </div>
         )}
       </div>
+
+      {showAgeRangePicker && (
+        <div className="age-picker-overlay" role="dialog" aria-modal="true" aria-labelledby="guestAgeRangeTitle">
+          <button
+            type="button"
+            className="age-picker-backdrop"
+            aria-label={getTranslation("reserve.step2.guestAgeCancel")}
+            onClick={cancelAgeRangePicker}
+          />
+          <div className="age-picker-sheet" id="guestAgeRangeSheet">
+            <div className="age-picker-handle" aria-hidden="true" />
+            <div className="age-picker-toolbar">
+              <button type="button" className="age-picker-action" onClick={cancelAgeRangePicker}>
+                {getTranslation("reserve.step2.guestAgeCancel")}
+              </button>
+              <h3 id="guestAgeRangeTitle">{getTranslation("reserve.step2.guestAgeRangeTitle")}</h3>
+              <button type="button" className="age-picker-action strong" onClick={confirmAgeRangePicker}>
+                {getTranslation("reserve.step2.guestAgeSet")}
+              </button>
+            </div>
+            <p className="age-picker-description">{getTranslation("reserve.step2.guestAgeRangeDescription")}</p>
+            <div className="age-wheel-frame">
+              <div className="age-wheel-selection" aria-hidden="true" />
+              <div className="guest-age-grid">
+                {renderAgeList(
+                  getTranslation("reserve.step2.guestAgeMinLabel"),
+                  draftMinGuestAge,
+                  updateDraftMinGuestAge,
+                  minAgeListRef
+                )}
+                {renderAgeList(
+                  getTranslation("reserve.step2.guestAgeMaxLabel"),
+                  draftMaxGuestAge,
+                  updateDraftMaxGuestAge,
+                  maxAgeListRef,
+                  (age) => age < draftMinGuestAge
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Reservation Type Selection */}
       <div className="reservation-type-section mb-4">

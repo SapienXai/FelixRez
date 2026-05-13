@@ -748,6 +748,219 @@ footer {
   border-color: var(--primary-blue);
 }
 
+.guest-age-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0;
+}
+
+.age-range-field {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  min-height: 42px;
+  border: none;
+  border-bottom: 1px solid var(--border-color);
+  border-radius: 0;
+  background: var(--white);
+  color: var(--text-color);
+  padding: 8px 0;
+  text-align: left;
+  font-size: 0.98rem;
+  font-weight: 600;
+}
+
+.age-range-field.open,
+.age-range-field:focus {
+  border-color: var(--primary-blue);
+  outline: none;
+}
+
+.age-range-field i {
+  color: var(--secondary-text-color);
+  font-size: 0.95rem;
+}
+
+.age-list-column {
+  min-width: 0;
+  padding: 10px 8px 8px;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.78);
+  box-shadow:
+    0 12px 28px rgba(15, 23, 42, 0.08),
+    inset 0 1px 0 rgba(255, 255, 255, 0.9);
+}
+
+.age-list-label {
+  margin-bottom: 8px;
+  color: #6b7280;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-align: center;
+  text-transform: uppercase;
+}
+
+.age-scroll-list {
+  display: flex;
+  height: 210px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scroll-snap-type: y mandatory;
+  flex-direction: column;
+  gap: 0;
+  padding: 78px 0;
+  border: 1px solid rgba(15, 23, 42, 0.06);
+  border-radius: 14px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.96) 0%, rgba(255, 255, 255, 0) 28%),
+    linear-gradient(0deg, rgba(255, 255, 255, 0.96) 0%, rgba(255, 255, 255, 0) 28%),
+    #ffffff;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+}
+
+.age-scroll-list::-webkit-scrollbar {
+  display: none;
+}
+
+.age-option {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 38px;
+  border: 0;
+  border-radius: 11px;
+  background: transparent;
+  color: #9ca3af;
+  cursor: pointer;
+  scroll-snap-align: center;
+  font-size: 1.08rem;
+  font-weight: 500;
+  transition: color 0.15s ease, font-size 0.15s ease, font-weight 0.15s ease;
+}
+
+.age-option.selected,
+.age-option:hover {
+  background: #ffffff;
+  color: #111827;
+  font-size: 1.38rem;
+  font-weight: 700;
+  box-shadow:
+    0 0 0 1px rgba(13, 110, 253, 0.22),
+    0 8px 20px rgba(13, 110, 253, 0.13);
+}
+
+.age-option:disabled {
+  color: #adb5bd;
+  background: transparent;
+  cursor: not-allowed;
+}
+
+.age-picker-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 300;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+}
+
+.age-picker-backdrop {
+  position: absolute;
+  inset: 0;
+  border: 0;
+  background: rgba(17, 24, 39, 0.36);
+  backdrop-filter: blur(2px);
+}
+
+.age-picker-sheet {
+  position: relative;
+  width: 100%;
+  max-width: 480px;
+  overflow: hidden;
+  border-radius: 22px 22px 0 0;
+  background: rgba(255, 255, 255, 0.98);
+  box-shadow: 0 -24px 60px rgba(15, 23, 42, 0.24);
+}
+
+.age-picker-handle {
+  width: 42px;
+  height: 5px;
+  margin: 10px auto 4px;
+  border-radius: 999px;
+  background: #d1d5db;
+}
+
+.age-picker-toolbar {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  min-height: 46px;
+  border-bottom: 1px solid #eef0f4;
+  background: rgba(255, 255, 255, 0.86);
+}
+
+.age-picker-toolbar h3 {
+  margin: 0;
+  color: #111827;
+  font-size: 0.94rem;
+  font-weight: 700;
+  text-align: center;
+}
+
+.age-picker-action {
+  border: 0;
+  background: transparent;
+  color: var(--primary-blue);
+  padding: 12px 16px;
+  font-size: 0.95rem;
+  font-weight: 600;
+  text-align: left;
+}
+
+.age-picker-action.strong {
+  font-weight: 700;
+  text-align: right;
+}
+
+.age-picker-description {
+  margin: 0;
+  padding: 8px 16px 0;
+  color: #6b7280;
+  font-size: 0.75rem;
+  font-weight: 600;
+  line-height: 1.35;
+  text-align: center;
+}
+
+.age-wheel-frame {
+  position: relative;
+  padding: 12px 18px 18px;
+  background: linear-gradient(180deg, #ffffff 0%, #f7f8fb 100%);
+}
+
+.age-wheel-frame .guest-age-grid {
+  position: relative;
+  z-index: 2;
+  gap: 14px;
+}
+
+.age-wheel-selection {
+  position: absolute;
+  right: 18px;
+  bottom: 98px;
+  left: 18px;
+  z-index: 1;
+  height: 42px;
+  border: 1px solid rgba(13, 110, 253, 0.14);
+  border-radius: 14px;
+  background: rgba(13, 110, 253, 0.06);
+  pointer-events: none;
+}
+
 .special-request-section textarea {
   width: 100%;
   border: 1px solid var(--border-color);
