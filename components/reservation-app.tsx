@@ -397,7 +397,7 @@ export function ReservationApp({ initialRestaurant, initialLang }: ReservationAp
   }
 
   return (
-    <main className="pb-8">
+    <main>
       <div className="reservation-app">
         <AppHeader
           restaurantName={getHeaderTitle()}

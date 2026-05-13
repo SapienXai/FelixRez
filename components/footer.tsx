@@ -55,45 +55,48 @@ export function Footer() {
   ]
 
   return (
-    <footer className="footer">
+    <footer className="footer footer-premium">
       <div className="footer-container">
         <div className="footer-content">
-          {/* Social Media Section */}
-          <div className="footer-section">
-            <h3 className="footer-title">{getTranslation("footer.followUs")}</h3>
-            <div className="social-links">
-              {socialLinks.map((social) => (
-                <a
-                   key={social.name}
-                   href={social.url}
-                   target="_blank"
-                   rel="noopener noreferrer"
-                   className="social-link"
-                   aria-label={social.name}
-                 >
-                   {social.icon}
-                 </a>
-              ))}
-            </div>
+          <div className="footer-brand-block">
+            <p className="footer-brand-kicker">Felix Restaurants</p>
+            <p className="footer-motto">{getTranslation("footer.motto")}</p>
           </div>
 
-          {/* Legal Links Section */}
-          <div className="footer-section">
-            <h3 className="footer-title">Legal</h3>
-            <div className="legal-links">
-              <Link href="/terms" target="_blank" className="legal-link">
-                {getTranslation("footer.terms")}
-              </Link>
-              <Link href="/privacy" target="_blank" className="legal-link">
-                {getTranslation("footer.privacy")}
-              </Link>
+          <div className="footer-link-grid">
+            <div className="footer-section">
+              <h3 className="footer-title">{getTranslation("footer.followUs")}</h3>
+              <div className="social-links">
+                {socialLinks.map((social) => (
+                  <a
+                    key={social.name}
+                    href={social.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="social-link"
+                    aria-label={social.name}
+                  >
+                    {social.icon}
+                  </a>
+                ))}
+              </div>
+            </div>
+
+            <div className="footer-section">
+              <h3 className="footer-title">Legal</h3>
+              <div className="legal-links">
+                <Link href="/terms" target="_blank" className="legal-link">
+                  {getTranslation("footer.terms")}
+                </Link>
+                <Link href="/privacy" target="_blank" className="legal-link">
+                  {getTranslation("footer.privacy")}
+                </Link>
+              </div>
             </div>
           </div>
         </div>
 
-        {/* Copyright and Motto */}
         <div className="footer-bottom">
-          <p className="footer-motto">{getTranslation("footer.motto")}</p>
           <p className="copyright">{getTranslation("footer.copyright")}</p>
         </div>
       </div>
