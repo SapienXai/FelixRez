@@ -70,6 +70,12 @@ function SeatingPrintPageInner() {
     () => reservations.reduce((sum, reservation) => sum + (reservation.party_size || 0), 0),
     [reservations]
   )
+  const totalDiningPax = useMemo(
+    () => reservations.reduce((sum, reservation) => (
+      reservation.reservation_type === "drinks" ? sum : sum + (reservation.party_size || 0)
+    ), 0),
+    [reservations]
+  )
   const generatedAt = useMemo(
     () => new Date().toLocaleString(getTranslation("common.locale") || "tr-TR", {
       dateStyle: "short",
@@ -174,7 +180,7 @@ function SeatingPrintPageInner() {
         @media print {
           @page {
             size: A4 portrait;
-            margin: 4px;
+            margin: 8px;
           }
           .no-print { display: none !important; }
           html, body {
@@ -298,7 +304,7 @@ function SeatingPrintPageInner() {
             </table>
 
             <footer className="mt-auto border-t-2 border-stone-950 bg-white pt-4">
-              <div className="grid grid-cols-2 gap-3 bg-white">
+              <div className="grid grid-cols-3 gap-3 bg-white">
                 <div className="print-summary-card rounded-2xl border border-stone-200 bg-stone-50 p-4">
                   <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-stone-500">
                     {getTranslation("manage.seating.totalReservations")}
@@ -310,6 +316,12 @@ function SeatingPrintPageInner() {
                     {getTranslation("manage.seating.totalKuver")}
                   </p>
                   <p className="mt-2 text-3xl font-semibold tracking-tight text-stone-950">{totalPax}</p>
+                </div>
+                <div className="print-summary-card rounded-2xl border border-stone-200 bg-stone-50 p-4">
+                  <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-stone-500">
+                    {getTranslation("manage.seating.totalDiningPax")}
+                  </p>
+                  <p className="mt-2 text-3xl font-semibold tracking-tight text-stone-950">{totalDiningPax}</p>
                 </div>
               </div>
             </footer>

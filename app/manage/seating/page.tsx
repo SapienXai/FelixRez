@@ -160,6 +160,12 @@ export default function SeatingPage() {
     () => reservations.reduce((sum, reservation) => sum + (reservation.party_size || 0), 0),
     [reservations]
   )
+  const totalDiningPax = useMemo(
+    () => reservations.reduce((sum, reservation) => (
+      reservation.reservation_type === "drinks" ? sum : sum + (reservation.party_size || 0)
+    ), 0),
+    [reservations]
+  )
   const getReservationTypeLabel = useCallback((type?: string | null) => (
     type === "drinks"
       ? getTranslation("manage.seating.typeDrinks")
@@ -430,8 +436,9 @@ export default function SeatingPage() {
           )}
 
           {!isLoading && reservations.length > 0 && (
-            <div className="mt-4 border-t pt-3 text-right text-sm font-medium">
-              {getTranslation("manage.seating.colPax")} Total: {totalPax}
+            <div className="mt-4 flex flex-col items-end gap-1 border-t pt-3 text-sm font-medium">
+              <div>{getTranslation("manage.seating.colPax")} Total: {totalPax}</div>
+              <div>{getTranslation("manage.seating.totalDiningPax")}: {totalDiningPax}</div>
             </div>
           )}
         </CardContent>
