@@ -185,7 +185,7 @@ export default function SeatingPage() {
     if (filters.searchQuery) params.set("searchQuery", filters.searchQuery)
     if (currentLang) params.set("lang", currentLang)
 
-    window.open(`/manage/seating/print?${params.toString()}`, "_blank", "noopener,noreferrer")
+    window.location.href = `/manage/seating/pdf?${params.toString()}`
   }
 
   const toggleMobileCardDetails = (id: string) => {
