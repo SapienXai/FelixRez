@@ -69,6 +69,19 @@ function getTodayDate() {
 }
 
 function getStatsRange(selectedDate?: string, timePeriod?: string) {
+  if (timePeriod === "latest") {
+    const endDateTime = new Date()
+    const startDateTime = new Date(endDateTime)
+    startDateTime.setHours(startDateTime.getHours() - 24)
+    return {
+      startDate: undefined,
+      endDate: undefined,
+      selectedDate: undefined,
+      startDateTime,
+      endDateTime,
+    }
+  }
+
   if (selectedDate) {
     return { startDate: selectedDate, endDate: selectedDate, selectedDate }
   }
@@ -238,6 +251,10 @@ async function fetchDashboardStatsRpc(
   selectedDate?: string,
   timePeriod?: string
 ): Promise<DashboardStats | null> {
+  if (timePeriod === "latest") {
+    return null
+  }
+
   const { startDate, endDate } = getStatsRange(selectedDate, timePeriod)
   const restaurantId = scope.type === "one" ? scope.id ?? null : null
 
@@ -266,7 +283,7 @@ async function fetchDashboardStatsFallback(
   selectedDate?: string,
   timePeriod?: string
 ): Promise<DashboardStats> {
-  const { startDate, endDate } = getStatsRange(selectedDate, timePeriod)
+  const { startDate, endDate, startDateTime, endDateTime } = getStatsRange(selectedDate, timePeriod)
   const today = new Date()
   const lastMonth = new Date(today)
   lastMonth.setMonth(lastMonth.getMonth() - 1)
@@ -283,7 +300,13 @@ async function fetchDashboardStatsFallback(
     `)
 
   statsQuery = applyRestaurantScope(statsQuery, scope)
-  statsQuery = applyReservationDateRange(statsQuery, startDate, endDate)
+  if (startDateTime && endDateTime) {
+    statsQuery = statsQuery
+      .gte("created_at", startDateTime.toISOString())
+      .lt("created_at", endDateTime.toISOString())
+  } else {
+    statsQuery = applyReservationDateRange(statsQuery, startDate, endDate)
+  }
 
   let lastMonthQuery = supabase
     .from("reservations")

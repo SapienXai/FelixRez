@@ -225,7 +225,11 @@ export default function ManageDashboard() {
   const [showCreateForm, setShowCreateForm] = useState(false)
 
   const hasLoadedInitialDataRef = useRef(false)
-  const skipNextDashboardRefreshRef = useRef(false)
+  const lastLoadedDashboardFiltersRef = useRef<{
+    restaurantId: string
+    dateKey: string
+    operationFilter: OperationFilter
+  } | null>(null)
   const dashboardRequestIdRef = useRef(0)
   const statsRequestIdRef = useRef(0)
   const ignoredRealtimeIdsRef = useRef<Set<string>>(new Set())
@@ -233,9 +237,11 @@ export default function ManageDashboard() {
   const dashboardFiltersRef = useRef<{
     restaurantId: string
     dateKey: string
+    operationFilter: OperationFilter
   }>({
     restaurantId: "",
     dateKey: getLocalDateKey(),
+    operationFilter: "date",
   })
 
   const selectedDateKey = useMemo(
@@ -276,21 +282,28 @@ export default function ManageDashboard() {
     dashboardFiltersRef.current = {
       restaurantId: selectedRestaurant,
       dateKey: selectedDateKey,
+      operationFilter,
     }
-  }, [selectedRestaurant, selectedDateKey])
+  }, [operationFilter, selectedRestaurant, selectedDateKey])
 
   const refreshStats = useCallback(async (
     restaurantId?: string,
-    dateKey?: string
+    dateKey?: string,
+    nextOperationFilter?: OperationFilter
   ) => {
     const filters = dashboardFiltersRef.current
     const targetRestaurantId = restaurantId ?? filters.restaurantId
     const targetDateKey = dateKey ?? filters.dateKey
+    const targetOperationFilter = nextOperationFilter ?? filters.operationFilter
     const requestId = ++statsRequestIdRef.current
     setIsStatsLoading(true)
 
     try {
-      const result = await getDashboardStats(normalizeRestaurantFilter(targetRestaurantId), targetDateKey, "daily")
+      const result = await getDashboardStats(
+        normalizeRestaurantFilter(targetRestaurantId),
+        targetOperationFilter === "latest" ? undefined : targetDateKey,
+        targetOperationFilter === "latest" ? "latest" : "daily"
+      )
       if (statsRequestIdRef.current !== requestId) {
         return
       }
@@ -320,15 +333,18 @@ export default function ManageDashboard() {
   const fetchDashboardSnapshot = useCallback(async ({
     restaurantId,
     dateKey,
+    operationFilter: nextOperationFilter,
     fullLoader = false,
   }: {
     restaurantId?: string
     dateKey?: string
+    operationFilter?: OperationFilter
     fullLoader?: boolean
   } = {}) => {
     const filters = dashboardFiltersRef.current
     const targetRestaurantId = restaurantId ?? filters.restaurantId
     const targetDateKey = dateKey ?? filters.dateKey
+    const targetOperationFilter = nextOperationFilter ?? filters.operationFilter
     const requestId = ++dashboardRequestIdRef.current
 
     if (fullLoader) {
@@ -339,13 +355,22 @@ export default function ManageDashboard() {
 
     try {
       setDashboardError(null)
-      const result = await getDashboardData(normalizeRestaurantFilter(targetRestaurantId), targetDateKey, "daily")
+      const result = await getDashboardData(
+        normalizeRestaurantFilter(targetRestaurantId),
+        targetOperationFilter === "latest" ? undefined : targetDateKey,
+        targetOperationFilter === "latest" ? "latest" : "daily"
+      )
       if (dashboardRequestIdRef.current !== requestId) {
         return
       }
 
       if (result.success && result.data) {
         setDashboardSnapshot(result.data)
+        lastLoadedDashboardFiltersRef.current = {
+          restaurantId: targetRestaurantId,
+          dateKey: targetDateKey,
+          operationFilter: targetOperationFilter,
+        }
       } else {
         setDashboardError(result.message || "Could not load dashboard data.")
       }
@@ -462,15 +487,20 @@ export default function ManageDashboard() {
 
         if (cancelled) return
 
-        skipNextDashboardRefreshRef.current = true
         setRestaurants(restaurantData)
         setSelectedRestaurant(initialRestaurant)
 
-        const dashboardResult = await getDashboardData(normalizeRestaurantFilter(initialRestaurant), getLocalDateKey(), "daily")
+        const initialDateKey = getLocalDateKey()
+        const dashboardResult = await getDashboardData(normalizeRestaurantFilter(initialRestaurant), initialDateKey, "daily")
         if (cancelled) return
 
         if (dashboardResult.success && dashboardResult.data) {
           setDashboardSnapshot(dashboardResult.data)
+          lastLoadedDashboardFiltersRef.current = {
+            restaurantId: initialRestaurant,
+            dateKey: initialDateKey,
+            operationFilter: "date",
+          }
         } else {
           setDashboardError(dashboardResult.message || "Could not load dashboard data.")
         }
@@ -516,13 +546,18 @@ export default function ManageDashboard() {
       return
     }
 
-    if (skipNextDashboardRefreshRef.current) {
-      skipNextDashboardRefreshRef.current = false
+    const lastLoadedFilters = lastLoadedDashboardFiltersRef.current
+    if (
+      lastLoadedFilters &&
+      lastLoadedFilters.restaurantId === selectedRestaurant &&
+      lastLoadedFilters.dateKey === selectedDateKey &&
+      lastLoadedFilters.operationFilter === operationFilter
+    ) {
       return
     }
 
     void fetchDashboardSnapshot()
-  }, [selectedRestaurant, selectedDateKey, fetchDashboardSnapshot])
+  }, [fetchDashboardSnapshot, operationFilter, selectedDateKey, selectedRestaurant])
 
   useEffect(() => {
     const channel = supabase
@@ -655,6 +690,13 @@ export default function ManageDashboard() {
   const operationDescription = operationFilter === "latest"
     ? `${filteredNewTodayReservations.length} created today, ${filteredNewReservations.length} latest reservations shown`
     : `${operationCount} reservations for ${operationFilterLabel}`
+  const statsDateLabel = operationFilter === "latest" ? "Last 24 Hours" : operationFilterLabel
+  const totalStatsLabel = operationFilter === "date" && selectedDateKey === getLocalDateKey()
+    ? getTranslation("manage.dashboard.stats.total")
+    : `${statsDateLabel} Reservations`
+  const kuverDateLabel = operationFilter === "date" && selectedDateKey === getLocalDateKey()
+    ? "today"
+    : statsDateLabel.toLowerCase()
   const defaultFormRestaurantId = normalizeRestaurantFilter(selectedRestaurant)
 
   if (isLoading) {
@@ -767,12 +809,31 @@ export default function ManageDashboard() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-xs md:text-sm font-medium text-muted-foreground">
-                    {getTranslation("manage.dashboard.stats.total")}
+                    {totalStatsLabel}
                   </p>
                   <p className="text-2xl md:text-3xl font-bold">{stats.total}</p>
                 </div>
                 <div className="rounded-full bg-blue-100 p-2 md:p-3 text-blue-600">
                   <CalendarClock className="h-4 w-4 md:h-6 md:w-6" />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card
+            className={`cursor-pointer transition-all hover:shadow-md ${metricFilter === "kuver" ? "ring-2 ring-purple-500" : ""}`}
+            onClick={() => handleMetricFilter("kuver")}
+            role="button"
+            aria-pressed={metricFilter === "kuver"}
+          >
+            <CardContent className="p-4 md:p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-xs md:text-sm font-medium text-muted-foreground">Total Kuver</p>
+                  <p className="text-2xl md:text-3xl font-bold">{stats.totalKuver}</p>
+                </div>
+                <div className="rounded-full bg-purple-100 p-2 md:p-3 text-purple-600">
+                  <Users className="h-4 w-4 md:h-6 md:w-6" />
                 </div>
               </div>
             </CardContent>
@@ -794,27 +855,6 @@ export default function ManageDashboard() {
                 </div>
                 <div className="rounded-full bg-yellow-100 p-2 md:p-3 text-yellow-600">
                   <Clock className="h-4 w-4 md:h-6 md:w-6" />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card
-            className={`cursor-pointer transition-all hover:shadow-md ${statusFilter === "confirmed" ? "ring-2 ring-green-500" : ""}`}
-            onClick={() => handleStatusFilter("confirmed")}
-            role="button"
-            aria-pressed={statusFilter === "confirmed"}
-          >
-            <CardContent className="p-4 md:p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-xs md:text-sm font-medium text-muted-foreground">
-                    {getTranslation("manage.dashboard.stats.confirmed")}
-                  </p>
-                  <p className="text-2xl md:text-3xl font-bold">{stats.confirmed}</p>
-                </div>
-                <div className="rounded-full bg-green-100 p-2 md:p-3 text-green-600">
-                  <CheckCircle className="h-4 w-4 md:h-6 md:w-6" />
                 </div>
               </div>
             </CardContent>
@@ -845,22 +885,23 @@ export default function ManageDashboard() {
         {cardsExpanded ? (
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4 mt-3 md:mt-4 transition-all duration-300">
             <Card
-              className={`cursor-pointer transition-all hover:shadow-md ${metricFilter === "kuver" ? "ring-2 ring-purple-500" : ""}`}
-              onClick={() => handleMetricFilter("kuver")}
+              className={`cursor-pointer transition-all hover:shadow-md ${statusFilter === "confirmed" ? "ring-2 ring-green-500" : ""}`}
+              onClick={() => handleStatusFilter("confirmed")}
               role="button"
-              aria-pressed={metricFilter === "kuver"}
+              aria-pressed={statusFilter === "confirmed"}
             >
               <CardContent className="p-4 md:p-6">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-xs md:text-sm font-medium text-muted-foreground">Total Kuver</p>
-                    <p className="text-2xl md:text-3xl font-bold">{stats.totalKuver}</p>
+                    <p className="text-xs md:text-sm font-medium text-muted-foreground">
+                      {getTranslation("manage.dashboard.stats.confirmed")}
+                    </p>
+                    <p className="text-2xl md:text-3xl font-bold">{stats.confirmed}</p>
                   </div>
-                  <div className="rounded-full bg-purple-100 p-2 md:p-3 text-purple-600">
-                    <Users className="h-4 w-4 md:h-6 md:w-6" />
+                  <div className="rounded-full bg-green-100 p-2 md:p-3 text-green-600">
+                    <CheckCircle className="h-4 w-4 md:h-6 md:w-6" />
                   </div>
                 </div>
-                <p className="text-xs text-muted-foreground mt-2">Customers served</p>
               </CardContent>
             </Card>
 
@@ -900,7 +941,7 @@ export default function ManageDashboard() {
                     <MapPin className="h-4 w-4 md:h-6 md:w-6" />
                   </div>
                 </div>
-                <p className="text-xs text-muted-foreground mt-2">Kuvers today</p>
+                <p className="text-xs text-muted-foreground mt-2">Kuvers {kuverDateLabel}</p>
               </CardContent>
             </Card>
 
@@ -920,7 +961,7 @@ export default function ManageDashboard() {
                     <MapPin className="h-4 w-4 md:h-6 md:w-6" />
                   </div>
                 </div>
-                <p className="text-xs text-muted-foreground mt-2">Kuvers today</p>
+                <p className="text-xs text-muted-foreground mt-2">Kuvers {kuverDateLabel}</p>
               </CardContent>
             </Card>
           </div>
