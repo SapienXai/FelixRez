@@ -42,10 +42,10 @@ interface ReservationStep2Props {
   setCustomerEmail: (email: string) => void
   specialRequests: string
   setSpecialRequests: (requests: string) => void
-  minGuestAge: number
-  setMinGuestAge: (age: number) => void
-  maxGuestAge: number
-  setMaxGuestAge: (age: number) => void
+  minGuestAge: number | null
+  setMinGuestAge: (age: number | null) => void
+  maxGuestAge: number | null
+  setMaxGuestAge: (age: number | null) => void
   reservationType: string
   setReservationType: (type: string) => void
   mealOnlyReservations: boolean
@@ -83,15 +83,16 @@ export function ReservationStep2({
   const { getTranslation, currentLang } = useLanguage()
   const [showContactFields, setShowContactFields] = useState(false)
   const [showAgeRangePicker, setShowAgeRangePicker] = useState(false)
-  const [draftMinGuestAge, setDraftMinGuestAge] = useState(minGuestAge)
-  const [draftMaxGuestAge, setDraftMaxGuestAge] = useState(maxGuestAge)
+  const [draftMinGuestAge, setDraftMinGuestAge] = useState(minGuestAge ?? 18)
+  const [draftMaxGuestAge, setDraftMaxGuestAge] = useState(maxGuestAge ?? minGuestAge ?? 18)
   const contactSectionRef = useRef<HTMLDivElement | null>(null)
   const minAgeListRef = useRef<HTMLDivElement | null>(null)
   const maxAgeListRef = useRef<HTMLDivElement | null>(null)
-  const [touched, setTouched] = useState<{ name: boolean; email: boolean; phone: boolean }>({
+  const [touched, setTouched] = useState<{ name: boolean; email: boolean; phone: boolean; ageRange: boolean }>({
     name: false,
     email: false,
     phone: false,
+    ageRange: false,
   })
 
   // Check if selected area is Terrace or Deck (dining only areas)
@@ -116,7 +117,7 @@ export function ReservationStep2({
 
   // Basic validators
   const errors = useMemo(() => {
-    const errs: { name?: string; email?: string; phone?: string } = {}
+    const errs: { name?: string; email?: string; phone?: string; ageRange?: string } = {}
     if (!customerName || customerName.trim().length === 0) {
       errs.name = getTranslation("reserve.step2.errors.nameRequired")
     }
@@ -128,21 +129,24 @@ export function ReservationStep2({
     if (!customerPhone || customerPhone.trim().length === 0) {
       errs.phone = getTranslation("reserve.step2.errors.phoneRequired")
     }
+    if (minGuestAge === null || maxGuestAge === null) {
+      errs.ageRange = getTranslation("reserve.step2.errors.guestAgeRangeRequired")
+    }
     return errs
-  }, [customerName, customerEmail, customerPhone, getTranslation])
+  }, [customerName, customerEmail, customerPhone, minGuestAge, maxGuestAge, getTranslation])
 
   // Only auto-open the contact section when a submit attempt is made and there are errors
   useEffect(() => {
-    if (attemptedSubmit && (errors.name || errors.email || errors.phone)) {
+    if (attemptedSubmit && (errors.name || errors.email || errors.phone || errors.ageRange)) {
       setShowContactFields(true)
       // Mark all as touched to show errors inline
-      setTouched({ name: true, email: true, phone: true })
+      setTouched({ name: true, email: true, phone: true, ageRange: true })
 
       window.requestAnimationFrame(() => {
         contactSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" })
       })
     }
-  }, [attemptedSubmit, errors.name, errors.email, errors.phone])
+  }, [attemptedSubmit, errors.name, errors.email, errors.phone, errors.ageRange])
 
   const getTimezone = () => {
     if (!(selectedDate instanceof Date) || isNaN(selectedDate.getTime())) {
@@ -169,20 +173,21 @@ export function ReservationStep2({
   }
 
   const openAgeRangePicker = () => {
-    setDraftMinGuestAge(minGuestAge)
-    setDraftMaxGuestAge(maxGuestAge)
+    setDraftMinGuestAge(minGuestAge ?? 18)
+    setDraftMaxGuestAge(maxGuestAge ?? minGuestAge ?? 18)
     setShowAgeRangePicker(true)
   }
 
   const cancelAgeRangePicker = () => {
-    setDraftMinGuestAge(minGuestAge)
-    setDraftMaxGuestAge(maxGuestAge)
+    setDraftMinGuestAge(minGuestAge ?? 18)
+    setDraftMaxGuestAge(maxGuestAge ?? minGuestAge ?? 18)
     setShowAgeRangePicker(false)
   }
 
   const confirmAgeRangePicker = () => {
     setMinGuestAge(draftMinGuestAge)
     setMaxGuestAge(draftMaxGuestAge)
+    setTouched((prev) => ({ ...prev, ageRange: true }))
     setShowAgeRangePicker(false)
   }
 
@@ -345,19 +350,27 @@ export function ReservationStep2({
             </div>
             <div className="mb-2">
               <label htmlFor="guestAgeRange" className="form-label">
-                {getTranslation("reserve.step2.guestAgeRangeTitle")}
+                {getTranslation("reserve.step2.guestAgeRangeTitle")} *
               </label>
               <button
                 id="guestAgeRange"
                 type="button"
-                className={`age-range-field ${showAgeRangePicker ? "open" : ""}`}
+                className={`age-range-field ${minGuestAge === null || maxGuestAge === null ? "placeholder" : ""} ${showAgeRangePicker ? "open" : ""} ${touched.ageRange && errors.ageRange ? "border-red-500" : ""}`}
                 onClick={openAgeRangePicker}
                 aria-expanded={showAgeRangePicker}
                 aria-controls="guestAgeRangeSheet"
+                aria-describedby={(touched.ageRange || attemptedSubmit) && errors.ageRange ? "guestAgeRangeError" : undefined}
               >
-                <span>{minGuestAge} - {maxGuestAge}</span>
+                <span>
+                  {minGuestAge !== null && maxGuestAge !== null
+                    ? `${minGuestAge} - ${maxGuestAge}`
+                    : getTranslation("reserve.step2.requiredPlaceholder")}
+                </span>
                 <i className="bi bi-chevron-down"></i>
               </button>
+              {(touched.ageRange || attemptedSubmit) && errors.ageRange && (
+                <p id="guestAgeRangeError" className="text-red-600 text-xs mt-1">{errors.ageRange}</p>
+              )}
             </div>
           </div>
         )}

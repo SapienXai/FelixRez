@@ -28,6 +28,8 @@ interface CreateReservationParams {
   tableNumber?: string
   reservationType?: string
   lang?: string
+  minGuestAge?: number | null
+  maxGuestAge?: number | null
 }
 
 interface ReservationBlockedInterval {
@@ -93,6 +95,20 @@ export async function createReservation(params: CreateReservationParams) {
 
     if (restaurantSettings.reservation_enabled === false) {
       return { success: false, message: "This restaurant is not accepting reservations right now." }
+    }
+
+    const { minGuestAge, maxGuestAge } = params
+    const hasValidGuestAgeRange =
+      typeof minGuestAge === "number" &&
+      typeof maxGuestAge === "number" &&
+      Number.isInteger(minGuestAge) &&
+      Number.isInteger(maxGuestAge) &&
+      minGuestAge >= 18 &&
+      maxGuestAge <= 65 &&
+      minGuestAge <= maxGuestAge
+
+    if (!hasValidGuestAgeRange) {
+      return { success: false, message: "Please select the guest age range." }
     }
 
     if (

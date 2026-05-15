@@ -66,8 +66,8 @@ export function ReservationApp({ initialRestaurant, initialLang }: ReservationAp
   const [customerPhone, setCustomerPhone] = useState("")
   const [customerEmail, setCustomerEmail] = useState("")
   const [specialRequests, setSpecialRequests] = useState("")
-  const [minGuestAge, setMinGuestAge] = useState(18)
-  const [maxGuestAge, setMaxGuestAge] = useState(18)
+  const [minGuestAge, setMinGuestAge] = useState<number | null>(null)
+  const [maxGuestAge, setMaxGuestAge] = useState<number | null>(null)
   const [reservationType, setReservationType] = useState("meal")
   const [message, setMessage] = useState("")
   const [isSuccess, setIsSuccess] = useState(false)
@@ -170,7 +170,7 @@ export function ReservationApp({ initialRestaurant, initialLang }: ReservationAp
   }
 
   const handleSubmitReservation = async () => {
-    if (!customerName || !customerPhone || !customerEmail) {
+    if (!customerName || !customerPhone || !customerEmail || minGuestAge === null || maxGuestAge === null) {
       setShowStep2Errors(true)
       // setMessage(getTranslation("reserve.messages.namePhoneEmailRequired"))
       setIsSuccess(false)
@@ -236,6 +236,8 @@ export function ReservationApp({ initialRestaurant, initialLang }: ReservationAp
         specialRequests: specialRequestsWithAgeRange || undefined,
         reservationType,
         lang: currentLang,
+        minGuestAge,
+        maxGuestAge,
       })
 
       if (result.success) {

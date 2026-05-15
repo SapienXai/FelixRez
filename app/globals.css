@@ -1030,6 +1030,12 @@ footer {
   box-shadow: 0 10px 24px rgba(13, 110, 253, 0.08);
 }
 
+.age-range-field.placeholder span {
+  color: rgba(33, 37, 41, 0.55);
+  font-size: 0.95rem;
+  font-weight: 600;
+}
+
 .age-range-field i {
   color: var(--secondary-text-color);
   font-size: 0.95rem;
