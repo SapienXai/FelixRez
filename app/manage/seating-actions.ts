@@ -26,6 +26,7 @@ type SeatingRow = {
   customer_phone: string
   party_size: number
   table_number: string | null
+  reservation_type: string | null
   notes: string | null
   status: string | null
   booked_by_user_id: string | null
@@ -57,6 +58,7 @@ export async function getSeatingReservations(filters: SeatingFilters) {
         customer_phone,
         party_size,
         table_number,
+        reservation_type,
         notes,
         status,
         booked_by_user_id,
@@ -162,6 +164,7 @@ export async function getSeatingReservations(filters: SeatingFilters) {
 export async function assignReservationTable(input: {
   reservationId: string
   tableNumber?: string
+  reservationType?: string
   notes?: string
   bookedByText?: string
 }) {
@@ -191,6 +194,7 @@ export async function assignReservationTable(input: {
     }
 
     const tableNumber = input.tableNumber?.trim() || null
+    const reservationType = input.reservationType === "drinks" ? "drinks" : "meal"
     const notes = input.notes?.trim() || null
     const bookedByLabel = input.bookedByText?.trim() || null
 
@@ -198,6 +202,7 @@ export async function assignReservationTable(input: {
       .from("reservations")
       .update({
         table_number: tableNumber,
+        reservation_type: reservationType,
         notes,
         booked_by_label: bookedByLabel,
       })

@@ -25,6 +25,7 @@ type SeatingReservation = {
   customer_phone: string
   party_size: number
   table_number: string | null
+  reservation_type: string | null
   notes: string | null
   status: string | null
   booked_by_name?: string
@@ -63,6 +64,7 @@ export default function SeatingPage() {
   const [selected, setSelected] = useState<SeatingReservation | null>(null)
   const [showCreateForm, setShowCreateForm] = useState(false)
   const [tableNumber, setTableNumber] = useState("")
+  const [reservationType, setReservationType] = useState("meal")
   const [notes, setNotes] = useState("")
   const [bookedByText, setBookedByText] = useState("")
   const [showMobileFilters, setShowMobileFilters] = useState(false)
@@ -112,6 +114,7 @@ export default function SeatingPage() {
   const openEdit = (reservation: SeatingReservation) => {
     setSelected(reservation)
     setTableNumber(reservation.table_number || "")
+    setReservationType(reservation.reservation_type === "drinks" ? "drinks" : "meal")
     setNotes(reservation.notes || "")
     setBookedByText(reservation.booked_by_name || getTranslation("manage.seating.online"))
   }
@@ -119,6 +122,7 @@ export default function SeatingPage() {
   const closeEdit = () => {
     setSelected(null)
     setTableNumber("")
+    setReservationType("meal")
     setNotes("")
     setBookedByText("")
   }
@@ -130,6 +134,7 @@ export default function SeatingPage() {
       const result = await assignReservationTable({
         reservationId: selected.id,
         tableNumber,
+        reservationType,
         notes,
         bookedByText,
       })
@@ -155,6 +160,16 @@ export default function SeatingPage() {
     () => reservations.reduce((sum, reservation) => sum + (reservation.party_size || 0), 0),
     [reservations]
   )
+  const getReservationTypeLabel = useCallback((type?: string | null) => (
+    type === "drinks"
+      ? getTranslation("manage.seating.typeDrinks")
+      : getTranslation("manage.seating.typeMeal")
+  ), [getTranslation])
+  const getReservationTypeBadgeClassName = useCallback((type?: string | null) => (
+    type === "drinks"
+      ? "bg-slate-900 text-white"
+      : "bg-rose-900 text-white"
+  ), [])
 
   const handlePrintPdf = () => {
     const params = new URLSearchParams()
@@ -320,6 +335,12 @@ export default function SeatingPage() {
                         <span className="text-muted-foreground">{getTranslation("manage.seating.colTable")}:</span>{" "}
                         {reservation.table_number || "-"}
                       </div>
+                      <div>
+                        <span className="text-muted-foreground">{getTranslation("manage.seating.colType")}:</span>{" "}
+                        <span className={`inline-flex rounded px-1.5 py-0.5 text-[11px] font-semibold ${getReservationTypeBadgeClassName(reservation.reservation_type)}`}>
+                          {getReservationTypeLabel(reservation.reservation_type)}
+                        </span>
+                      </div>
                     </div>
                     <div className="mt-2">
                       <div className="flex h-8 items-center justify-center text-slate-500">
@@ -369,6 +390,7 @@ export default function SeatingPage() {
                     <TableHead>{getTranslation("manage.seating.colPhone")}</TableHead>
                     <TableHead>{getTranslation("manage.seating.colPax")}</TableHead>
                     <TableHead>{getTranslation("manage.seating.colTable")}</TableHead>
+                    <TableHead>{getTranslation("manage.seating.colType")}</TableHead>
                     <TableHead>{getTranslation("manage.seating.colNote")}</TableHead>
                     <TableHead>{getTranslation("manage.seating.colBookedBy")}</TableHead>
                     <TableHead>{getTranslation("manage.seating.colTime")}</TableHead>
@@ -385,6 +407,11 @@ export default function SeatingPage() {
                       <TableCell>{reservation.customer_phone}</TableCell>
                       <TableCell>{reservation.party_size}</TableCell>
                       <TableCell>{reservation.table_number || "-"}</TableCell>
+                      <TableCell>
+                        <span className={`inline-flex rounded px-1.5 py-0.5 text-[11px] font-semibold ${getReservationTypeBadgeClassName(reservation.reservation_type)}`}>
+                          {getReservationTypeLabel(reservation.reservation_type)}
+                        </span>
+                      </TableCell>
                       <TableCell className="max-w-64 truncate">{reservation.notes || "-"}</TableCell>
                       <TableCell>{reservation.booked_by_name || "-"}</TableCell>
                       <TableCell>{reservation.reservation_time.slice(0, 5)}</TableCell>
@@ -427,6 +454,18 @@ export default function SeatingPage() {
                 value={tableNumber}
                 onChange={(e) => setTableNumber(e.target.value)}
               />
+            </div>
+            <div className="space-y-1">
+              <Label>{getTranslation("manage.seating.colType")}</Label>
+              <Select value={reservationType} onValueChange={setReservationType}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="meal">{getTranslation("manage.seating.typeMeal")}</SelectItem>
+                  <SelectItem value="drinks">{getTranslation("manage.seating.typeDrinks")}</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
             <div className="space-y-1">
               <Label>{getTranslation("manage.seating.colNote")}</Label>
