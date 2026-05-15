@@ -997,7 +997,7 @@ export default function ManageDashboard() {
         <div className="flex flex-col gap-4">
           <div>
             <div className="mb-4">
-              <div className="flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
+              <div className="flex flex-col gap-1">
                 <div>
                   <h3 className="text-lg font-semibold">{operationTitle}</h3>
                   <p className="text-sm text-muted-foreground">
@@ -1008,9 +1008,6 @@ export default function ManageDashboard() {
                       </span>
                     ) : null}
                   </p>
-                </div>
-                <div className="text-xs text-muted-foreground">
-                  Showing {operationCount} result{operationCount === 1 ? "" : "s"}
                 </div>
               </div>
             </div>

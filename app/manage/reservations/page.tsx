@@ -9,7 +9,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Plus } from "lucide-react"
 import { getReservations, getRestaurants } from "../actions"
 import { ReservationTable } from "@/components/manage/reservation-table"
 import { ReservationForm } from "@/components/manage/reservation-form"
@@ -130,7 +129,16 @@ function ReservationsPageContent() {
 
   return (
     <div className="w-full max-w-[1400px] mx-auto">
-      <h1 className="text-2xl font-semibold mb-6">{getTranslation("manage.reservations.title")}</h1>
+      <div className="flex items-center space-x-3 mb-6">
+        <h1 className="text-xl md:text-2xl font-semibold">{getTranslation("manage.reservations.title")}</h1>
+        <Button
+          onClick={() => setShowCreateForm(true)}
+          className="bg-black hover:bg-gray-800 text-white text-xs px-2 py-1 h-7"
+          size="sm"
+        >
+          + {getTranslation("manage.reservations.list.addReservation")}
+        </Button>
+      </div>
 
       <Card className="mb-6">
         <CardContent className="pt-6">
@@ -225,10 +233,6 @@ function ReservationsPageContent() {
               {isRefreshing ? ` · ${getTranslation("manage.common.loadingReservations")}` : ""}
             </CardDescription>
           </div>
-          <Button onClick={() => setShowCreateForm(true)} size="sm" className="flex items-center gap-2">
-            <Plus className="h-4 w-4" />
-            {getTranslation("manage.reservations.list.addReservation")}
-          </Button>
         </CardHeader>
         <CardContent>
           <ReservationTable reservations={reservations} onRefresh={handleRefresh} itemsPerPage={20} />
