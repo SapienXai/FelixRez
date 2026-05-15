@@ -212,24 +212,24 @@ export default function SeatingPage() {
           <CardTitle>{getTranslation("manage.seating.filtersTitle")}</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
-            <div className="space-y-1">
+          <div className="grid grid-cols-2 gap-2 md:grid-cols-4 md:gap-4">
+            <div className="min-w-0 space-y-1">
               <Label>{getTranslation("manage.seating.date")}</Label>
               <Input
                 type="date"
-                className="text-left text-[13px] sm:text-sm"
+                className="w-full min-w-0 text-left text-[13px] sm:text-sm"
                 value={filters.date}
                 onChange={(e) => setFilters((prev) => ({ ...prev, date: e.target.value }))}
               />
             </div>
 
-            <div className="space-y-1">
+            <div className="min-w-0 space-y-1">
               <Label>{getTranslation("manage.seating.restaurant")}</Label>
               <Select
                 value={filters.restaurantId}
                 onValueChange={(value) => setFilters((prev) => ({ ...prev, restaurantId: value }))}
               >
-                <SelectTrigger className="justify-start pr-8 text-left text-[13px] sm:text-sm [&>span]:text-left">
+                <SelectTrigger className="w-full min-w-0 justify-start pr-8 text-left text-[13px] sm:text-sm [&>span]:truncate [&>span]:text-left">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -243,13 +243,13 @@ export default function SeatingPage() {
               </Select>
             </div>
 
-            <div className={`space-y-1 col-span-2 md:col-span-1 ${isMobile && !showMobileFilters ? "hidden" : ""}`}>
+            <div className={`col-span-2 min-w-0 space-y-1 md:col-span-1 ${isMobile && !showMobileFilters ? "hidden" : ""}`}>
               <Label>{getTranslation("manage.seating.status")}</Label>
               <Select
                 value={filters.status}
                 onValueChange={(value) => setFilters((prev) => ({ ...prev, status: value }))}
               >
-                <SelectTrigger>
+                <SelectTrigger className="w-full min-w-0">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -260,9 +260,10 @@ export default function SeatingPage() {
               </Select>
             </div>
 
-            <div className={`space-y-1 col-span-2 md:col-span-1 ${isMobile && !showMobileFilters ? "hidden" : ""}`}>
+            <div className={`col-span-2 min-w-0 space-y-1 md:col-span-1 ${isMobile && !showMobileFilters ? "hidden" : ""}`}>
               <Label>{getTranslation("manage.seating.search")}</Label>
               <Input
+                className="w-full min-w-0"
                 placeholder={getTranslation("manage.seating.searchPlaceholder")}
                 value={filters.searchQuery}
                 onChange={(e) => setFilters((prev) => ({ ...prev, searchQuery: e.target.value }))}

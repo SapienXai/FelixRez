@@ -798,23 +798,23 @@ export default function ManageDashboard() {
       </div>
 
       <div className="mb-6">
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4 transition-all duration-300">
+        <div className="grid grid-cols-2 gap-2 md:grid-cols-4 md:gap-2 transition-all duration-300">
           <Card
             className={`cursor-pointer transition-all hover:shadow-md ${statusFilter === "all" && metricFilter === "all" ? "ring-2 ring-blue-500" : ""}`}
             onClick={() => handleStatusFilter("all")}
             role="button"
             aria-pressed={statusFilter === "all" && metricFilter === "all"}
           >
-            <CardContent className="p-4 md:p-6">
+            <CardContent className="p-2.5 md:p-3">
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-xs md:text-sm font-medium text-muted-foreground">
                     {totalStatsLabel}
                   </p>
-                  <p className="text-2xl md:text-3xl font-bold">{stats.total}</p>
+                  <p className="text-lg md:text-xl font-bold">{stats.total}</p>
                 </div>
-                <div className="rounded-full bg-blue-100 p-2 md:p-3 text-blue-600">
-                  <CalendarClock className="h-4 w-4 md:h-6 md:w-6" />
+                <div className="rounded-full bg-blue-100 p-1.5 text-blue-600">
+                  <CalendarClock className="h-3.5 w-3.5 md:h-4 md:w-4" />
                 </div>
               </div>
             </CardContent>
@@ -826,14 +826,14 @@ export default function ManageDashboard() {
             role="button"
             aria-pressed={metricFilter === "kuver"}
           >
-            <CardContent className="p-4 md:p-6">
+            <CardContent className="p-2.5 md:p-3">
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-xs md:text-sm font-medium text-muted-foreground">Total Kuver</p>
-                  <p className="text-2xl md:text-3xl font-bold">{stats.totalKuver}</p>
+                  <p className="text-lg md:text-xl font-bold">{stats.totalKuver}</p>
                 </div>
-                <div className="rounded-full bg-purple-100 p-2 md:p-3 text-purple-600">
-                  <Users className="h-4 w-4 md:h-6 md:w-6" />
+                <div className="rounded-full bg-purple-100 p-1.5 text-purple-600">
+                  <Users className="h-3.5 w-3.5 md:h-4 md:w-4" />
                 </div>
               </div>
             </CardContent>
@@ -845,16 +845,16 @@ export default function ManageDashboard() {
             role="button"
             aria-pressed={statusFilter === "pending"}
           >
-            <CardContent className="p-4 md:p-6">
+            <CardContent className="p-2.5 md:p-3">
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-xs md:text-sm font-medium text-muted-foreground">
                     {getTranslation("manage.dashboard.stats.pending")}
                   </p>
-                  <p className="text-2xl md:text-3xl font-bold">{stats.pending}</p>
+                  <p className="text-lg md:text-xl font-bold">{stats.pending}</p>
                 </div>
-                <div className="rounded-full bg-yellow-100 p-2 md:p-3 text-yellow-600">
-                  <Clock className="h-4 w-4 md:h-6 md:w-6" />
+                <div className="rounded-full bg-yellow-100 p-1.5 text-yellow-600">
+                  <Clock className="h-3.5 w-3.5 md:h-4 md:w-4" />
                 </div>
               </div>
             </CardContent>
@@ -866,16 +866,16 @@ export default function ManageDashboard() {
             role="button"
             aria-pressed={statusFilter === "cancelled"}
           >
-            <CardContent className="p-4 md:p-6">
+            <CardContent className="p-2.5 md:p-3">
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-xs md:text-sm font-medium text-muted-foreground">
                     {getTranslation("manage.dashboard.stats.cancelled")}
                   </p>
-                  <p className="text-2xl md:text-3xl font-bold">{stats.cancelled}</p>
+                  <p className="text-lg md:text-xl font-bold">{stats.cancelled}</p>
                 </div>
-                <div className="rounded-full bg-red-100 p-2 md:p-3 text-red-600">
-                  <XCircle className="h-4 w-4 md:h-6 md:w-6" />
+                <div className="rounded-full bg-red-100 p-1.5 text-red-600">
+                  <XCircle className="h-3.5 w-3.5 md:h-4 md:w-4" />
                 </div>
               </div>
             </CardContent>
@@ -883,23 +883,23 @@ export default function ManageDashboard() {
         </div>
 
         {cardsExpanded ? (
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4 mt-3 md:mt-4 transition-all duration-300">
+          <div className="grid grid-cols-2 gap-2 md:grid-cols-4 md:gap-2 mt-2 transition-all duration-300">
             <Card
               className={`cursor-pointer transition-all hover:shadow-md ${statusFilter === "confirmed" ? "ring-2 ring-green-500" : ""}`}
               onClick={() => handleStatusFilter("confirmed")}
               role="button"
               aria-pressed={statusFilter === "confirmed"}
             >
-              <CardContent className="p-4 md:p-6">
+              <CardContent className="p-2.5 md:p-3">
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-xs md:text-sm font-medium text-muted-foreground">
                       {getTranslation("manage.dashboard.stats.confirmed")}
                     </p>
-                    <p className="text-2xl md:text-3xl font-bold">{stats.confirmed}</p>
+                    <p className="text-lg md:text-xl font-bold">{stats.confirmed}</p>
                   </div>
-                  <div className="rounded-full bg-green-100 p-2 md:p-3 text-green-600">
-                    <CheckCircle className="h-4 w-4 md:h-6 md:w-6" />
+                  <div className="rounded-full bg-green-100 p-1.5 text-green-600">
+                    <CheckCircle className="h-3.5 w-3.5 md:h-4 md:w-4" />
                   </div>
                 </div>
               </CardContent>
@@ -911,14 +911,14 @@ export default function ManageDashboard() {
               role="button"
               aria-pressed={metricFilter === "meal"}
             >
-              <CardContent className="p-4 md:p-6">
+              <CardContent className="p-2.5 md:p-3">
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-xs md:text-sm font-medium text-muted-foreground">Meal Reservations</p>
-                    <p className="text-2xl md:text-3xl font-bold">{stats.totalMealReservations}</p>
+                    <p className="text-lg md:text-xl font-bold">{stats.totalMealReservations}</p>
                   </div>
-                  <div className="rounded-full bg-orange-100 p-2 md:p-3 text-orange-600">
-                    <UtensilsCrossed className="h-4 w-4 md:h-6 md:w-6" />
+                  <div className="rounded-full bg-orange-100 p-1.5 text-orange-600">
+                    <UtensilsCrossed className="h-3.5 w-3.5 md:h-4 md:w-4" />
                   </div>
                 </div>
                 <p className="text-xs text-muted-foreground mt-2">Food reservations</p>
@@ -931,14 +931,14 @@ export default function ManageDashboard() {
               role="button"
               aria-pressed={metricFilter === "deck"}
             >
-              <CardContent className="p-4 md:p-6">
+              <CardContent className="p-2.5 md:p-3">
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-xs md:text-sm font-medium text-muted-foreground">Deck</p>
-                    <p className="text-2xl md:text-3xl font-bold">{stats.deckKuvers}</p>
+                    <p className="text-lg md:text-xl font-bold">{stats.deckKuvers}</p>
                   </div>
-                  <div className="rounded-full bg-teal-100 p-2 md:p-3 text-teal-600">
-                    <MapPin className="h-4 w-4 md:h-6 md:w-6" />
+                  <div className="rounded-full bg-teal-100 p-1.5 text-teal-600">
+                    <MapPin className="h-3.5 w-3.5 md:h-4 md:w-4" />
                   </div>
                 </div>
                 <p className="text-xs text-muted-foreground mt-2">Kuvers {kuverDateLabel}</p>
@@ -951,14 +951,14 @@ export default function ManageDashboard() {
               role="button"
               aria-pressed={metricFilter === "terrace"}
             >
-              <CardContent className="p-4 md:p-6">
+              <CardContent className="p-2.5 md:p-3">
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-xs md:text-sm font-medium text-muted-foreground">Terrace</p>
-                    <p className="text-2xl md:text-3xl font-bold">{stats.terraceKuvers}</p>
+                    <p className="text-lg md:text-xl font-bold">{stats.terraceKuvers}</p>
                   </div>
-                  <div className="rounded-full bg-emerald-100 p-2 md:p-3 text-emerald-600">
-                    <MapPin className="h-4 w-4 md:h-6 md:w-6" />
+                  <div className="rounded-full bg-emerald-100 p-1.5 text-emerald-600">
+                    <MapPin className="h-3.5 w-3.5 md:h-4 md:w-4" />
                   </div>
                 </div>
                 <p className="text-xs text-muted-foreground mt-2">Kuvers {kuverDateLabel}</p>
