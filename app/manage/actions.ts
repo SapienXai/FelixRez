@@ -36,6 +36,14 @@ type ReservationRow = {
   [key: string]: any
 }
 
+type ReservationNoticeInput = {
+  start_date: string
+  end_date: string
+  title?: string
+  message: string
+  active?: boolean
+}
+
 export async function getReservations(filters: {
   status?: string
   restaurantId?: string
@@ -683,6 +691,7 @@ export async function createRestaurant(data: {
     end_time: string;
     message?: string;
   }[];
+  reservation_notices?: ReservationNoticeInput[];
   meal_only_reservations?: boolean;
 }) {
   try {
@@ -715,6 +724,7 @@ export async function createRestaurant(data: {
         min_party_size: data.min_party_size,
         reservation_start_date: data.reservation_start_date === undefined ? undefined : data.reservation_start_date || null,
         reservation_blocked_intervals: data.reservation_blocked_intervals ?? [],
+        reservation_notices: data.reservation_notices ?? [],
         meal_only_reservations: data.meal_only_reservations,
       })
       .select()
@@ -775,6 +785,7 @@ export async function updateRestaurant(id: string, data: {
     end_time: string;
     message?: string;
   }[];
+  reservation_notices?: ReservationNoticeInput[];
   meal_only_reservations?: boolean;
 }) {
   try {
@@ -807,6 +818,7 @@ export async function updateRestaurant(id: string, data: {
         min_party_size: data.min_party_size,
         reservation_start_date: data.reservation_start_date === undefined ? undefined : data.reservation_start_date || null,
         reservation_blocked_intervals: data.reservation_blocked_intervals,
+        reservation_notices: data.reservation_notices,
         meal_only_reservations: data.meal_only_reservations,
         updated_at: new Date().toISOString(),
       })

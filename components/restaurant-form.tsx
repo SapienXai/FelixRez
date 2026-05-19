@@ -53,6 +53,14 @@ interface ReservationBlockedInterval {
   message: string
 }
 
+interface ReservationNotice {
+  start_date: string
+  end_date: string
+  title: string
+  message: string
+  active: boolean
+}
+
 const dayNames = [
   { value: 1, label: "Monday" },
   { value: 2, label: "Tuesday" },
@@ -82,6 +90,26 @@ function normalizeBlockedIntervals(value: unknown): ReservationBlockedInterval[]
     .filter((item): item is ReservationBlockedInterval => Boolean(item))
 }
 
+function normalizeReservationNotices(value: unknown): ReservationNotice[] {
+  if (!Array.isArray(value)) return []
+
+  return value
+    .map((item) => {
+      if (!item || typeof item !== "object") return null
+      const notice = item as Partial<ReservationNotice>
+      if (!notice.start_date || !notice.end_date || !notice.message) return null
+
+      return {
+        start_date: notice.start_date,
+        end_date: notice.end_date,
+        title: notice.title || "",
+        message: notice.message,
+        active: notice.active !== false,
+      }
+    })
+    .filter((item): item is ReservationNotice => Boolean(item))
+}
+
 export function RestaurantForm({ restaurant, onSuccess, onClose, open = true }: RestaurantFormProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [activeTab, setActiveTab] = useState('basic');
@@ -106,6 +134,7 @@ export function RestaurantForm({ restaurant, onSuccess, onClose, open = true }: 
     min_party_size: restaurant?.min_party_size || 1,
     reservation_start_date: restaurant?.reservation_start_date || '',
     reservation_blocked_intervals: normalizeBlockedIntervals(restaurant?.reservation_blocked_intervals),
+    reservation_notices: normalizeReservationNotices(restaurant?.reservation_notices),
     allowed_days_of_week: restaurant?.allowed_days_of_week || [1, 2, 3, 4, 5, 6, 7],
     meal_only_reservations: (restaurant as any)?.meal_only_reservations ?? false,
   });
@@ -133,6 +162,7 @@ export function RestaurantForm({ restaurant, onSuccess, onClose, open = true }: 
         min_party_size: 1,
         reservation_start_date: '',
         reservation_blocked_intervals: [],
+        reservation_notices: [],
         allowed_days_of_week: [1, 2, 3, 4, 5, 6, 7],
         meal_only_reservations: false,
       })
@@ -204,6 +234,7 @@ export function RestaurantForm({ restaurant, onSuccess, onClose, open = true }: 
       min_party_size: restaurant.min_party_size || 1,
       reservation_start_date: restaurant.reservation_start_date || '',
       reservation_blocked_intervals: normalizeBlockedIntervals(restaurant.reservation_blocked_intervals),
+      reservation_notices: normalizeReservationNotices(restaurant.reservation_notices),
       allowed_days_of_week: restaurant.allowed_days_of_week || [1, 2, 3, 4, 5, 6, 7],
       meal_only_reservations: (restaurant as any)?.meal_only_reservations ?? false,
     });
@@ -228,6 +259,13 @@ export function RestaurantForm({ restaurant, onSuccess, onClose, open = true }: 
         reservation_blocked_intervals: formData.reservation_blocked_intervals.filter(
           (interval) => interval.date && interval.start_time && interval.end_time
         ),
+        reservation_notices: formData.reservation_notices
+          .filter((notice) => notice.start_date && notice.end_date && notice.message.trim())
+          .map((notice) => ({
+            ...notice,
+            title: notice.title.trim(),
+            message: notice.message.trim(),
+          })),
       }
 
       let result;
@@ -315,6 +353,32 @@ export function RestaurantForm({ restaurant, onSuccess, onClose, open = true }: 
     setFormData({
       ...formData,
       reservation_blocked_intervals: formData.reservation_blocked_intervals.filter((_, i) => i !== index),
+    })
+  }
+
+  const addReservationNotice = () => {
+    setFormData({
+      ...formData,
+      reservation_notices: [
+        ...formData.reservation_notices,
+        { start_date: "", end_date: "", title: "", message: "", active: true },
+      ],
+    })
+  }
+
+  const updateReservationNotice = (index: number, updates: Partial<ReservationNotice>) => {
+    setFormData({
+      ...formData,
+      reservation_notices: formData.reservation_notices.map((notice, i) =>
+        i === index ? { ...notice, ...updates } : notice
+      ),
+    })
+  }
+
+  const removeReservationNotice = (index: number) => {
+    setFormData({
+      ...formData,
+      reservation_notices: formData.reservation_notices.filter((_, i) => i !== index),
     })
   }
 
@@ -543,6 +607,75 @@ export function RestaurantForm({ restaurant, onSuccess, onClose, open = true }: 
                     />
                   </div>
 
+                  <div className="space-y-3 rounded-md border p-3">
+                    <div className="flex items-center justify-between gap-3">
+                      <div>
+                        <Label>Reservation Notices</Label>
+                        <p className="text-sm text-muted-foreground">
+                          Show a date-range note during booking without blocking reservations.
+                        </p>
+                      </div>
+                      <Button type="button" variant="outline" size="sm" onClick={addReservationNotice}>
+                        Add Notice
+                      </Button>
+                    </div>
+
+                    {formData.reservation_notices.length > 0 && (
+                      <div className="space-y-3">
+                        {formData.reservation_notices.map((notice, index) => (
+                          <div key={index} className="grid grid-cols-1 md:grid-cols-[1fr_1fr_1.2fr_1.8fr_auto] gap-2 items-end">
+                            <div className="space-y-1">
+                              <Label htmlFor={`notice-start-${index}`}>Start Date</Label>
+                              <Input
+                                id={`notice-start-${index}`}
+                                type="date"
+                                value={notice.start_date}
+                                onChange={(e) => updateReservationNotice(index, { start_date: e.target.value })}
+                              />
+                            </div>
+                            <div className="space-y-1">
+                              <Label htmlFor={`notice-end-${index}`}>End Date</Label>
+                              <Input
+                                id={`notice-end-${index}`}
+                                type="date"
+                                value={notice.end_date}
+                                onChange={(e) => updateReservationNotice(index, { end_date: e.target.value })}
+                              />
+                            </div>
+                            <div className="space-y-1">
+                              <Label htmlFor={`notice-title-${index}`}>Title</Label>
+                              <Input
+                                id={`notice-title-${index}`}
+                                value={notice.title}
+                                placeholder="Holiday Notice"
+                                onChange={(e) => updateReservationNotice(index, { title: e.target.value })}
+                              />
+                            </div>
+                            <div className="space-y-1">
+                              <Label htmlFor={`notice-message-${index}`}>Message</Label>
+                              <Input
+                                id={`notice-message-${index}`}
+                                value={notice.message}
+                                placeholder="Daily reservation limits apply during this period."
+                                onChange={(e) => updateReservationNotice(index, { message: e.target.value })}
+                              />
+                              <label className="flex items-center gap-2 text-xs text-muted-foreground">
+                                <Checkbox
+                                  checked={notice.active}
+                                  onCheckedChange={(checked) => updateReservationNotice(index, { active: checked as boolean })}
+                                />
+                                Active
+                              </label>
+                            </div>
+                            <Button type="button" variant="outline" onClick={() => removeReservationNotice(index)}>
+                              Remove
+                            </Button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
                   <div className="space-y-2">
                     <Label>Available Days</Label>
                     <div className="flex flex-wrap gap-2">
@@ -642,6 +775,7 @@ export function RestaurantForm({ restaurant, onSuccess, onClose, open = true }: 
                     created_at: restaurant.created_at,
                     updated_at: restaurant.updated_at,
                     reservation_blocked_intervals: formData.reservation_blocked_intervals as any,
+                    reservation_notices: formData.reservation_notices as any,
                     blocked_dates: [],
                     special_hours: null
                   }}

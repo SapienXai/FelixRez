@@ -13,6 +13,14 @@ interface ReservationBlockedInterval {
   message?: string
 }
 
+interface ReservationNotice {
+  start_date: string
+  end_date: string
+  title?: string
+  message: string
+  active?: boolean
+}
+
 interface Restaurant {
   id: string
   name: string
@@ -27,6 +35,7 @@ interface Restaurant {
   min_party_size: number | null
   reservation_start_date: string | null
   reservation_blocked_intervals: unknown
+  reservation_notices: unknown
   blocked_dates: string[] | null
   special_hours: any | null
 }
@@ -95,6 +104,7 @@ export function ReservationStep1({
     min_party_size: selectedArea?.min_party_size ?? (restaurant?.min_party_size ?? 1),
     reservation_start_date: restaurant?.reservation_start_date || null,
     reservation_blocked_intervals: normalizeBlockedIntervals(restaurant?.reservation_blocked_intervals),
+    reservation_notices: normalizeReservationNotices(restaurant?.reservation_notices),
     allowed_days_of_week: selectedArea?.allowed_days_of_week || restaurant?.allowed_days_of_week || [1,2,3,4,5,6,7],
     blocked_dates: selectedArea?.blocked_dates || restaurant?.blocked_dates || [],
   }
@@ -309,6 +319,19 @@ export function ReservationStep1({
       ))
   }
 
+  function normalizeReservationNotices(value: unknown): ReservationNotice[] {
+    if (!Array.isArray(value)) return []
+
+    return value
+      .filter((notice): notice is ReservationNotice => (
+        Boolean(notice) &&
+        typeof notice === "object" &&
+        typeof (notice as ReservationNotice).start_date === "string" &&
+        typeof (notice as ReservationNotice).end_date === "string" &&
+        typeof (notice as ReservationNotice).message === "string"
+      ))
+  }
+
   function parseTimeToMinutes(value: string | null | undefined) {
     if (!value) return null
     const [hour, minute = 0] = value.split(":").map(Number)
@@ -358,6 +381,15 @@ export function ReservationStep1({
       : `We are fully booked between ${ranges}.`
   }
 
+  function getActiveNoticesForDate(date: Date) {
+    const dateStr = formatDateToYYYYMMDD(date)
+
+    return eff.reservation_notices.filter((notice) => {
+      if (notice.active === false) return false
+      return dateStr >= notice.start_date && dateStr <= notice.end_date
+    })
+  }
+
   const handleDateSelect = (value: string) => {
     const dateParts = value.split("-")
     const newDate = new Date(
@@ -373,6 +405,7 @@ export function ReservationStep1({
   const availableDates = dateOptions()
   const { times } = generateTimeSlots()
   const blockedIntervalsMessage = getBlockedIntervalsMessage(selectedDate)
+  const activeReservationNotices = getActiveNoticesForDate(selectedDate)
   const selectedDateValue = formatDateToYYYYMMDD(selectedDate)
   const selectedPartyLabel = partyOptions.find((option) => option.value === partySize)?.label || partySize
   const selectedDateLabel = availableDates.find((option) => option.value === selectedDateValue)?.label || getDisplayDate(selectedDate, true)
@@ -527,6 +560,13 @@ export function ReservationStep1({
           )}
         </div>
       </section>
+
+      {activeReservationNotices.map((notice, index) => (
+        <div key={`${notice.start_date}-${notice.end_date}-${index}`} className="alert alert-warning mt-3" role="status">
+          {notice.title?.trim() && <strong className="d-block">{notice.title}</strong>}
+          <span>{notice.message}</span>
+        </div>
+      ))}
 
       {blockedIntervalsMessage && (
         <div className="alert alert-warning mt-3" role="alert">
