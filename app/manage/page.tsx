@@ -209,6 +209,7 @@ export default function ManageDashboard() {
   const [isStatsLoading, setIsStatsLoading] = useState(false)
   const [dashboardError, setDashboardError] = useState<string | null>(null)
   const [stats, setStats] = useState<DashboardStats>(EMPTY_STATS)
+  const [pendingReservations, setPendingReservations] = useState<ReservationRecord[]>([])
   const [newReservations, setNewReservations] = useState<ReservationRecord[]>([])
   const [newTodayReservations, setNewTodayReservations] = useState<ReservationRecord[]>([])
   const [, setTodayReservations] = useState<ReservationRecord[]>([])
@@ -270,7 +271,12 @@ export default function ManageDashboard() {
   }, [dayFilterOptions, getTranslation, operationFilter, selectedDate, selectedDateKey])
 
   const setDashboardSnapshot = useCallback((snapshot: DashboardSnapshot) => {
-    setStats(snapshot.stats)
+    const nextPendingReservations = snapshot.pendingReservations as ReservationRecord[]
+    setStats({
+      ...snapshot.stats,
+      pending: nextPendingReservations.length,
+    })
+    setPendingReservations(nextPendingReservations)
     setNewReservations(snapshot.newReservations as ReservationRecord[])
     setNewTodayReservations(snapshot.newTodayReservations as ReservationRecord[])
     setTodayReservations(snapshot.todayReservations as ReservationRecord[])
@@ -406,6 +412,7 @@ export default function ManageDashboard() {
     }
 
     if (change.type === "delete") {
+      setPendingReservations((prev) => removeReservation(prev, reservationId))
       setNewReservations((prev) => removeReservation(prev, reservationId))
       setNewTodayReservations((prev) => removeReservation(prev, reservationId))
       setTodayReservations((prev) => removeReservation(prev, reservationId))
@@ -424,6 +431,11 @@ export default function ManageDashboard() {
     const todayKey = getLocalDateKey()
     const selectedKey = selectedDateKey
 
+    setPendingReservations((prev) => (
+      visibleForRestaurant && reservation.status === "pending"
+        ? upsertReservation(prev, reservation, sortByReservationDateTimeAsc)
+        : removeReservation(prev, reservation.id)
+    ))
     setNewReservations((prev) => (
       visibleForRestaurant
         ? upsertReservation(prev, reservation, sortByCreatedDesc, 20)
@@ -676,20 +688,32 @@ export default function ManageDashboard() {
     () => filterReservations(newTodayReservations),
     [filterReservations, newTodayReservations]
   )
+  const filteredPendingReservations = useMemo(
+    () => selectedRestaurant === "all"
+      ? pendingReservations
+      : pendingReservations.filter((reservation) => reservation.restaurant_id === selectedRestaurant),
+    [pendingReservations, selectedRestaurant]
+  )
   const filteredSelectedDateReservations = useMemo(
     () => filterReservations(selectedDateReservations),
     [filterReservations, selectedDateReservations]
   )
-  const operationReservations = operationFilter === "latest"
-    ? filteredNewReservations
-    : filteredSelectedDateReservations
+  const operationReservations = statusFilter === "pending"
+    ? filteredPendingReservations
+    : operationFilter === "latest"
+      ? filteredNewReservations
+      : filteredSelectedDateReservations
   const operationCount = operationReservations.length
-  const operationTitle = operationFilter === "latest"
-    ? "Latest reservations"
-    : `Reservations for ${operationFilterLabel}`
-  const operationDescription = operationFilter === "latest"
-    ? `${filteredNewTodayReservations.length} created today, ${filteredNewReservations.length} latest reservations shown`
-    : `${operationCount} reservations for ${operationFilterLabel}`
+  const operationTitle = statusFilter === "pending"
+    ? "Pending reservations"
+    : operationFilter === "latest"
+      ? "Latest reservations"
+      : `Reservations for ${operationFilterLabel}`
+  const operationDescription = statusFilter === "pending"
+    ? `${operationCount} pending reservations shown`
+    : operationFilter === "latest"
+      ? `${filteredNewTodayReservations.length} created today, ${filteredNewReservations.length} latest reservations shown`
+      : `${operationCount} reservations for ${operationFilterLabel}`
   const statsDateLabel = operationFilter === "latest" ? "Last 24 Hours" : operationFilterLabel
   const totalStatsLabel = operationFilter === "date" && selectedDateKey === getLocalDateKey()
     ? getTranslation("manage.dashboard.stats.total")
@@ -851,7 +875,7 @@ export default function ManageDashboard() {
                   <p className="text-xs md:text-sm font-medium text-muted-foreground">
                     {getTranslation("manage.dashboard.stats.pending")}
                   </p>
-                  <p className="text-lg md:text-xl font-bold">{stats.pending}</p>
+                  <p className="text-lg md:text-xl font-bold">{pendingReservations.length}</p>
                 </div>
                 <div className="rounded-full bg-yellow-100 p-1.5 text-yellow-600">
                   <Clock className="h-3.5 w-3.5 md:h-4 md:w-4" />
@@ -1026,7 +1050,9 @@ export default function ManageDashboard() {
                   <CalendarClock className="h-8 w-8 text-muted-foreground" />
                   <h4 className="text-sm font-medium">No reservations found</h4>
                   <p className="max-w-sm text-sm text-muted-foreground">
-                    {operationFilter === "latest"
+                    {statusFilter === "pending"
+                      ? "No pending reservations found."
+                      : operationFilter === "latest"
                       ? "No recent reservations match the current filters."
                       : `No reservations match ${operationFilterLabel} with the current filters.`}
                   </p>

@@ -33,6 +33,7 @@ export type DashboardStats = {
 
 export type DashboardSnapshot = {
   stats: DashboardStats
+  pendingReservations: ReservationRow[]
   newReservations: ReservationRow[]
   newTodayReservations: ReservationRow[]
   todayReservations: ReservationRow[]
@@ -435,6 +436,30 @@ async function fetchNewReservations(supabase: SupabaseClient, scope: RestaurantS
   return attachBookedByNames(supabase, withEmails)
 }
 
+async function fetchPendingReservations(supabase: SupabaseClient, scope: RestaurantScope) {
+  if (scope.type === "deny") {
+    return []
+  }
+
+  let query = supabase
+    .from("reservations")
+    .select(RESERVATION_SELECT)
+    .eq("status", "pending")
+
+  query = applyRestaurantScope(query, scope)
+
+  const { data, error } = await query
+    .order("reservation_date", { ascending: true })
+    .order("reservation_time", { ascending: true })
+
+  if (error) {
+    throw new Error(error.message)
+  }
+
+  const withEmails = await attachBookedByEmails(supabase, data || [])
+  return attachBookedByNames(supabase, withEmails)
+}
+
 async function fetchTodayCreatedReservations(supabase: SupabaseClient, scope: RestaurantScope) {
   if (scope.type === "deny") {
     return []
@@ -503,6 +528,7 @@ export async function getDashboardData(restaurantId?: string, selectedDate?: str
         success: true,
         data: {
           stats: ZERO_STATS,
+          pendingReservations: [],
           newReservations: [],
           newTodayReservations: [],
           todayReservations: [],
@@ -514,6 +540,7 @@ export async function getDashboardData(restaurantId?: string, selectedDate?: str
 
     const [
       stats,
+      pendingReservations,
       newReservations,
       newTodayReservations,
       todayReservations,
@@ -521,6 +548,7 @@ export async function getDashboardData(restaurantId?: string, selectedDate?: str
       selectedDateReservations,
     ] = await Promise.all([
       fetchDashboardStats(supabase, scope, selectedDate, timePeriod),
+      fetchPendingReservations(supabase, scope),
       fetchNewReservations(supabase, scope),
       fetchTodayCreatedReservations(supabase, scope),
       fetchReservationsForDate(supabase, scope, getTodayDate()),
@@ -531,7 +559,11 @@ export async function getDashboardData(restaurantId?: string, selectedDate?: str
     return {
       success: true,
       data: {
-        stats,
+        stats: {
+          ...stats,
+          pending: pendingReservations.length,
+        },
+        pendingReservations,
         newReservations,
         newTodayReservations,
         todayReservations,
