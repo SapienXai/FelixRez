@@ -142,6 +142,7 @@ export default function SeatingPage() {
   const [showMobileFilters, setShowMobileFilters] = useState(false)
   const [expandedMobileCards, setExpandedMobileCards] = useState<Record<string, boolean>>({})
   const offlineModeRef = useRef(false)
+  const onlineRecoveryInFlightRef = useRef(false)
   const restaurantsRef = useRef<RestaurantOption[]>([])
 
   useEffect(() => {
@@ -177,7 +178,7 @@ export default function SeatingPage() {
         reservationId: "",
       })
 
-      if (result.success) {
+      if (result?.success) {
         const cache = writeManageOfflineCache({
           reservations: (result.data || []) as ManageCachedReservation[],
           restaurants: restaurantOptions,
@@ -208,7 +209,7 @@ export default function SeatingPage() {
   const loadRestaurants = useCallback(async () => {
     try {
       const result = await getRestaurants()
-      if (result.success) {
+      if (result?.success) {
         const list = (result.data || []) as RestaurantOption[]
         setRestaurants(list)
         void refreshManageEmergencyCache(list)
@@ -228,7 +229,7 @@ export default function SeatingPage() {
   }, [refreshManageEmergencyCache])
 
   const fetchList = useCallback(async () => {
-    if (offlineModeRef.current || (typeof navigator !== "undefined" && !navigator.onLine)) {
+    if (typeof navigator !== "undefined" && !navigator.onLine) {
       loadSeatingFromOfflineCache()
       return
     }
@@ -242,8 +243,9 @@ export default function SeatingPage() {
         searchQuery: filters.searchQuery,
       })
 
-      if (result.success) {
+      if (result?.success) {
         setReservations(result.data as SeatingReservation[])
+        onlineRecoveryInFlightRef.current = false
         setOfflineMode(false)
         void refreshManageEmergencyCache(restaurantsRef.current)
       } else {
@@ -274,12 +276,14 @@ export default function SeatingPage() {
         return
       }
 
+      onlineRecoveryInFlightRef.current = false
       offlineModeRef.current = true
       flushCurrentSeatingToOfflineCache()
       loadSeatingFromOfflineCache()
     }
 
     const handleOnline = () => {
+      onlineRecoveryInFlightRef.current = false
       offlineModeRef.current = false
       void fetchList()
     }
@@ -296,6 +300,40 @@ export default function SeatingPage() {
       window.removeEventListener("online", handleOnline)
     }
   }, [fetchList, flushCurrentSeatingToOfflineCache, loadSeatingFromOfflineCache])
+
+  useEffect(() => {
+    if (!offlineMode) {
+      onlineRecoveryInFlightRef.current = false
+      return
+    }
+
+    if (typeof navigator === "undefined" || typeof window === "undefined") {
+      return
+    }
+
+    const recover = () => {
+      if (!navigator.onLine || onlineRecoveryInFlightRef.current) {
+        return
+      }
+
+      onlineRecoveryInFlightRef.current = true
+      void fetchList().finally(() => {
+        onlineRecoveryInFlightRef.current = false
+      })
+    }
+
+    const timeoutId = window.setTimeout(recover, 500)
+    const intervalId = window.setInterval(recover, 5000)
+    window.addEventListener("focus", recover)
+    document.addEventListener("visibilitychange", recover)
+
+    return () => {
+      window.clearTimeout(timeoutId)
+      window.clearInterval(intervalId)
+      window.removeEventListener("focus", recover)
+      document.removeEventListener("visibilitychange", recover)
+    }
+  }, [fetchList, offlineMode])
 
   const openEdit = (reservation: SeatingReservation) => {
     setSelected(reservation)
@@ -324,7 +362,7 @@ export default function SeatingPage() {
         notes,
         bookedByText,
       })
-      if (result.success) {
+      if (result?.success) {
         toast.success(getTranslation("manage.seating.updateSuccess"))
         closeEdit()
         fetchList()

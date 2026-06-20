@@ -49,6 +49,7 @@ interface PopupNotification {
 
 const READ_NOTIFICATIONS_STORAGE_KEY = "felix-read-notifications"
 const DISMISSED_NOTIFICATIONS_STORAGE_KEY = "felix-dismissed-notifications"
+const MANAGE_OFFLINE_CACHE_STORAGE_KEY = "felix:manage:emergency-offline-cache:v1"
 
 type PushStatus = "checking" | "unsupported" | "unconfigured" | "denied" | "unsubscribed" | "subscribed" | "loading"
 
@@ -90,6 +91,37 @@ function clearSupabaseAuthStorage() {
     const key = window.sessionStorage.key(index)
     if (key?.startsWith("sb-") && key.endsWith("-auth-token")) {
       window.sessionStorage.removeItem(key)
+    }
+  }
+}
+
+async function clearManageOfflineBrowserCaches() {
+  if (typeof window === "undefined") {
+    return
+  }
+
+  window.localStorage.removeItem(MANAGE_OFFLINE_CACHE_STORAGE_KEY)
+
+  if ("serviceWorker" in navigator) {
+    try {
+      const registration = await navigator.serviceWorker.getRegistration("/sw.js")
+      const worker = registration?.active || registration?.waiting || registration?.installing
+      worker?.postMessage({ type: "CLEAR_MANAGE_OFFLINE_CACHE" })
+    } catch (error) {
+      console.warn("Failed to notify service worker about cache cleanup:", error)
+    }
+  }
+
+  if ("caches" in window) {
+    try {
+      const cacheNames = await window.caches.keys()
+      await Promise.all(
+        cacheNames
+          .filter((cacheName) => cacheName.startsWith("manage-offline-"))
+          .map((cacheName) => window.caches.delete(cacheName))
+      )
+    } catch (error) {
+      console.warn("Failed to clear manage offline caches:", error)
     }
   }
 }
@@ -698,6 +730,7 @@ export function ManageHeader({ toggleSidebar }: ManageHeaderProps) {
     }
 
     clearSupabaseAuthStorage()
+    await clearManageOfflineBrowserCaches()
 
     try {
       await fetch("/auth/callback", {

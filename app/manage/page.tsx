@@ -292,6 +292,7 @@ export default function ManageDashboard() {
   const router = useRouter()
   const supabase = getSupabaseBrowserClient()
   const canViewAllRestaurants = isSuperAdmin || role === "admin" || role === "manager"
+  const isSingleRestaurantRole = role === "staff" || role === "readonly"
 
   const [isLoading, setIsLoading] = useState(true)
   const [isRefreshing, setIsRefreshing] = useState(false)
@@ -327,6 +328,8 @@ export default function ManageDashboard() {
   const ignoredRealtimeIdsRef = useRef<Set<string>>(new Set())
   const statsRefreshTimerRef = useRef<number | null>(null)
   const offlineModeRef = useRef(false)
+  const onlineRecoveryInFlightRef = useRef(false)
+  const hasNormalizedDefaultRestaurantRef = useRef(false)
   const dashboardFiltersRef = useRef<{
     restaurantId: string
     dateKey: string
@@ -396,7 +399,7 @@ export default function ManageDashboard() {
         reservationId: "",
       })
 
-      if (result.success) {
+      if (result?.success) {
         const cache = writeManageOfflineCache({
           reservations: (result.data || []) as ManageCachedReservation[],
           restaurants: restaurantOptions,
@@ -487,6 +490,15 @@ export default function ManageDashboard() {
     offlineModeRef.current = offlineMode
   }, [offlineMode])
 
+  useEffect(() => {
+    if (hasNormalizedDefaultRestaurantRef.current || isSingleRestaurantRole || selectedRestaurant === "all") {
+      return
+    }
+
+    hasNormalizedDefaultRestaurantRef.current = true
+    setSelectedRestaurant("all")
+  }, [isSingleRestaurantRole, selectedRestaurant])
+
   const refreshStats = useCallback(async (
     restaurantId?: string,
     dateKey?: string,
@@ -522,7 +534,7 @@ export default function ManageDashboard() {
         return
       }
 
-      if (result.success && result.stats) {
+      if (result?.success && result.stats) {
         setStats(result.stats)
       }
     } catch (error) {
@@ -561,7 +573,7 @@ export default function ManageDashboard() {
     const targetOperationFilter = nextOperationFilter ?? filters.operationFilter
     const requestId = ++dashboardRequestIdRef.current
 
-    if (offlineModeRef.current || (typeof navigator !== "undefined" && !navigator.onLine)) {
+    if (typeof navigator !== "undefined" && !navigator.onLine) {
       loadDashboardFromOfflineCache(targetRestaurantId || "all", targetDateKey, targetOperationFilter)
       hasLoadedInitialDataRef.current = true
       setIsLoading(false)
@@ -586,7 +598,8 @@ export default function ManageDashboard() {
         return
       }
 
-      if (result.success && result.data) {
+      if (result?.success && result.data) {
+        onlineRecoveryInFlightRef.current = false
         setOfflineMode(false)
         setOfflineSyncedAt(null)
         setDashboardSnapshot(result.data)
@@ -719,20 +732,22 @@ export default function ManageDashboard() {
         setDashboardError(null)
         const { data } = await supabase.auth.getSession()
         const restaurantResult = await getRestaurants()
-        const restaurantData = restaurantResult.success ? (restaurantResult.data || []) : []
-        const isGlobalUser = Boolean(data.session) && canViewAllRestaurants
-        const initialRestaurant = isGlobalUser ? "all" : restaurantData[0]?.id || "all"
+        const restaurantData = restaurantResult?.success ? (restaurantResult.data || []) : []
+        const canUseAllRestaurants = Boolean(data.session) && !isSingleRestaurantRole
+        const initialRestaurant = canUseAllRestaurants ? "all" : restaurantData[0]?.id || "all"
 
         if (cancelled) return
 
         setRestaurants(restaurantData)
+        hasNormalizedDefaultRestaurantRef.current = true
         setSelectedRestaurant(initialRestaurant)
 
         const initialDateKey = getLocalDateKey()
         const dashboardResult = await getDashboardData(normalizeRestaurantFilter(initialRestaurant), initialDateKey, "daily")
         if (cancelled) return
 
-        if (dashboardResult.success && dashboardResult.data) {
+        if (dashboardResult?.success && dashboardResult.data) {
+          onlineRecoveryInFlightRef.current = false
           setOfflineMode(false)
           setOfflineSyncedAt(null)
           setDashboardSnapshot(dashboardResult.data)
@@ -767,7 +782,7 @@ export default function ManageDashboard() {
   }, [
     roleLoading,
     role,
-    canViewAllRestaurants,
+    isSingleRestaurantRole,
     supabase,
     setDashboardSnapshot,
     writeDashboardOfflineCache,
@@ -819,6 +834,7 @@ export default function ManageDashboard() {
         return
       }
 
+      onlineRecoveryInFlightRef.current = false
       offlineModeRef.current = true
       flushCurrentDashboardToOfflineCache()
       const filters = dashboardFiltersRef.current
@@ -830,6 +846,7 @@ export default function ManageDashboard() {
     }
 
     const handleOnline = () => {
+      onlineRecoveryInFlightRef.current = false
       offlineModeRef.current = false
       void fetchDashboardSnapshot({ fullLoader: false })
     }
@@ -846,6 +863,40 @@ export default function ManageDashboard() {
       window.removeEventListener("online", handleOnline)
     }
   }, [fetchDashboardSnapshot, flushCurrentDashboardToOfflineCache, loadDashboardFromOfflineCache])
+
+  useEffect(() => {
+    if (!offlineMode) {
+      onlineRecoveryInFlightRef.current = false
+      return
+    }
+
+    if (typeof navigator === "undefined" || typeof window === "undefined") {
+      return
+    }
+
+    const recover = () => {
+      if (!navigator.onLine || onlineRecoveryInFlightRef.current) {
+        return
+      }
+
+      onlineRecoveryInFlightRef.current = true
+      void fetchDashboardSnapshot({ fullLoader: false }).finally(() => {
+        onlineRecoveryInFlightRef.current = false
+      })
+    }
+
+    const timeoutId = window.setTimeout(recover, 500)
+    const intervalId = window.setInterval(recover, 5000)
+    window.addEventListener("focus", recover)
+    document.addEventListener("visibilitychange", recover)
+
+    return () => {
+      window.clearTimeout(timeoutId)
+      window.clearInterval(intervalId)
+      window.removeEventListener("focus", recover)
+      document.removeEventListener("visibilitychange", recover)
+    }
+  }, [fetchDashboardSnapshot, offlineMode])
 
   useEffect(() => {
     if (offlineMode) {
@@ -882,7 +933,7 @@ export default function ManageDashboard() {
           }
 
           const result = await getDashboardReservationById(reservationId, normalizeRestaurantFilter(selectedRestaurant))
-          if (result.success && result.data) {
+          if (result?.success && result.data) {
             applyReservationChange({
               type: payload.eventType === "INSERT" ? "create" : "update",
               reservation: result.data as ReservationRecord,
@@ -1002,6 +1053,7 @@ export default function ManageDashboard() {
     ? "today"
     : statsDateLabel.toLowerCase()
   const defaultFormRestaurantId = normalizeRestaurantFilter(selectedRestaurant)
+  const canSelectAllRestaurants = !isSingleRestaurantRole || canViewAllRestaurants || offlineMode || restaurants.length > 1 || selectedRestaurant === "all"
 
   if (isLoading) {
     return (
@@ -1089,7 +1141,7 @@ export default function ManageDashboard() {
                 <SelectValue placeholder={getTranslation("manage.dashboard.filter.allRestaurants")} />
               </SelectTrigger>
               <SelectContent>
-                {(canViewAllRestaurants || offlineMode) && (
+                {canSelectAllRestaurants && (
                   <SelectItem value="all">{getTranslation("manage.dashboard.filter.allRestaurants")}</SelectItem>
                 )}
                 {restaurants.map((restaurant) => (

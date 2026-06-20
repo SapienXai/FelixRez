@@ -121,6 +121,7 @@ function ReservationsPageContent() {
   const supabase = getSupabaseBrowserClient()
   const hasLoadedReservationsRef = useRef(false)
   const offlineModeRef = useRef(false)
+  const onlineRecoveryInFlightRef = useRef(false)
   const restaurantsRef = useRef<RestaurantOption[]>([])
 
   useEffect(() => {
@@ -149,7 +150,7 @@ function ReservationsPageContent() {
         reservationId: "",
       })
 
-      if (result.success) {
+      if (result?.success) {
         const cache = writeManageOfflineCache({
           reservations: (result.data || []) as Reservation[],
           restaurants: restaurantOptions,
@@ -180,7 +181,7 @@ function ReservationsPageContent() {
   const fetchReservations = useCallback(async ({ fullLoader = false }: { fullLoader?: boolean } = {}) => {
     const shouldUseFullLoader = fullLoader || !hasLoadedReservationsRef.current
 
-    if (offlineModeRef.current || (typeof navigator !== "undefined" && !navigator.onLine)) {
+    if (typeof navigator !== "undefined" && !navigator.onLine) {
       loadReservationsFromOfflineCache()
       hasLoadedReservationsRef.current = true
       setIsLoading(false)
@@ -195,7 +196,8 @@ function ReservationsPageContent() {
     }
     try {
       const result = await getReservations(filters)
-      if (result.success) {
+      if (result?.success) {
+        onlineRecoveryInFlightRef.current = false
         setOfflineMode(false)
         setReservations((result.data || []) as Reservation[])
         void refreshManageEmergencyCache(restaurantsRef.current)
@@ -220,7 +222,7 @@ function ReservationsPageContent() {
       try {
         await supabase.auth.getSession()
         const restaurantsResult = await getRestaurants()
-        if (restaurantsResult.success) {
+        if (restaurantsResult?.success) {
           setRestaurants(restaurantsResult.data || [])
           void refreshManageEmergencyCache(restaurantsResult.data || [])
           return
@@ -275,6 +277,7 @@ function ReservationsPageContent() {
         return
       }
 
+      onlineRecoveryInFlightRef.current = false
       offlineModeRef.current = true
       flushCurrentReservationsToOfflineCache()
       loadReservationsFromOfflineCache()
@@ -284,6 +287,7 @@ function ReservationsPageContent() {
     }
 
     const handleOnline = () => {
+      onlineRecoveryInFlightRef.current = false
       offlineModeRef.current = false
       void fetchReservations({ fullLoader: false })
     }
@@ -301,9 +305,43 @@ function ReservationsPageContent() {
     }
   }, [fetchReservations, flushCurrentReservationsToOfflineCache, loadReservationsFromOfflineCache])
 
+  useEffect(() => {
+    if (!offlineMode) {
+      onlineRecoveryInFlightRef.current = false
+      return
+    }
+
+    if (typeof navigator === "undefined" || typeof window === "undefined") {
+      return
+    }
+
+    const recover = () => {
+      if (!navigator.onLine || onlineRecoveryInFlightRef.current) {
+        return
+      }
+
+      onlineRecoveryInFlightRef.current = true
+      void fetchReservations({ fullLoader: false }).finally(() => {
+        onlineRecoveryInFlightRef.current = false
+      })
+    }
+
+    const timeoutId = window.setTimeout(recover, 500)
+    const intervalId = window.setInterval(recover, 5000)
+    window.addEventListener("focus", recover)
+    document.addEventListener("visibilitychange", recover)
+
+    return () => {
+      window.clearTimeout(timeoutId)
+      window.clearInterval(intervalId)
+      window.removeEventListener("focus", recover)
+      document.removeEventListener("visibilitychange", recover)
+    }
+  }, [fetchReservations, offlineMode])
+
   // Auto-fetch reservations when filters change
   useEffect(() => {
-    if (offlineModeRef.current || (typeof navigator !== "undefined" && !navigator.onLine)) {
+    if (typeof navigator !== "undefined" && !navigator.onLine) {
       loadReservationsFromOfflineCache()
       return
     }

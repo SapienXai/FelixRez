@@ -3,6 +3,7 @@
 import type React from "react"
 import { useState } from "react"
 import { ManageHeader } from "@/components/manage/manage-header"
+import { ManageOfflineServiceWorker } from "@/components/manage/manage-offline-service-worker"
 import { ManageSidebar } from "@/components/manage/manage-sidebar"
 import { useManageContext } from "@/context/manage-context"
 
@@ -16,6 +17,7 @@ export function ManageShell({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="flex min-h-screen w-full bg-gray-50">
+      <ManageOfflineServiceWorker />
       <ManageSidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
       <div className="flex-1 flex flex-col overflow-hidden">
         <ManageHeader user={user} toggleSidebar={toggleSidebar} />
