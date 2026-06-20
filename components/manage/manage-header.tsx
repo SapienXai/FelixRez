@@ -2,7 +2,7 @@
 
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
-import { Bell, BellRing, CalendarDays, CheckCheck, Clock, LogOut, MapPin, Menu, Sparkles, Trash2, Users, X } from "lucide-react"
+import { Bell, BellRing, CalendarDays, CheckCheck, Clock, LogOut, MapPin, Menu, Sparkles, Trash2, Users, Wifi, WifiOff, X } from "lucide-react"
 import { LanguageSelector } from "@/components/language-selector"
 import { getSupabaseBrowserClient } from "@/lib/supabase"
 import { useState, useEffect, useMemo, useRef } from "react"
@@ -137,6 +137,7 @@ export function ManageHeader({ toggleSidebar }: ManageHeaderProps) {
   const [showNotifications, setShowNotifications] = useState(false)
   const [notifications, setNotifications] = useState<Notification[]>([])
   const [popupNotifications, setPopupNotifications] = useState<PopupNotification[]>([])
+  const [isOnline, setIsOnline] = useState(true)
   const audioContextRef = useRef<AudioContext | null>(null)
   const dropdownRef = useRef<HTMLDivElement>(null)
   const readNotificationIdsRef = useRef<Set<string>>(new Set())
@@ -154,6 +155,23 @@ export function ManageHeader({ toggleSidebar }: ManageHeaderProps) {
   const goToReservation = (reservationId: string) => {
     router.push(`/manage/reservations?reservationId=${encodeURIComponent(reservationId)}`)
   }
+
+  useEffect(() => {
+    if (typeof window === "undefined") return
+
+    const updateConnectionStatus = () => {
+      setIsOnline(navigator.onLine)
+    }
+
+    updateConnectionStatus()
+    window.addEventListener("online", updateConnectionStatus)
+    window.addEventListener("offline", updateConnectionStatus)
+
+    return () => {
+      window.removeEventListener("online", updateConnectionStatus)
+      window.removeEventListener("offline", updateConnectionStatus)
+    }
+  }, [])
 
   useEffect(() => {
     if (typeof window === "undefined") return
@@ -705,6 +723,18 @@ export function ManageHeader({ toggleSidebar }: ManageHeaderProps) {
           <Link href="/manage" className="flex items-center">
             <span className="text-xl font-bold">Felix</span>
           </Link>
+          <Badge
+            variant="outline"
+            className={cn(
+              "ml-2 h-5 gap-1 rounded-full px-1.5 text-[10px] font-medium uppercase leading-none",
+              isOnline
+                ? "border-emerald-200 bg-emerald-50 text-emerald-700"
+                : "border-amber-200 bg-amber-50 text-amber-800"
+            )}
+          >
+            {isOnline ? <Wifi className="h-2.5 w-2.5" /> : <WifiOff className="h-2.5 w-2.5" />}
+            {isOnline ? getTranslation("manage.offline.statusOnline") : getTranslation("manage.offline.statusOffline")}
+          </Badge>
         </div>
 
         <div className="flex items-center gap-4">

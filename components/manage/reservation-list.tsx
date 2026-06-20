@@ -56,6 +56,7 @@ interface ReservationListProps {
   itemsPerPage?: number
   restaurants?: { id: string; name: string; meal_only_reservations?: boolean }[]
   defaultRestaurantId?: string
+  readOnly?: boolean
 }
 
 export type ReservationMutationChange = {
@@ -73,6 +74,7 @@ export function ReservationList({
   itemsPerPage = 5,
   restaurants,
   defaultRestaurantId,
+  readOnly = false,
 }: ReservationListProps) {
   const { getTranslation } = useLanguage()
   const [viewMode, setViewMode] = useState<"table" | "card">("card")
@@ -342,6 +344,7 @@ ${reservation.customer_phone}${reservation.special_requests ? `\n${reservation.s
                    confirmDisabled={reservation.status === "confirmed" || reservation.status === "cancelled"}
                    cancelDisabled={reservation.status === "cancelled"}
                    showDelete
+                   readOnly={readOnly}
                  />
                </div>
             </div>
@@ -574,6 +577,7 @@ ${reservation.customer_phone}${reservation.special_requests ? `\n${reservation.s
                         confirmDisabled={reservation.status === "confirmed" || reservation.status === "cancelled"}
                         cancelDisabled={reservation.status === "cancelled"}
                         showDelete
+                        readOnly={readOnly}
                       />
                     </TableCell>
                   </TableRow>
@@ -605,6 +609,7 @@ ${reservation.customer_phone}${reservation.special_requests ? `\n${reservation.s
       </div>
 
       {/* Action Dialog */}
+      {!readOnly && (
       <Dialog
         open={actionDialog.isOpen}
         onOpenChange={(open) => {
@@ -702,8 +707,10 @@ ${reservation.customer_phone}${reservation.special_requests ? `\n${reservation.s
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      )}
 
       {/* Delete Confirmation Dialog */}
+      {!readOnly && (
       <Dialog
         open={deleteDialog.isOpen}
         onOpenChange={(open) => {
@@ -754,8 +761,10 @@ ${reservation.customer_phone}${reservation.special_requests ? `\n${reservation.s
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      )}
 
       {/* Edit Form */}
+      {!readOnly && (
       <ReservationForm
         isOpen={editForm.isOpen}
         onClose={closeEditForm}
@@ -765,6 +774,7 @@ ${reservation.customer_phone}${reservation.special_requests ? `\n${reservation.s
         restaurants={restaurants}
         defaultRestaurantId={defaultRestaurantId}
       />
+      )}
     </>
   )
 }

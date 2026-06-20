@@ -31,11 +31,11 @@ interface ReservationWithRestaurant extends Reservation {
   restaurants?: {
     id: string
     name: string
-  }
+  } | null
   reservation_areas?: {
     id: string
     name: string
-  }
+  } | null
   booked_by_email?: string | null
   booked_by_label: string | null
   booked_by_name?: string | null
@@ -45,9 +45,17 @@ interface ReservationTableProps {
   reservations: ReservationWithRestaurant[]
   onRefresh: () => void
   itemsPerPage?: number
+  readOnly?: boolean
+  emptyMessage?: string
 }
 
-export function ReservationTable({ reservations, onRefresh, itemsPerPage = 10 }: ReservationTableProps) {
+export function ReservationTable({
+  reservations,
+  onRefresh,
+  itemsPerPage = 10,
+  readOnly = false,
+  emptyMessage,
+}: ReservationTableProps) {
   const { getTranslation } = useLanguage()
   const [selectedReservation, setSelectedReservation] = useState<ReservationWithRestaurant | null>(null)
   const [actionType, setActionType] = useState<"confirm" | "cancel" | null>(null)
@@ -231,6 +239,7 @@ ${reservation.customer_phone}${reservation.special_requests ? `\n${reservation.s
                   }}
                   confirmDisabled={reservation.status === "confirmed" || reservation.status === "cancelled"}
                   cancelDisabled={reservation.status === "cancelled"}
+                  readOnly={readOnly}
                 />
               </div>
             </div>
@@ -336,7 +345,7 @@ ${reservation.customer_phone}${reservation.special_requests ? `\n${reservation.s
   )
 
   if (reservations.length === 0) {
-    return <div className="text-center py-8 text-muted-foreground">No reservations found</div>
+    return <div className="text-center py-8 text-muted-foreground">{emptyMessage || "No reservations found"}</div>
   }
 
   return (
@@ -461,6 +470,7 @@ ${reservation.customer_phone}${reservation.special_requests ? `\n${reservation.s
                        }}
                        confirmDisabled={reservation.status === "confirmed" || reservation.status === "cancelled"}
                        cancelDisabled={reservation.status === "cancelled"}
+                       readOnly={readOnly}
                      />
                    </TableCell>
                  </TableRow>
@@ -490,6 +500,7 @@ ${reservation.customer_phone}${reservation.special_requests ? `\n${reservation.s
         />
       </div>
 
+      {!readOnly && (
       <Dialog
         open={!!selectedReservation && !!actionType}
         onOpenChange={() => {
@@ -599,8 +610,9 @@ ${reservation.customer_phone}${reservation.special_requests ? `\n${reservation.s
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      )}
 
-      {editingReservation && (
+      {!readOnly && editingReservation && (
         <ReservationForm
           isOpen={!!editingReservation}
           mode="edit"

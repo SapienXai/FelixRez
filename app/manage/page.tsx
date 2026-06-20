@@ -26,7 +26,7 @@ import { ReservationList, type ReservationMutationChange } from "@/components/ma
 import { ReservationForm } from "@/components/manage/reservation-form"
 import { useLanguage } from "@/context/language-context"
 import { useManageContext } from "@/context/manage-context"
-import { getRestaurants } from "./actions"
+import { getReservations, getRestaurants } from "./actions"
 import {
   getDashboardData,
   getDashboardReservationById,
@@ -35,6 +35,11 @@ import {
   type DashboardStats,
 } from "./dashboard-actions"
 import type { Database } from "@/types/supabase"
+import {
+  readManageOfflineCache,
+  writeManageOfflineCache,
+  type ManageCachedReservation,
+} from "@/lib/manage-offline-cache"
 
 type ReservationRecord = Database["public"]["Tables"]["reservations"]["Row"] & {
   restaurants?: { id: string; name: string } | null
@@ -74,6 +79,10 @@ const STATS_FIELDS: Array<keyof ReservationRecord> = [
   "reservation_area_id",
   "reservation_type",
 ]
+
+function dedupeReservations(reservations: ReservationRecord[]) {
+  return Array.from(new Map(reservations.map((reservation) => [reservation.id, reservation])).values())
+}
 
 function normalizeRestaurantFilter(restaurantId?: string) {
   return restaurantId && restaurantId !== "all" ? restaurantId : undefined
@@ -130,6 +139,85 @@ function sortByReservationDateTimeAsc(a: ReservationRecord, b: ReservationRecord
   const dateCompare = a.reservation_date.localeCompare(b.reservation_date)
   if (dateCompare !== 0) return dateCompare
   return a.reservation_time.localeCompare(b.reservation_time)
+}
+
+function calculateStatsFromReservations(reservations: ReservationRecord[]): DashboardStats {
+  const stats = { ...EMPTY_STATS }
+
+  for (const reservation of reservations) {
+    const status = reservation.status || "pending"
+    const partySize = Number(reservation.party_size || 0)
+    const areaName = getReservationAreaName(reservation)
+
+    stats.total += 1
+    if (status === "pending") stats.pending += 1
+    if (status === "confirmed") {
+      stats.confirmed += 1
+      stats.totalKuver += partySize
+      if (areaName.includes("deck")) stats.deckKuvers += partySize
+      if (areaName.includes("terrace")) stats.terraceKuvers += partySize
+    }
+    if (status === "cancelled") stats.cancelled += 1
+    if (reservation.reservation_type === "meal") stats.totalMealReservations += 1
+  }
+
+  return stats
+}
+
+function buildOfflineDashboardSnapshot(
+  reservations: ReservationRecord[],
+  restaurantId: string,
+  selectedDateKey: string,
+  operationFilter: OperationFilter
+): DashboardSnapshot {
+  const scopedReservations = restaurantId && restaurantId !== "all"
+    ? reservations.filter((reservation) => reservation.restaurant_id === restaurantId)
+    : reservations
+  const todayKey = getLocalDateKey()
+  const last24Hours = new Date()
+  last24Hours.setHours(last24Hours.getHours() - 24)
+
+  const pendingReservations = scopedReservations
+    .filter((reservation) => reservation.status === "pending")
+    .sort(sortByReservationDateTimeAsc)
+  const newReservations = [...scopedReservations].sort(sortByCreatedDesc).slice(0, 20)
+  const newTodayReservations = scopedReservations.filter(isCreatedToday).sort(sortByCreatedDesc)
+  const todayReservations = scopedReservations
+    .filter((reservation) => reservation.reservation_date === todayKey)
+    .sort(sortByReservationDateTimeAsc)
+  const upcomingReservations = scopedReservations
+    .filter((reservation) => reservation.reservation_date > todayKey)
+    .sort(sortByReservationDateTimeAsc)
+  const selectedDateReservations = scopedReservations
+    .filter((reservation) => reservation.reservation_date === selectedDateKey)
+    .sort(sortByReservationDateTimeAsc)
+  const statsReservations = operationFilter === "latest"
+    ? scopedReservations.filter((reservation) => new Date(reservation.created_at) >= last24Hours)
+    : selectedDateReservations
+
+  return {
+    stats: {
+      ...calculateStatsFromReservations(statsReservations),
+      pending: pendingReservations.length,
+    },
+    pendingReservations,
+    newReservations,
+    newTodayReservations,
+    todayReservations,
+    upcomingReservations,
+    selectedDateReservations,
+  }
+}
+
+function getSnapshotReservations(snapshot: DashboardSnapshot) {
+  return dedupeReservations([
+    ...(snapshot.pendingReservations as ReservationRecord[]),
+    ...(snapshot.newReservations as ReservationRecord[]),
+    ...(snapshot.newTodayReservations as ReservationRecord[]),
+    ...(snapshot.todayReservations as ReservationRecord[]),
+    ...(snapshot.upcomingReservations as ReservationRecord[]),
+    ...(snapshot.selectedDateReservations as ReservationRecord[]),
+  ])
 }
 
 function removeReservation(list: ReservationRecord[], reservationId: string) {
@@ -203,22 +291,25 @@ export default function ManageDashboard() {
   const { role, isSuperAdmin, loading: roleLoading } = useManageContext()
   const router = useRouter()
   const supabase = getSupabaseBrowserClient()
+  const canViewAllRestaurants = isSuperAdmin || role === "admin" || role === "manager"
 
   const [isLoading, setIsLoading] = useState(true)
   const [isRefreshing, setIsRefreshing] = useState(false)
   const [isStatsLoading, setIsStatsLoading] = useState(false)
   const [dashboardError, setDashboardError] = useState<string | null>(null)
+  const [offlineMode, setOfflineMode] = useState(false)
+  const [offlineSyncedAt, setOfflineSyncedAt] = useState<string | null>(null)
   const [stats, setStats] = useState<DashboardStats>(EMPTY_STATS)
   const [pendingReservations, setPendingReservations] = useState<ReservationRecord[]>([])
   const [newReservations, setNewReservations] = useState<ReservationRecord[]>([])
   const [newTodayReservations, setNewTodayReservations] = useState<ReservationRecord[]>([])
-  const [, setTodayReservations] = useState<ReservationRecord[]>([])
-  const [, setUpcomingReservations] = useState<ReservationRecord[]>([])
+  const [todayReservations, setTodayReservations] = useState<ReservationRecord[]>([])
+  const [upcomingReservations, setUpcomingReservations] = useState<ReservationRecord[]>([])
   const [selectedDateReservations, setSelectedDateReservations] = useState<ReservationRecord[]>([])
   const [restaurants, setRestaurants] = useState<RestaurantOption[]>([])
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all")
   const [metricFilter, setMetricFilter] = useState<MetricFilter>("all")
-  const [selectedRestaurant, setSelectedRestaurant] = useState("")
+  const [selectedRestaurant, setSelectedRestaurant] = useState("all")
   const [selectedDate, setSelectedDate] = useState<Date>(() => getDateWithOffset(0))
   const [operationFilter, setOperationFilter] = useState<OperationFilter>("date")
   const [datePopoverOpen, setDatePopoverOpen] = useState(false)
@@ -235,12 +326,13 @@ export default function ManageDashboard() {
   const statsRequestIdRef = useRef(0)
   const ignoredRealtimeIdsRef = useRef<Set<string>>(new Set())
   const statsRefreshTimerRef = useRef<number | null>(null)
+  const offlineModeRef = useRef(false)
   const dashboardFiltersRef = useRef<{
     restaurantId: string
     dateKey: string
     operationFilter: OperationFilter
   }>({
-    restaurantId: "",
+    restaurantId: "all",
     dateKey: getLocalDateKey(),
     operationFilter: "date",
   })
@@ -284,6 +376,105 @@ export default function ManageDashboard() {
     setSelectedDateReservations(snapshot.selectedDateReservations as ReservationRecord[])
   }, [])
 
+  const writeDashboardOfflineCache = useCallback((snapshot: DashboardSnapshot, restaurantOptions: RestaurantOption[]) => {
+    const cache = writeManageOfflineCache({
+      reservations: getSnapshotReservations(snapshot) as ManageCachedReservation[],
+      restaurants: restaurantOptions,
+    })
+    if (cache) {
+      setOfflineSyncedAt(cache.syncedAt)
+    }
+  }, [])
+
+  const refreshManageEmergencyCache = useCallback(async (restaurantOptions: RestaurantOption[]) => {
+    try {
+      const result = await getReservations({
+        status: "all",
+        restaurantId: "all",
+        dateRange: "week",
+        searchQuery: "",
+        reservationId: "",
+      })
+
+      if (result.success) {
+        const cache = writeManageOfflineCache({
+          reservations: (result.data || []) as ManageCachedReservation[],
+          restaurants: restaurantOptions,
+        })
+        if (cache) {
+          setOfflineSyncedAt(cache.syncedAt)
+        }
+      }
+    } catch (error) {
+      console.error("Error refreshing manage offline cache:", error)
+    }
+  }, [])
+
+  const flushCurrentDashboardToOfflineCache = useCallback(() => {
+    const reservations = dedupeReservations([
+      ...pendingReservations,
+      ...newReservations,
+      ...newTodayReservations,
+      ...todayReservations,
+      ...upcomingReservations,
+      ...selectedDateReservations,
+    ])
+
+    if (reservations.length === 0 && restaurants.length === 0) {
+      return
+    }
+
+    const cache = writeManageOfflineCache({
+      reservations: reservations as ManageCachedReservation[],
+      restaurants,
+    })
+    if (cache) {
+      setOfflineSyncedAt(cache.syncedAt)
+    }
+  }, [
+    newReservations,
+    newTodayReservations,
+    pendingReservations,
+    restaurants,
+    selectedDateReservations,
+    todayReservations,
+    upcomingReservations,
+  ])
+
+  const loadDashboardFromOfflineCache = useCallback((
+    restaurantId: string,
+    dateKey: string,
+    nextOperationFilter: OperationFilter
+  ) => {
+    const cache = readManageOfflineCache()
+    const effectiveRestaurantId = restaurantId || "all"
+    const effectiveOperationFilter = nextOperationFilter
+
+    offlineModeRef.current = true
+    setOfflineMode(true)
+    setOfflineSyncedAt(cache?.syncedAt || null)
+    setDashboardError(null)
+    setShowCreateForm(false)
+    lastLoadedDashboardFiltersRef.current = {
+      restaurantId: effectiveRestaurantId,
+      dateKey,
+      operationFilter: effectiveOperationFilter,
+    }
+
+    if (cache?.restaurants.length) {
+      setRestaurants(cache.restaurants)
+    }
+
+    setDashboardSnapshot(
+      buildOfflineDashboardSnapshot(
+        ((cache?.reservations || []) as ManageCachedReservation[]) as ReservationRecord[],
+        effectiveRestaurantId,
+        dateKey,
+        effectiveOperationFilter
+      )
+    )
+  }, [setDashboardSnapshot])
+
   useEffect(() => {
     dashboardFiltersRef.current = {
       restaurantId: selectedRestaurant,
@@ -291,6 +482,10 @@ export default function ManageDashboard() {
       operationFilter,
     }
   }, [operationFilter, selectedRestaurant, selectedDateKey])
+
+  useEffect(() => {
+    offlineModeRef.current = offlineMode
+  }, [offlineMode])
 
   const refreshStats = useCallback(async (
     restaurantId?: string,
@@ -302,6 +497,19 @@ export default function ManageDashboard() {
     const targetDateKey = dateKey ?? filters.dateKey
     const targetOperationFilter = nextOperationFilter ?? filters.operationFilter
     const requestId = ++statsRequestIdRef.current
+
+    if (offlineMode) {
+      const cache = readManageOfflineCache()
+      const snapshot = buildOfflineDashboardSnapshot(
+        ((cache?.reservations || []) as ManageCachedReservation[]) as ReservationRecord[],
+        targetRestaurantId,
+        targetDateKey,
+        targetOperationFilter
+      )
+      setStats(snapshot.stats)
+      return
+    }
+
     setIsStatsLoading(true)
 
     try {
@@ -324,7 +532,7 @@ export default function ManageDashboard() {
         setIsStatsLoading(false)
       }
     }
-  }, [])
+  }, [offlineMode])
 
   const scheduleStatsRefresh = useCallback(() => {
     if (statsRefreshTimerRef.current) {
@@ -353,6 +561,14 @@ export default function ManageDashboard() {
     const targetOperationFilter = nextOperationFilter ?? filters.operationFilter
     const requestId = ++dashboardRequestIdRef.current
 
+    if (offlineModeRef.current || (typeof navigator !== "undefined" && !navigator.onLine)) {
+      loadDashboardFromOfflineCache(targetRestaurantId || "all", targetDateKey, targetOperationFilter)
+      hasLoadedInitialDataRef.current = true
+      setIsLoading(false)
+      setIsRefreshing(false)
+      return
+    }
+
     if (fullLoader) {
       setIsLoading(true)
     } else {
@@ -371,25 +587,35 @@ export default function ManageDashboard() {
       }
 
       if (result.success && result.data) {
+        setOfflineMode(false)
+        setOfflineSyncedAt(null)
         setDashboardSnapshot(result.data)
+        writeDashboardOfflineCache(result.data, restaurants)
+        void refreshManageEmergencyCache(restaurants)
         lastLoadedDashboardFiltersRef.current = {
           restaurantId: targetRestaurantId,
           dateKey: targetDateKey,
           operationFilter: targetOperationFilter,
         }
       } else {
-        setDashboardError(result.message || "Could not load dashboard data.")
+        loadDashboardFromOfflineCache(targetRestaurantId, targetDateKey, targetOperationFilter)
       }
     } catch (error) {
       console.error("Error fetching dashboard data:", error)
-      setDashboardError("Could not load dashboard data.")
+      loadDashboardFromOfflineCache(targetRestaurantId, targetDateKey, targetOperationFilter)
     } finally {
       if (dashboardRequestIdRef.current === requestId) {
         setIsLoading(false)
         setIsRefreshing(false)
       }
     }
-  }, [setDashboardSnapshot])
+  }, [
+    loadDashboardFromOfflineCache,
+    refreshManageEmergencyCache,
+    restaurants,
+    setDashboardSnapshot,
+    writeDashboardOfflineCache,
+  ])
 
   const ignoreNextRealtimeEvent = useCallback((reservationId: string) => {
     ignoredRealtimeIdsRef.current.add(reservationId)
@@ -494,7 +720,7 @@ export default function ManageDashboard() {
         const { data } = await supabase.auth.getSession()
         const restaurantResult = await getRestaurants()
         const restaurantData = restaurantResult.success ? (restaurantResult.data || []) : []
-        const isGlobalUser = Boolean(data.session) && (isSuperAdmin || role === "manager")
+        const isGlobalUser = Boolean(data.session) && canViewAllRestaurants
         const initialRestaurant = isGlobalUser ? "all" : restaurantData[0]?.id || "all"
 
         if (cancelled) return
@@ -507,20 +733,25 @@ export default function ManageDashboard() {
         if (cancelled) return
 
         if (dashboardResult.success && dashboardResult.data) {
+          setOfflineMode(false)
+          setOfflineSyncedAt(null)
           setDashboardSnapshot(dashboardResult.data)
+          writeDashboardOfflineCache(dashboardResult.data, restaurantData)
+          void refreshManageEmergencyCache(restaurantData)
           lastLoadedDashboardFiltersRef.current = {
             restaurantId: initialRestaurant,
             dateKey: initialDateKey,
             operationFilter: "date",
           }
         } else {
-          setDashboardError(dashboardResult.message || "Could not load dashboard data.")
+          loadDashboardFromOfflineCache(initialRestaurant, initialDateKey, "date")
         }
 
         hasLoadedInitialDataRef.current = true
       } catch (error) {
         console.error("Error loading dashboard:", error)
-        setDashboardError("Could not load dashboard data.")
+        const filters = dashboardFiltersRef.current
+        loadDashboardFromOfflineCache(filters.restaurantId || "all", filters.dateKey, filters.operationFilter)
       } finally {
         if (!cancelled) {
           setIsLoading(false)
@@ -533,7 +764,16 @@ export default function ManageDashboard() {
     return () => {
       cancelled = true
     }
-  }, [roleLoading, role, isSuperAdmin, supabase, setDashboardSnapshot])
+  }, [
+    roleLoading,
+    role,
+    canViewAllRestaurants,
+    supabase,
+    setDashboardSnapshot,
+    writeDashboardOfflineCache,
+    refreshManageEmergencyCache,
+    loadDashboardFromOfflineCache,
+  ])
 
   useEffect(() => {
     const { data: subscription } = supabase.auth.onAuthStateChange(async (event, session) => {
@@ -572,6 +812,46 @@ export default function ManageDashboard() {
   }, [fetchDashboardSnapshot, operationFilter, selectedDateKey, selectedRestaurant])
 
   useEffect(() => {
+    if (typeof window === "undefined") return
+
+    const handleOffline = () => {
+      if (offlineModeRef.current) {
+        return
+      }
+
+      offlineModeRef.current = true
+      flushCurrentDashboardToOfflineCache()
+      const filters = dashboardFiltersRef.current
+      loadDashboardFromOfflineCache(filters.restaurantId || "all", filters.dateKey, filters.operationFilter)
+      hasLoadedInitialDataRef.current = true
+      setIsLoading(false)
+      setIsRefreshing(false)
+      setIsStatsLoading(false)
+    }
+
+    const handleOnline = () => {
+      offlineModeRef.current = false
+      void fetchDashboardSnapshot({ fullLoader: false })
+    }
+
+    if (!navigator.onLine) {
+      handleOffline()
+    }
+
+    window.addEventListener("offline", handleOffline)
+    window.addEventListener("online", handleOnline)
+
+    return () => {
+      window.removeEventListener("offline", handleOffline)
+      window.removeEventListener("online", handleOnline)
+    }
+  }, [fetchDashboardSnapshot, flushCurrentDashboardToOfflineCache, loadDashboardFromOfflineCache])
+
+  useEffect(() => {
+    if (offlineMode) {
+      return
+    }
+
     const channel = supabase
       .channel("dashboard-reservations")
       .on(
@@ -622,7 +902,7 @@ export default function ManageDashboard() {
     return () => {
       supabase.removeChannel(channel)
     }
-  }, [applyReservationChange, selectedRestaurant, supabase])
+  }, [applyReservationChange, offlineMode, selectedRestaurant, supabase])
 
   useEffect(() => {
     return () => {
@@ -739,13 +1019,15 @@ export default function ManageDashboard() {
       <div className="flex flex-col space-y-4 sm:flex-row sm:items-center sm:justify-between sm:space-y-0 mb-6">
         <div className="flex items-center space-x-3">
           <h1 className="text-xl md:text-2xl font-semibold">{getTranslation("manage.dashboard.title")}</h1>
-          <Button
-            onClick={() => setShowCreateForm(true)}
-            className="bg-black hover:bg-gray-800 text-white text-xs px-2 py-1 h-7"
-            size="sm"
-          >
-            + {getTranslation("manage.reservations.list.addReservation")}
-          </Button>
+          {!offlineMode ? (
+            <Button
+              onClick={() => setShowCreateForm(true)}
+              className="bg-black hover:bg-gray-800 text-white text-xs px-2 py-1 h-7"
+              size="sm"
+            >
+              + {getTranslation("manage.reservations.list.addReservation")}
+            </Button>
+          ) : null}
         </div>
 
         <div className="grid w-full grid-cols-2 gap-2 sm:w-auto sm:min-w-[420px] sm:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)]">
@@ -807,7 +1089,7 @@ export default function ManageDashboard() {
                 <SelectValue placeholder={getTranslation("manage.dashboard.filter.allRestaurants")} />
               </SelectTrigger>
               <SelectContent>
-                {isSuperAdmin && (
+                {(canViewAllRestaurants || offlineMode) && (
                   <SelectItem value="all">{getTranslation("manage.dashboard.filter.allRestaurants")}</SelectItem>
                 )}
                 {restaurants.map((restaurant) => (
@@ -820,6 +1102,21 @@ export default function ManageDashboard() {
           </div>
         </div>
       </div>
+
+      {offlineMode ? (
+        <Card className="mb-4 border-amber-200 bg-amber-50">
+          <CardContent className="p-3 text-sm text-amber-900">
+            <div className="font-medium">{getTranslation("manage.offline.title")}</div>
+            <div>
+              {offlineSyncedAt
+                ? getTranslation("manage.offline.description", {
+                    syncedAt: new Date(offlineSyncedAt).toLocaleString(getTranslation("common.locale") || "en-US"),
+                  })
+                : getTranslation("manage.offline.noCache")}
+            </div>
+          </CardContent>
+        </Card>
+      ) : null}
 
       <div className="mb-6">
         <div className="grid grid-cols-2 gap-2 md:grid-cols-4 md:gap-2 transition-all duration-300">
@@ -1043,6 +1340,7 @@ export default function ManageDashboard() {
                 itemsPerPage={10}
                 restaurants={restaurants}
                 defaultRestaurantId={defaultFormRestaurantId}
+                readOnly={offlineMode}
               />
             ) : (
               <Card>
@@ -1050,7 +1348,9 @@ export default function ManageDashboard() {
                   <CalendarClock className="h-8 w-8 text-muted-foreground" />
                   <h4 className="text-sm font-medium">No reservations found</h4>
                   <p className="max-w-sm text-sm text-muted-foreground">
-                    {statusFilter === "pending"
+                    {offlineMode && !offlineSyncedAt
+                      ? getTranslation("manage.offline.empty")
+                      : statusFilter === "pending"
                       ? "No pending reservations found."
                       : operationFilter === "latest"
                       ? "No recent reservations match the current filters."
@@ -1069,7 +1369,7 @@ export default function ManageDashboard() {
         </Button>
       </div>
 
-      {showCreateForm ? (
+      {showCreateForm && !offlineMode ? (
         <ReservationForm
           isOpen={showCreateForm}
           mode="create"

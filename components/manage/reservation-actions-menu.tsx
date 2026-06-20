@@ -27,6 +27,7 @@ interface ReservationActionsMenuProps {
   confirmDisabled?: boolean
   cancelDisabled?: boolean
   showDelete?: boolean
+  readOnly?: boolean
 }
 
 export function ReservationActionsMenu({
@@ -37,6 +38,7 @@ export function ReservationActionsMenu({
   confirmDisabled,
   cancelDisabled,
   showDelete = false,
+  readOnly = false,
 }: ReservationActionsMenuProps) {
   const { getTranslation } = useLanguage()
   const [mobileOpen, setMobileOpen] = useState(false)
@@ -66,6 +68,10 @@ export function ReservationActionsMenu({
   const triggerClassName = isMobile
     ? "h-10 w-10 p-0 text-gray-500 hover:text-gray-700"
     : "h-8 w-8 p-0 text-gray-500 hover:text-gray-700"
+
+  if (readOnly) {
+    return null
+  }
 
   return (
     <>

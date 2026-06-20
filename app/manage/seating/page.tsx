@@ -1,6 +1,6 @@
 "use client"
 
-import { useCallback, useEffect, useMemo, useState } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
@@ -10,17 +10,24 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Textarea } from "@/components/ui/textarea"
 import { ChevronDown, ChevronUp, Plus } from "lucide-react"
-import { getRestaurants } from "@/app/manage/actions"
+import { getReservations, getRestaurants } from "@/app/manage/actions"
 import { assignReservationTable, getSeatingReservations } from "@/app/manage/seating-actions"
 import { ReservationForm } from "@/components/manage/reservation-form"
 import { useLanguage } from "@/context/language-context"
 import { useIsMobile } from "@/hooks/use-mobile"
 import { toast } from "sonner"
+import {
+  readManageOfflineCache,
+  writeManageOfflineCache,
+  type ManageCachedReservation,
+} from "@/lib/manage-offline-cache"
 
 type SeatingReservation = {
   id: string
+  restaurant_id: string
   reservation_date: string
   reservation_time: string
+  created_at: string
   customer_name: string
   customer_phone: string
   party_size: number
@@ -28,6 +35,7 @@ type SeatingReservation = {
   reservation_type: string | null
   notes: string | null
   status: string | null
+  booked_by_label?: string | null
   booked_by_name?: string
   restaurants?: {
     id: string
@@ -48,11 +56,75 @@ function todayAsYYYYMMDD() {
   return `${y}-${m}-${d}`
 }
 
+function mapCachedReservationToSeating(reservation: ManageCachedReservation): SeatingReservation {
+  return {
+    id: reservation.id,
+    restaurant_id: reservation.restaurant_id,
+    reservation_date: reservation.reservation_date,
+    reservation_time: reservation.reservation_time,
+    created_at: reservation.created_at,
+    customer_name: reservation.customer_name,
+    customer_phone: reservation.customer_phone,
+    party_size: reservation.party_size,
+    table_number: reservation.table_number,
+    reservation_type: reservation.reservation_type,
+    notes: reservation.notes || reservation.special_requests || null,
+    status: reservation.status,
+    booked_by_label: reservation.booked_by_label,
+    booked_by_name: reservation.booked_by_name || reservation.booked_by_label || "Online",
+    restaurants: reservation.restaurants || null,
+  }
+}
+
+function applySeatingFilters(reservations: ManageCachedReservation[], filters: {
+  date?: string
+  restaurantId?: string
+  status?: string
+  searchQuery?: string
+}) {
+  let rows = reservations.map(mapCachedReservationToSeating)
+
+  if (filters.date) {
+    rows = rows.filter((reservation) => reservation.reservation_date === filters.date)
+  }
+
+  if (filters.restaurantId && filters.restaurantId !== "all") {
+    rows = rows.filter((reservation) => reservation.restaurant_id === filters.restaurantId)
+  }
+
+  if (filters.status && filters.status !== "all") {
+    rows = rows.filter((reservation) => reservation.status === filters.status)
+  }
+
+  if (filters.searchQuery?.trim()) {
+    const term = filters.searchQuery.trim().toLowerCase()
+    rows = rows.filter((reservation) => {
+      const haystack = [
+        reservation.customer_name || "",
+        reservation.customer_phone || "",
+        reservation.table_number || "",
+        reservation.notes || "",
+        reservation.booked_by_name || "",
+        reservation.restaurants?.name || "",
+      ].join(" ").toLowerCase()
+      return haystack.includes(term)
+    })
+  }
+
+  return rows.sort((a, b) => {
+    const timeCompare = a.reservation_time.localeCompare(b.reservation_time)
+    if (timeCompare !== 0) return timeCompare
+    return new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+  })
+}
+
 export default function SeatingPage() {
   const { currentLang, getTranslation } = useLanguage()
   const isMobile = useIsMobile()
   const [isLoading, setIsLoading] = useState(true)
   const [isSaving, setIsSaving] = useState(false)
+  const [offlineMode, setOfflineMode] = useState(false)
+  const [offlineSyncedAt, setOfflineSyncedAt] = useState<string | null>(null)
   const [reservations, setReservations] = useState<SeatingReservation[]>([])
   const [restaurants, setRestaurants] = useState<RestaurantOption[]>([])
   const [filters, setFilters] = useState({
@@ -69,19 +141,98 @@ export default function SeatingPage() {
   const [bookedByText, setBookedByText] = useState("")
   const [showMobileFilters, setShowMobileFilters] = useState(false)
   const [expandedMobileCards, setExpandedMobileCards] = useState<Record<string, boolean>>({})
+  const offlineModeRef = useRef(false)
+  const restaurantsRef = useRef<RestaurantOption[]>([])
 
-  const loadRestaurants = useCallback(async () => {
-    const result = await getRestaurants()
-    if (result.success) {
-      const list = (result.data || []) as RestaurantOption[]
-      setRestaurants(list)
-      if (list.length === 1) {
-        setFilters((prev) => ({ ...prev, restaurantId: list[0].id }))
+  useEffect(() => {
+    offlineModeRef.current = offlineMode
+  }, [offlineMode])
+
+  useEffect(() => {
+    restaurantsRef.current = restaurants
+  }, [restaurants])
+
+  const loadSeatingFromOfflineCache = useCallback(() => {
+    const cache = readManageOfflineCache()
+    offlineModeRef.current = true
+    setOfflineMode(true)
+    setOfflineSyncedAt(cache?.syncedAt || null)
+    setShowCreateForm(false)
+    setSelected(null)
+    setReservations(cache ? applySeatingFilters(cache.reservations, filters) : [])
+    if (cache?.restaurants.length) {
+      setRestaurants(cache.restaurants)
+    }
+    setIsLoading(false)
+    setIsSaving(false)
+  }, [filters])
+
+  const refreshManageEmergencyCache = useCallback(async (restaurantOptions: RestaurantOption[]) => {
+    try {
+      const result = await getReservations({
+        status: "all",
+        restaurantId: "all",
+        dateRange: "week",
+        searchQuery: "",
+        reservationId: "",
+      })
+
+      if (result.success) {
+        const cache = writeManageOfflineCache({
+          reservations: (result.data || []) as ManageCachedReservation[],
+          restaurants: restaurantOptions,
+        })
+        if (cache) {
+          setOfflineSyncedAt(cache.syncedAt)
+        }
       }
+    } catch (error) {
+      console.error("Error refreshing seating offline cache:", error)
     }
   }, [])
 
+  const flushCurrentSeatingToOfflineCache = useCallback(() => {
+    if (reservations.length === 0 && restaurants.length === 0) {
+      return
+    }
+
+    const cache = writeManageOfflineCache({
+      reservations: reservations as unknown as ManageCachedReservation[],
+      restaurants,
+    })
+    if (cache) {
+      setOfflineSyncedAt(cache.syncedAt)
+    }
+  }, [reservations, restaurants])
+
+  const loadRestaurants = useCallback(async () => {
+    try {
+      const result = await getRestaurants()
+      if (result.success) {
+        const list = (result.data || []) as RestaurantOption[]
+        setRestaurants(list)
+        void refreshManageEmergencyCache(list)
+        if (list.length === 1) {
+          setFilters((prev) => ({ ...prev, restaurantId: list[0].id }))
+        }
+        return
+      }
+    } catch (error) {
+      console.error("Error loading seating restaurants:", error)
+    }
+
+    const cache = readManageOfflineCache()
+    if (cache?.restaurants.length) {
+      setRestaurants(cache.restaurants)
+    }
+  }, [refreshManageEmergencyCache])
+
   const fetchList = useCallback(async () => {
+    if (offlineModeRef.current || (typeof navigator !== "undefined" && !navigator.onLine)) {
+      loadSeatingFromOfflineCache()
+      return
+    }
+
     setIsLoading(true)
     try {
       const result = await getSeatingReservations({
@@ -93,15 +244,19 @@ export default function SeatingPage() {
 
       if (result.success) {
         setReservations(result.data as SeatingReservation[])
+        setOfflineMode(false)
+        void refreshManageEmergencyCache(restaurantsRef.current)
       } else {
+        loadSeatingFromOfflineCache()
         toast.error(result.message || "Failed to fetch seating list")
       }
     } catch {
+      loadSeatingFromOfflineCache()
       toast.error("Failed to fetch seating list")
     } finally {
       setIsLoading(false)
     }
-  }, [filters])
+  }, [filters, loadSeatingFromOfflineCache, refreshManageEmergencyCache])
 
   useEffect(() => {
     loadRestaurants()
@@ -110,6 +265,37 @@ export default function SeatingPage() {
   useEffect(() => {
     fetchList()
   }, [fetchList])
+
+  useEffect(() => {
+    if (typeof window === "undefined") return
+
+    const handleOffline = () => {
+      if (offlineModeRef.current) {
+        return
+      }
+
+      offlineModeRef.current = true
+      flushCurrentSeatingToOfflineCache()
+      loadSeatingFromOfflineCache()
+    }
+
+    const handleOnline = () => {
+      offlineModeRef.current = false
+      void fetchList()
+    }
+
+    if (!navigator.onLine) {
+      handleOffline()
+    }
+
+    window.addEventListener("offline", handleOffline)
+    window.addEventListener("online", handleOnline)
+
+    return () => {
+      window.removeEventListener("offline", handleOffline)
+      window.removeEventListener("online", handleOnline)
+    }
+  }, [fetchList, flushCurrentSeatingToOfflineCache, loadSeatingFromOfflineCache])
 
   const openEdit = (reservation: SeatingReservation) => {
     setSelected(reservation)
@@ -128,7 +314,7 @@ export default function SeatingPage() {
   }
 
   const saveAssignment = async () => {
-    if (!selected) return
+    if (!selected || offlineMode) return
     setIsSaving(true)
     try {
       const result = await assignReservationTable({
@@ -197,15 +383,34 @@ export default function SeatingPage() {
       <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <h1 className="text-xl font-semibold sm:text-2xl">{getTranslation("manage.seating.title")}</h1>
         <div className="grid grid-cols-1 gap-2 sm:flex sm:items-center">
-          <Button onClick={() => setShowCreateForm(true)} className="w-full sm:w-auto">
-            <Plus className="mr-2 h-4 w-4" />
-            {getTranslation("manage.reservations.list.addReservation")}
-          </Button>
-          <Button variant="outline" onClick={handlePrintPdf} className="w-full sm:w-auto">
-            {getTranslation("manage.seating.exportPdf")}
-          </Button>
+          {!offlineMode ? (
+            <>
+              <Button onClick={() => setShowCreateForm(true)} className="w-full sm:w-auto">
+                <Plus className="mr-2 h-4 w-4" />
+                {getTranslation("manage.reservations.list.addReservation")}
+              </Button>
+              <Button variant="outline" onClick={handlePrintPdf} className="w-full sm:w-auto">
+                {getTranslation("manage.seating.exportPdf")}
+              </Button>
+            </>
+          ) : null}
         </div>
       </div>
+
+      {offlineMode ? (
+        <Card className="mb-4 border-amber-200 bg-amber-50">
+          <CardContent className="p-3 text-sm text-amber-900">
+            <div className="font-medium">{getTranslation("manage.offline.title")}</div>
+            <div>
+              {offlineSyncedAt
+                ? getTranslation("manage.offline.description", {
+                    syncedAt: new Date(offlineSyncedAt).toLocaleString(getTranslation("common.locale") || "en-US"),
+                  })
+                : getTranslation("manage.offline.noCache")}
+            </div>
+          </CardContent>
+        </Card>
+      ) : null}
 
       <Card className="mb-6">
         <CardHeader>
@@ -253,8 +458,10 @@ export default function SeatingPage() {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
+                  <SelectItem value="all">{getTranslation("manage.seating.statusAll")}</SelectItem>
                   <SelectItem value="pending">{getTranslation("manage.seating.statusPending")}</SelectItem>
                   <SelectItem value="confirmed">{getTranslation("manage.seating.statusConfirmed")}</SelectItem>
+                  <SelectItem value="cancelled">{getTranslation("manage.seating.statusCancelled")}</SelectItem>
                   <SelectItem value="completed">{getTranslation("manage.seating.statusCompleted")}</SelectItem>
                 </SelectContent>
               </Select>
@@ -374,17 +581,19 @@ export default function SeatingPage() {
                         </div>
                       </div>
                     )}
-                    <Button
-                      className="mt-3 w-full"
-                      variant="outline"
-                      size="sm"
-                      onClick={(event) => {
-                        event.stopPropagation()
-                        openEdit(reservation)
-                      }}
-                    >
-                      {getTranslation("manage.seating.assignButton")}
-                    </Button>
+                    {!offlineMode ? (
+                      <Button
+                        className="mt-3 w-full"
+                        variant="outline"
+                        size="sm"
+                        onClick={(event) => {
+                          event.stopPropagation()
+                          openEdit(reservation)
+                        }}
+                      >
+                        {getTranslation("manage.seating.assignButton")}
+                      </Button>
+                    ) : null}
                   </div>
                 ))}
               </div>
@@ -423,9 +632,11 @@ export default function SeatingPage() {
                       <TableCell>{reservation.booked_by_name || "-"}</TableCell>
                       <TableCell>{reservation.reservation_time.slice(0, 5)}</TableCell>
                       <TableCell className="text-right">
-                        <Button variant="outline" size="sm" onClick={() => openEdit(reservation)}>
-                          {getTranslation("manage.seating.assignButton")}
-                        </Button>
+                        {!offlineMode ? (
+                          <Button variant="outline" size="sm" onClick={() => openEdit(reservation)}>
+                            {getTranslation("manage.seating.assignButton")}
+                          </Button>
+                        ) : null}
                       </TableCell>
                     </TableRow>
                   ))}
@@ -445,6 +656,7 @@ export default function SeatingPage() {
         </CardContent>
       </Card>
 
+      {!offlineMode && (
       <Dialog open={Boolean(selected)} onOpenChange={() => closeEdit()}>
         <DialogContent>
           <DialogHeader>
@@ -503,8 +715,9 @@ export default function SeatingPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      )}
 
-      {showCreateForm && (
+      {showCreateForm && !offlineMode && (
         <ReservationForm
           isOpen={showCreateForm}
           mode="create"

@@ -20,6 +20,7 @@ type SeatingFilters = {
 
 type SeatingRow = {
   id: string
+  restaurant_id: string
   reservation_date: string
   reservation_time: string
   customer_name: string
@@ -52,6 +53,7 @@ export async function getSeatingReservations(filters: SeatingFilters) {
       .from("reservations")
       .select(`
         id,
+        restaurant_id,
         reservation_date,
         reservation_time,
         customer_name,

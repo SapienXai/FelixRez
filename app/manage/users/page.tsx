@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useCallback, useEffect, useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
@@ -64,28 +64,7 @@ export default function UsersPage() {
 
   const supabase = getSupabaseBrowserClient()
 
-  useEffect(() => {
-    const checkSession = async () => {
-      const { data } = await supabase.auth.getSession()
-      if (data.session && (isStaff || isReadonly)) {
-        setIsLoading(false)
-        return
-      }
-      await Promise.all([fetchUsers(), fetchRestaurantsList()])
-    }
-
-    if (!roleLoading) {
-      checkSession()
-    }
-  }, [role, roleLoading, supabase, isStaff, isReadonly])
-
-  useEffect(() => {
-    if (isStaff || isReadonly) {
-      window.location.replace('/manage')
-    }
-  }, [isStaff, isReadonly])
-
-  const fetchUsers = async () => {
+  const fetchUsers = useCallback(async () => {
     setIsLoading(true)
     try {
       const result = await getUsers()
@@ -108,11 +87,9 @@ export default function UsersPage() {
     } finally {
       setIsLoading(false)
     }
-  }
+  }, [])
 
-  if (!canManageUsers) return null
-
-  const fetchRestaurantsList = async () => {
+  const fetchRestaurantsList = useCallback(async () => {
     try {
       const result = await getRestaurants()
       if (result.success && result.data) {
@@ -121,7 +98,28 @@ export default function UsersPage() {
     } catch (e) {
       console.error("Error fetching restaurants for user form:", e)
     }
-  }
+  }, [])
+
+  useEffect(() => {
+    const checkSession = async () => {
+      const { data } = await supabase.auth.getSession()
+      if (data.session && (isStaff || isReadonly)) {
+        setIsLoading(false)
+        return
+      }
+      await Promise.all([fetchUsers(), fetchRestaurantsList()])
+    }
+
+    if (!roleLoading) {
+      checkSession()
+    }
+  }, [role, roleLoading, supabase, isStaff, isReadonly, fetchUsers, fetchRestaurantsList])
+
+  useEffect(() => {
+    if (isStaff || isReadonly) {
+      window.location.replace('/manage')
+    }
+  }, [isStaff, isReadonly])
 
   const validateForm = (): boolean => {
     const errors: Record<string, string> = {}
@@ -308,7 +306,7 @@ export default function UsersPage() {
     setFormErrors({})
   }
 
-  if (isLoading) {
+  if (roleLoading || isLoading) {
     return (
       <div className="fixed inset-0 bg-gray-100 flex items-center justify-center z-50">
         <div className="text-center">
@@ -318,6 +316,8 @@ export default function UsersPage() {
       </div>
     )
   }
+
+  if (!canManageUsers) return null
 
   return (
     <div className="w-full max-w-none">

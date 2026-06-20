@@ -226,6 +226,14 @@ export const translations = {
         noRestaurants: "No restaurants found",
         locationNotSpecified: "Location not specified",
       },
+      offline: {
+        statusOnline: "Online",
+        statusOffline: "Offline",
+        title: "Emergency Offline Mode",
+        description: "Showing cached reservation data. This is not live data. Last sync: {syncedAt}. Changes are disabled until the system is online again.",
+        noCache: "The system is offline and no cached reservation data is available yet.",
+        empty: "No cached reservation data is available yet.",
+      },
       dashboard: {
         title: "Dashboard",
         stats: {
@@ -744,6 +752,14 @@ export const translations = {
         website: "Web Sitesi",
         noRestaurants: "Restoran bulunamadı",
         locationNotSpecified: "Konum belirtilmemiş",
+      },
+      offline: {
+        statusOnline: "Online",
+        statusOffline: "Offline",
+        title: "Acil Offline Mod",
+        description: "Cache'lenmiş rezervasyon verisi gösteriliyor. Bu canlı veri değildir. Son senkronizasyon: {syncedAt}. Sistem tekrar online olana kadar değişiklikler kapalıdır.",
+        noCache: "Sistem offline ve henüz cache'lenmiş rezervasyon verisi yok.",
+        empty: "Henüz cache'lenmiş rezervasyon verisi yok.",
       },
       dashboard: {
         title: "Panel",

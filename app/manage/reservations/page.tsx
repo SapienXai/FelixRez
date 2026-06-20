@@ -13,10 +13,93 @@ import { getReservations, getRestaurants } from "../actions"
 import { ReservationTable } from "@/components/manage/reservation-table"
 import { ReservationForm } from "@/components/manage/reservation-form"
 import { useLanguage } from "@/context/language-context"
-import type { Database } from "@/types/supabase"
+import {
+  readManageOfflineCache,
+  writeManageOfflineCache,
+  type ManageCachedReservation,
+} from "@/lib/manage-offline-cache"
 
-type Reservation = Database['public']['Tables']['reservations']['Row']
+type Reservation = ManageCachedReservation
 type RestaurantOption = { id: string; name: string; meal_only_reservations?: boolean }
+
+function getLocalDateKey(date = new Date()) {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`
+}
+
+function getDateWithOffset(offset: number) {
+  const date = new Date()
+  date.setHours(0, 0, 0, 0)
+  date.setDate(date.getDate() + offset)
+  return getLocalDateKey(date)
+}
+
+function applyReservationFilters(
+  reservations: Reservation[],
+  filters: {
+    status?: string
+    restaurantId?: string
+    dateRange?: string
+    searchQuery?: string
+    reservationId?: string
+  }
+) {
+  let filtered = reservations
+
+  if (filters.status && filters.status !== "all") {
+    filtered = filtered.filter((reservation) => reservation.status === filters.status)
+  }
+
+  if (filters.restaurantId && filters.restaurantId !== "all") {
+    filtered = filtered.filter((reservation) => reservation.restaurant_id === filters.restaurantId)
+  }
+
+  if (filters.reservationId?.trim()) {
+    filtered = filtered.filter((reservation) => reservation.id === filters.reservationId?.trim())
+  }
+
+  if (filters.dateRange === "today") {
+    filtered = filtered.filter((reservation) => reservation.reservation_date === getDateWithOffset(0))
+  } else if (filters.dateRange === "tomorrow") {
+    filtered = filtered.filter((reservation) => reservation.reservation_date === getDateWithOffset(1))
+  } else if (filters.dateRange === "week") {
+    filtered = filtered.filter((reservation) => (
+      reservation.reservation_date >= getDateWithOffset(0) &&
+      reservation.reservation_date <= getDateWithOffset(7)
+    ))
+  } else if (filters.dateRange === "month") {
+    filtered = filtered.filter((reservation) => (
+      reservation.reservation_date >= getDateWithOffset(0) &&
+      reservation.reservation_date <= getDateWithOffset(30)
+    ))
+  }
+
+  if (filters.searchQuery?.trim()) {
+    const searchTerm = filters.searchQuery.toLowerCase().trim()
+    filtered = filtered.filter((reservation) => {
+      const customerName = reservation.customer_name?.toLowerCase() || ""
+      const customerPhone = reservation.customer_phone?.toLowerCase() || ""
+      const customerEmail = reservation.customer_email?.toLowerCase() || ""
+      const restaurantName = reservation.restaurants?.name?.toLowerCase() || ""
+      const areaName = reservation.reservation_areas?.name?.toLowerCase() || ""
+
+      return (
+        customerName.includes(searchTerm) ||
+        customerPhone.includes(searchTerm) ||
+        customerEmail.includes(searchTerm) ||
+        restaurantName.includes(searchTerm) ||
+        areaName.includes(searchTerm)
+      )
+    })
+  }
+
+  return [...filtered].sort((a, b) => {
+    const createdCompare = new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+    if (createdCompare !== 0) return createdCompare
+    const dateCompare = b.reservation_date.localeCompare(a.reservation_date)
+    if (dateCompare !== 0) return dateCompare
+    return b.reservation_time.localeCompare(a.reservation_time)
+  })
+}
 
 function ReservationsPageContent() {
   const { getTranslation } = useLanguage()
@@ -25,6 +108,8 @@ function ReservationsPageContent() {
   const [reservations, setReservations] = useState<Reservation[]>([])
   const [restaurants, setRestaurants] = useState<RestaurantOption[]>([])
   const [showCreateForm, setShowCreateForm] = useState(false)
+  const [offlineMode, setOfflineMode] = useState(false)
+  const [offlineSyncedAt, setOfflineSyncedAt] = useState<string | null>(null)
   const searchParams = useSearchParams()
   const [filters, setFilters] = useState({
     status: "all",
@@ -35,9 +120,73 @@ function ReservationsPageContent() {
   })
   const supabase = getSupabaseBrowserClient()
   const hasLoadedReservationsRef = useRef(false)
+  const offlineModeRef = useRef(false)
+  const restaurantsRef = useRef<RestaurantOption[]>([])
+
+  useEffect(() => {
+    restaurantsRef.current = restaurants
+  }, [restaurants])
+
+  const loadReservationsFromOfflineCache = useCallback(() => {
+    const cache = readManageOfflineCache()
+    offlineModeRef.current = true
+    setOfflineMode(true)
+    setOfflineSyncedAt(cache?.syncedAt || null)
+    setShowCreateForm(false)
+    setReservations(cache ? applyReservationFilters(cache.reservations, filters) : [])
+    if (cache?.restaurants.length) {
+      setRestaurants(cache.restaurants)
+    }
+  }, [filters])
+
+  const refreshManageEmergencyCache = useCallback(async (restaurantOptions: RestaurantOption[]) => {
+    try {
+      const result = await getReservations({
+        status: "all",
+        restaurantId: "all",
+        dateRange: "week",
+        searchQuery: "",
+        reservationId: "",
+      })
+
+      if (result.success) {
+        const cache = writeManageOfflineCache({
+          reservations: (result.data || []) as Reservation[],
+          restaurants: restaurantOptions,
+        })
+        if (cache) {
+          setOfflineSyncedAt(cache.syncedAt)
+        }
+      }
+    } catch (error) {
+      console.error("Error refreshing manage offline cache:", error)
+    }
+  }, [])
+
+  const flushCurrentReservationsToOfflineCache = useCallback(() => {
+    if (reservations.length === 0 && restaurants.length === 0) {
+      return
+    }
+
+    const cache = writeManageOfflineCache({
+      reservations,
+      restaurants,
+    })
+    if (cache) {
+      setOfflineSyncedAt(cache.syncedAt)
+    }
+  }, [reservations, restaurants])
 
   const fetchReservations = useCallback(async ({ fullLoader = false }: { fullLoader?: boolean } = {}) => {
     const shouldUseFullLoader = fullLoader || !hasLoadedReservationsRef.current
+
+    if (offlineModeRef.current || (typeof navigator !== "undefined" && !navigator.onLine)) {
+      loadReservationsFromOfflineCache()
+      hasLoadedReservationsRef.current = true
+      setIsLoading(false)
+      setIsRefreshing(false)
+      return
+    }
 
     if (shouldUseFullLoader) {
       setIsLoading(true)
@@ -47,10 +196,15 @@ function ReservationsPageContent() {
     try {
       const result = await getReservations(filters)
       if (result.success) {
-        setReservations(result.data)
+        setOfflineMode(false)
+        setReservations((result.data || []) as Reservation[])
+        void refreshManageEmergencyCache(restaurantsRef.current)
+      } else {
+        loadReservationsFromOfflineCache()
       }
     } catch (error) {
       console.error("Error fetching reservations:", error)
+      loadReservationsFromOfflineCache()
     } finally {
       hasLoadedReservationsRef.current = true
       if (shouldUseFullLoader) {
@@ -59,14 +213,29 @@ function ReservationsPageContent() {
         setIsRefreshing(false)
       }
     }
-  }, [filters])
+  }, [filters, loadReservationsFromOfflineCache, refreshManageEmergencyCache])
 
   useEffect(() => {
     const initializePage = async () => {
-      await supabase.auth.getSession()
-      const restaurantsResult = await getRestaurants()
-      if (restaurantsResult.success) {
-        setRestaurants(restaurantsResult.data || [])
+      try {
+        await supabase.auth.getSession()
+        const restaurantsResult = await getRestaurants()
+        if (restaurantsResult.success) {
+          setRestaurants(restaurantsResult.data || [])
+          void refreshManageEmergencyCache(restaurantsResult.data || [])
+          return
+        }
+      } catch (error) {
+        console.error("Error initializing reservations page:", error)
+      }
+
+      const cache = readManageOfflineCache()
+      if (cache?.restaurants.length) {
+        setRestaurants(cache.restaurants)
+      }
+      if (!hasLoadedReservationsRef.current) {
+        const cache = readManageOfflineCache()
+        setOfflineSyncedAt(cache?.syncedAt || null)
       }
     }
 
@@ -79,7 +248,7 @@ function ReservationsPageContent() {
     }
 
     initializePage()
-  }, [supabase])
+  }, [refreshManageEmergencyCache, supabase])
 
   useEffect(() => {
     const reservationId = searchParams.get("reservationId")
@@ -94,14 +263,57 @@ function ReservationsPageContent() {
     }
   }, [searchParams])
 
+  useEffect(() => {
+    offlineModeRef.current = offlineMode
+  }, [offlineMode])
+
+  useEffect(() => {
+    if (typeof window === "undefined") return
+
+    const handleOffline = () => {
+      if (offlineModeRef.current) {
+        return
+      }
+
+      offlineModeRef.current = true
+      flushCurrentReservationsToOfflineCache()
+      loadReservationsFromOfflineCache()
+      hasLoadedReservationsRef.current = true
+      setIsLoading(false)
+      setIsRefreshing(false)
+    }
+
+    const handleOnline = () => {
+      offlineModeRef.current = false
+      void fetchReservations({ fullLoader: false })
+    }
+
+    if (!navigator.onLine) {
+      handleOffline()
+    }
+
+    window.addEventListener("offline", handleOffline)
+    window.addEventListener("online", handleOnline)
+
+    return () => {
+      window.removeEventListener("offline", handleOffline)
+      window.removeEventListener("online", handleOnline)
+    }
+  }, [fetchReservations, flushCurrentReservationsToOfflineCache, loadReservationsFromOfflineCache])
+
   // Auto-fetch reservations when filters change
   useEffect(() => {
+    if (offlineModeRef.current || (typeof navigator !== "undefined" && !navigator.onLine)) {
+      loadReservationsFromOfflineCache()
+      return
+    }
+
     const timeoutId = setTimeout(() => {
       fetchReservations()
     }, 300) // Debounce search by 300ms
 
     return () => clearTimeout(timeoutId)
-  }, [filters, fetchReservations])
+  }, [filters, fetchReservations, loadReservationsFromOfflineCache])
 
   const handleFilterChange = (key: string, value: string) => {
     setFilters((prev) => ({ ...prev, [key]: value }))
@@ -131,14 +343,31 @@ function ReservationsPageContent() {
     <div className="w-full max-w-[1400px] mx-auto">
       <div className="flex items-center space-x-3 mb-6">
         <h1 className="text-xl md:text-2xl font-semibold">{getTranslation("manage.reservations.title")}</h1>
-        <Button
-          onClick={() => setShowCreateForm(true)}
-          className="bg-black hover:bg-gray-800 text-white text-xs px-2 py-1 h-7"
-          size="sm"
-        >
-          + {getTranslation("manage.reservations.list.addReservation")}
-        </Button>
+        {!offlineMode ? (
+          <Button
+            onClick={() => setShowCreateForm(true)}
+            className="bg-black hover:bg-gray-800 text-white text-xs px-2 py-1 h-7"
+            size="sm"
+          >
+            + {getTranslation("manage.reservations.list.addReservation")}
+          </Button>
+        ) : null}
       </div>
+
+      {offlineMode ? (
+        <Card className="mb-4 border-amber-200 bg-amber-50">
+          <CardContent className="p-3 text-sm text-amber-900">
+            <div className="font-medium">{getTranslation("manage.offline.title")}</div>
+            <div>
+              {offlineSyncedAt
+                ? getTranslation("manage.offline.description", {
+                    syncedAt: new Date(offlineSyncedAt).toLocaleString(getTranslation("common.locale") || "en-US"),
+                  })
+                : getTranslation("manage.offline.noCache")}
+            </div>
+          </CardContent>
+        </Card>
+      ) : null}
 
       <Card className="mb-6">
         <CardContent className="pt-6">
@@ -235,11 +464,17 @@ function ReservationsPageContent() {
           </div>
         </CardHeader>
         <CardContent>
-          <ReservationTable reservations={reservations} onRefresh={handleRefresh} itemsPerPage={20} />
+          <ReservationTable
+            reservations={reservations}
+            onRefresh={handleRefresh}
+            itemsPerPage={20}
+            readOnly={offlineMode}
+            emptyMessage={offlineMode && !offlineSyncedAt ? getTranslation("manage.offline.empty") : undefined}
+          />
         </CardContent>
       </Card>
 
-      {showCreateForm && (
+      {showCreateForm && !offlineMode && (
         <ReservationForm
           isOpen={showCreateForm}
           mode="create"
