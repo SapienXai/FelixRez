@@ -107,6 +107,7 @@ export const translations = {
       step1: {
         areaLabel: "Main Hall",
         anyArea: "Main Hall",
+        beachNotice: "Beach area reservations are available until 12:00.",
         partyLabel: "Party",
         dateLabel: "Date",
         timeLabel: "Time",
@@ -633,6 +634,7 @@ export const translations = {
       step1: {
         areaLabel: "Ana Salon",
         anyArea: "Ana Salon",
+        beachNotice: "Sahil bölümü rezervasyonları saat 12:00’ye kadar alınmaktadır.",
         partyLabel: "Kişi Sayısı",
         dateLabel: "Tarih",
         timeLabel: "Saat",

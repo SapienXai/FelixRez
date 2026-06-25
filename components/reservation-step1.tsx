@@ -1,8 +1,11 @@
 "use client"
 
 import { useEffect, useState } from "react"
+import { AlertTriangle } from "lucide-react"
 
 import { useLanguage } from "@/context/language-context"
+import { formatCustomerReservationAreaLabel, formatCustomerReservationTime } from "@/lib/reservation-display"
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 
 type Step1Picker = "party" | "date" | "time" | "area" | null
 
@@ -63,6 +66,7 @@ interface ReservationArea {
 }
 
 interface ReservationStep1Props {
+  restaurantName: string
   partySize: string
   setPartySize: (size: string) => void
   selectedDate: Date
@@ -76,6 +80,7 @@ interface ReservationStep1Props {
 }
 
 export function ReservationStep1({
+  restaurantName,
   partySize,
   setPartySize,
   selectedDate,
@@ -409,10 +414,40 @@ export function ReservationStep1({
   const selectedDateValue = formatDateToYYYYMMDD(selectedDate)
   const selectedPartyLabel = partyOptions.find((option) => option.value === partySize)?.label || partySize
   const selectedDateLabel = availableDates.find((option) => option.value === selectedDateValue)?.label || getDisplayDate(selectedDate, true)
-  const selectedAreaLabel = areas?.find((area) => area.id === selectedAreaId)?.name || getTranslation("reserve.step1.anyArea") || "Any area"
+  const defaultAreaLabel = formatCustomerReservationAreaLabel(
+    getTranslation("reserve.step1.anyArea") || "Any area",
+    restaurantName,
+    currentLang
+  )
+  const areaFieldLabel = formatCustomerReservationAreaLabel(
+    getTranslation("reserve.step1.areaLabel") || "Area",
+    restaurantName,
+    "Area",
+    currentLang
+  )
+  const selectedAreaLabel = formatCustomerReservationAreaLabel(
+    areas?.find((area) => area.id === selectedAreaId)?.name,
+    restaurantName,
+    defaultAreaLabel,
+    currentLang
+  )
+  const beachNoticeTitle = currentLang.startsWith("tr") ? "Plaj" : "Beach"
+  const isBeachAreaSelected =
+    restaurantName.trim().toLowerCase() === "felix beach" &&
+    Boolean(
+      areas?.some(
+        (area) =>
+          area.id === selectedAreaId &&
+          typeof area.name === "string" &&
+          area.name.trim().toLowerCase().includes("beach")
+      )
+    )
   const areaOptions = [
-    { value: "", label: getTranslation("reserve.step1.anyArea") || "Any area" },
-    ...(areas || []).map((area) => ({ value: area.id, label: area.name })),
+    { value: "", label: defaultAreaLabel },
+    ...(areas || []).map((area) => ({
+      value: area.id,
+      label: formatCustomerReservationAreaLabel(area.name, restaurantName, undefined, currentLang),
+    })),
   ]
 
   const closePicker = () => setActivePicker(null)
@@ -426,7 +461,7 @@ export function ReservationStep1({
         ? getTranslation("reserve.step1.dateLabel")
         : activePicker === "time"
           ? getTranslation("reserve.step1.timeLabel")
-          : getTranslation("reserve.step1.areaLabel") || "Area"
+          : areaFieldLabel
 
     const options = activePicker === "party"
       ? partyOptions.map((option) => ({
@@ -445,7 +480,7 @@ export function ReservationStep1({
         : activePicker === "time"
           ? times.map((time) => ({
               value: time,
-              label: time,
+              label: formatCustomerReservationTime(time),
               selected: time === selectedTime,
               onSelect: () => setSelectedTime(time),
             }))
@@ -548,12 +583,12 @@ export function ReservationStep1({
           </button>
           <button type="button" className="booking-field" onClick={() => setActivePicker("time")}>
             <span>{getTranslation("reserve.step1.timeLabel")}</span>
-            <strong>{selectedTime || "-"}</strong>
+            <strong>{selectedTime ? formatCustomerReservationTime(selectedTime) : "-"}</strong>
             <i className="bi bi-chevron-down" aria-hidden="true" />
           </button>
           {areas && areas.length > 0 && (
             <button type="button" className="booking-field" onClick={() => setActivePicker("area")}>
-              <span>{getTranslation("reserve.step1.areaLabel") || "Area"}</span>
+              <span>{areaFieldLabel}</span>
               <strong>{selectedAreaLabel}</strong>
               <i className="bi bi-chevron-down" aria-hidden="true" />
             </button>
@@ -572,6 +607,17 @@ export function ReservationStep1({
         <div className="alert alert-warning mt-3" role="alert">
           {blockedIntervalsMessage}
         </div>
+      )}
+      {isBeachAreaSelected && (
+        <Alert className="mt-3 border-amber-200 bg-amber-50 text-amber-950 shadow-sm" role="status">
+          <AlertTriangle className="h-4 w-4 text-amber-600" />
+          <AlertTitle className="text-sm font-semibold text-amber-900">
+            {beachNoticeTitle}
+          </AlertTitle>
+          <AlertDescription className="text-sm text-amber-900/90">
+            {getTranslation("reserve.step1.beachNotice")}
+          </AlertDescription>
+        </Alert>
       )}
       {renderPickerSheet()}
     </div>

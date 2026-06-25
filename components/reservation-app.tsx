@@ -12,6 +12,7 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Loader2, XCircle } from 'lucide-react'
 import { ReservationConfirmation } from "./reservation-confirmation"
 import { translations } from "@/lib/translations"
+import { formatCustomerReservationTime } from "@/lib/reservation-display"
 import Link from "next/link"
 import Image from "next/image"
 interface ReservationAppProps {
@@ -357,7 +358,7 @@ export function ReservationApp({ initialRestaurant, initialLang }: ReservationAp
           <ReservationConfirmation
             restaurantName={restaurantName}
             date={getDisplayDate(selectedDate, currentLang, true)}
-            time={selectedTime}
+            time={formatCustomerReservationTime(selectedTime)}
           />
         </div>
       </div>
@@ -411,6 +412,7 @@ export function ReservationApp({ initialRestaurant, initialLang }: ReservationAp
         <div className="app-content">
           {currentStep === 1 ? (
             <ReservationStep1
+              restaurantName={restaurantName}
               partySize={partySize}
               setPartySize={setPartySize}
               selectedDate={selectedDate}

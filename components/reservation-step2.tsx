@@ -1,6 +1,7 @@
 "use client"
 
 import { useLanguage } from "@/context/language-context"
+import { formatCustomerReservationTime } from "@/lib/reservation-display"
 import { useEffect, useMemo, useRef, useState, type RefObject } from "react"
 import { Calendar, Users } from "lucide-react"
 
@@ -278,7 +279,7 @@ export function ReservationStep2({
           <Calendar className="w-6 h-6 text-muted-foreground" />
           <div className="summary-item-details">
             <div className="main-text" id="summaryDateTime">
-              {getDisplayDate(selectedDate, currentLang, true)}, {selectedTime}
+              {getDisplayDate(selectedDate, currentLang, true)}, {formatCustomerReservationTime(selectedTime)}
             </div>
             <div className="sub-text" id="summaryTimezone">
               {getTimezone()}
