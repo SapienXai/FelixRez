@@ -409,7 +409,7 @@ export function ReservationApp({ initialRestaurant, initialLang }: ReservationAp
           currentStep={currentStep}
         />
 
-        <div className="app-content">
+        <div className={currentStep === 2 ? "app-content app-content-step2" : "app-content"}>
           {currentStep === 1 ? (
             <ReservationStep1
               restaurantName={restaurantName}
@@ -462,7 +462,7 @@ export function ReservationApp({ initialRestaurant, initialLang }: ReservationAp
           )}
         </div>
 
-        <div className="app-footer">
+        <div className={currentStep === 2 ? "app-footer app-footer-sticky-step2" : "app-footer"}>
           <button className="btn btn-primary" onClick={handleContinue} disabled={isLoading || isSuccess}>
             {isLoading ? (
               <>

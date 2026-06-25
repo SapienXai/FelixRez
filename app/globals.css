@@ -494,6 +494,10 @@ footer {
   overflow-y: auto;
 }
 
+.app-content-step2 {
+  padding-bottom: 108px;
+}
+
 .reservation-step {
   display: flex;
   flex-direction: column;
@@ -1382,6 +1386,14 @@ footer {
   bottom: 0;
   z-index: 100;
   backdrop-filter: blur(16px);
+}
+
+.app-footer-sticky-step2 {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 110;
 }
 
 .app-footer .btn-primary {
